@@ -91,7 +91,7 @@ class Finding(Base):
     
     # Ek bilgiler
     screenshot_url = Column(String(500), nullable=True)  # Screenshot path/URL
-    metadata = Column(JSON, nullable=True)  # Ek bilgiler (coords, metrics, vs.)
+    extra_data = Column(JSON, nullable=True)  # Ek bilgiler (coords, metrics, vs.)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     
