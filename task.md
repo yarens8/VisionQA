@@ -30,7 +30,7 @@
 ### 1.3 CI/CD Pipeline
 - [x] GitHub Actions workflow dosyası oluştur (.github/workflows/ci.yml)
   - [x] Backend test job (pytest, ruff, mypy)
-  - [ ] Frontend test job (npm test, eslint)
+  - [x] Frontend test job (npm test, eslint)
   - [ ] Web test job (Playwright)
   - [ ] Mobile test job (Android emulator)
   - [ ] API test job
@@ -132,8 +132,8 @@
   - [ ] Test task yaz ve çalıştır
 
 ### 1.9 Frontend Framework (Unified Dashboard)
-- [ ] React + TypeScript + Vite projesi oluştur
-  - [ ] TailwindCSS kurulumu
+- [x] React + TypeScript + Vite projesi oluştur
+  - [x] TailwindCSS kurulumu
   - [ ] Zustand (state management)
   - [ ] React Router
   - [ ] TanStack Query
