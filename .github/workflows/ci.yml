@@ -110,6 +110,12 @@ jobs:
           npm ci
           echo "✅ Frontend bağımlılıkları yüklendi"
           
+      - name: Lint kontrolü (Kod Kalitesi)
+        run: |
+          cd frontend
+          npm run lint
+          echo "✅ Frontend lint kontrolü başarılı"
+
       - name: Build kontrolü (Derleme)
         run: |
           cd frontend
