@@ -136,11 +136,11 @@
   - [x] TailwindCSS kurulumu
   - [ ] Zustand (state management)
   - [x] React Router
-  - [ ] TanStack Query
+  - [x] TanStack Query
   - [ ] shadcn/ui component library
-- [ ] Platform Selector Component oluştur
-  - [ ] Multi-select: Web, iOS, Android, Windows, macOS, API, Database
-  - [ ] Platform icons
+- [x] Platform Selector Component oluştur
+  - [x] Multi-select: Web, iOS, Android, Windows, macOS, API, Database
+  - [x] Platform icons
 - [x] Temel layout component
   - [x] Header (logo + platform badges)
   - [x] Sidebar (modules navigation)
@@ -238,9 +238,9 @@
   - [ ] Son test runs (platform icon'larıyla)
   - [ ] İstatistikler (platform bazlı trend)
   - [ ] Quick actions
-- [ ] Multi-Platform Projects yönetimi
-  - [ ] Project oluştur (desteklenen platformlar seç)
-  - [ ] Project listesi (platform badges)
+- [x] Multi-Platform Projects yönetimi
+  - [x] Project oluştur (desteklenen platformlar seç)
+  - [x] Project listesi (platform badges)
   - [ ] Project detay
 - [ ] Test runs geçmişi
   - [ ] Platform filter
