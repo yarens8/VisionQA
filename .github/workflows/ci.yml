@@ -68,7 +68,7 @@ jobs:
       - name: Python syntax kontrolü
         run: |
           cd backend
-          python -m py_compile main.py database/__init__.py database/models.py
+          python -m py_compile main.py database/__init__.py database/models.py schemas.py
           echo "✅ Python dosyaları syntax hatası yok"
       
       - name: Module import kontrolü
@@ -78,6 +78,7 @@ jobs:
           python -c "import main; print('✅ main.py import edildi')"
           python -c "import database; print('✅ database import edildi')"
           python -c "from database import models; print('✅ models import edildi')"
+          python -c "import schemas; print('✅ schemas import edildi')"
           python -c "from fastapi import FastAPI; print('✅ FastAPI import edildi')"
       
       - name: Alembic konfigürasyon kontrolü

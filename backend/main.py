@@ -1,11 +1,10 @@
-"""
-VisionQA Backend - Main Application
-FastAPI entry point
-"""
-
-from fastapi import FastAPI
+from typing import List
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from database import check_database_connection
+from database import check_database_connection, get_db
+from database.models import Project as ProjectModel
+from sqlalchemy.orm import Session
+import schemas
 
 # FastAPI uygulaması oluştur
 app = FastAPI(
@@ -17,16 +16,12 @@ app = FastAPI(
 # CORS (Frontend'in backend'e erişmesi için)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React frontend
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# ============================================
-# HEALTH CHECK ENDPOINT
-# ============================================
 
 @app.get("/")
 def root():
@@ -54,15 +49,21 @@ def health_check():
 
 
 # ============================================
-# API ENDPOINTS (İleride eklenecek)
+# PROJECT API ENDPOINTS
 # ============================================
 
-# @app.get("/api/platforms")
-# def get_platforms():
-#     """Desteklenen platformları listele"""
-#     return ["web", "mobile", "desktop", "api", "database"]
+@app.post("/projects", response_model=schemas.Project)
+def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
+    """Yeni proje oluştur"""
+    db_project = ProjectModel(**project.dict())
+    db.add(db_project)
+    db.commit()
+    db.refresh(db_project)
+    return db_project
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.get("/projects", response_model=List[schemas.Project])
+def get_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """Projeleri listele"""
+    projects = db.query(ProjectModel).offset(skip).limit(limit).all()
+    return projects
