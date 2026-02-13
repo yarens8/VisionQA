@@ -124,7 +124,7 @@ This is an academic research project. Contributions welcome after initial releas
 
 ---
 
-**Author:** [Your Name]  
-**Institution:** [Your University]  
+**Author:** [Yaren APAYDIN]  
+**Institution:** [Fırat University]  
 **Date:** February 2026  
 **Version:** 2.0 - Universal Platform Edition

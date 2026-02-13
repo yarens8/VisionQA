@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AppLayout } from './components/layout/AppLayout'
 import { DashboardPage } from './pages/DashboardPage'
 import { ProjectsPage } from './pages/ProjectsPage'
+import { CreateProjectPage } from './pages/CreateProjectPage'
 
 function App() {
     return (
@@ -17,6 +18,7 @@ function App() {
 
                     {/* 📂 Projeler Sayfası */}
                     <Route path="projects" element={<ProjectsPage />} />
+                    <Route path="projects/new" element={<CreateProjectPage />} />
 
                     {/* 🚫 Bilinmeyen Sayfalar */}
                     <Route path="*" element={<Navigate to="/" replace />} />
