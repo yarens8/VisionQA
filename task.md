@@ -135,16 +135,16 @@
 - [x] React + TypeScript + Vite projesi oluştur
   - [x] TailwindCSS kurulumu
   - [ ] Zustand (state management)
-  - [ ] React Router
+  - [x] React Router
   - [ ] TanStack Query
   - [ ] shadcn/ui component library
 - [ ] Platform Selector Component oluştur
   - [ ] Multi-select: Web, iOS, Android, Windows, macOS, API, Database
   - [ ] Platform icons
-- [ ] Temel layout component
-  - [ ] Header (logo + platform badges)
-  - [ ] Sidebar (modules navigation)
-  - [ ] Main content area
+- [x] Temel layout component
+  - [x] Header (logo + platform badges)
+  - [x] Sidebar (modules navigation)
+  - [x] Main content area
   - [ ] Dark mode toggle
 
 **✅ Faz 1 Tamamlanma:**
