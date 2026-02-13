@@ -68,7 +68,7 @@ jobs:
       - name: Python syntax kontrolü
         run: |
           cd backend
-          python -m py_compile main.py database.py
+          python -m py_compile main.py database.py database/models.py
           echo "✅ Python dosyaları syntax hatası yok"
       
       - name: Module import kontrolü
@@ -76,7 +76,15 @@ jobs:
           cd backend
           python -c "import main; print('✅ main.py import edildi')"
           python -c "import database; print('✅ database.py import edildi (.env olmadan)')"
+          python -c "from database.models import Project, TestRun, Finding; print('✅ Models import edildi')"
           python -c "from fastapi import FastAPI; print('✅ FastAPI import edildi')"
+      
+      - name: Alembic konfigürasyon kontrolü
+        run: |
+          cd backend
+          test -f alembic.ini && echo "✅ alembic.ini var"
+          test -f alembic/env.py && echo "✅ alembic/env.py var"
+          python -c "from alembic.config import Config; Config('alembic.ini'); print('✅ Alembic config geçerli')"
 
   success-notification:
     name: ✅ Tüm Kontroller Başarılı
