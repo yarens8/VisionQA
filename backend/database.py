@@ -15,15 +15,18 @@ load_dotenv()
 # Database URL (.env'den al)
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# SQLAlchemy engine oluştur
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,  # Connection hayatta mı kontrol et
-    echo=False  # SQL query'leri log'lama (debug için True yapabilirsiniz)
-)
+# SQLAlchemy engine oluştur (sadece URL varsa)
+engine = None
+SessionLocal = None
 
-# Session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+if DATABASE_URL:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,  # Connection hayatta mı kontrol et
+        echo=False  # SQL query'leri log'lama (debug için True yapabilirsiniz)
+    )
+    # Session factory
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for models
 Base = declarative_base()
@@ -40,6 +43,10 @@ def get_db():
 
 def check_database_connection():
     """Database bağlantısını test et"""
+    if not engine:
+        print("⚠️ Database URL tanımlı değil (.env dosyası eksik)")
+        return False
+    
     try:
         with engine.connect() as connection:
             result = connection.execute(text("SELECT 1"))

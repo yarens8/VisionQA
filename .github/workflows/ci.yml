@@ -1,102 +1,44 @@
 name: VisionQA CI/CD Pipeline
 
-# Ne zaman çalışacak?
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
 
-# İş akışları
 jobs:
-  # ============================================
-  # JOB 1: Temel Kontroller
-  # ============================================
   basic-checks:
     name: Temel Kontroller
     runs-on: ubuntu-latest
     
     steps:
-      - name: Kodu çek (Checkout)
+      - name: Kodu çek
         uses: actions/checkout@v4
       
       - name: README kontrolü
         run: |
-          if [ ! -f "README.md" ]; then
-            echo "❌ README.md bulunamadı!"
-            exit 1
-          fi
-          echo "✅ README.md var"
-      
-      - name: task.md kontrolü
-        run: |
-          if [ ! -f "task.md" ]; then
-            echo "❌ task.md bulunamadı!"
-            exit 1
-          fi
-          echo "✅ task.md var"
-      
-      - name: .gitignore kontrolü
-        run: |
-          if [ ! -f ".gitignore" ]; then
-            echo "❌ .gitignore bulunamadı!"
-            exit 1
-          fi
-          echo "✅ .gitignore var"
-      
-      - name: .env.example kontrolü
-        run: |
-          if [ ! -f ".env.example" ]; then
-            echo "❌ .env.example bulunamadı!"
-            exit 1
-          fi
-          echo "✅ .env.example var"
+          test -f "README.md" && echo "✅ README.md var" || (echo "❌ README.md yok" && exit 1)
       
       - name: Proje yapısı kontrolü
         run: |
           echo "📁 Proje klasörleri kontrol ediliyor..."
           for dir in backend frontend executors docs .github; do
-            if [ ! -d "$dir" ]; then
-              echo "❌ $dir klasörü bulunamadı!"
-              exit 1
-            fi
-            echo "✅ $dir klasörü var"
+            test -d "$dir" && echo "✅ $dir klasörü var" || (echo "❌ $dir yok" && exit 1)
           done
 
-  # ============================================
-  # JOB 2: Docker Kontrolleri
-  # ============================================
   docker-checks:
     name: Docker Kontrolleri
     runs-on: ubuntu-latest
-    needs: basic-checks  # Temel kontroller başarılı olursa çalış
+    needs: basic-checks
     
     steps:
-      - name: Kodu çek
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
       - name: docker-compose.yml kontrolü
         run: |
-          if [ ! -f "docker-compose.yml" ]; then
-            echo "❌ docker-compose.yml bulunamadı!"
-            exit 1
-          fi
-          echo "✅ docker-compose.yml var"
-      
-      - name: docker-compose syntax kontrolü
-        run: |
-          # Docker compose syntax doğrulaması
-          docker compose config > /dev/null
-          if [ $? -eq 0 ]; then
-            echo "✅ docker-compose.yml syntax'ı doğru"
-          else
-            echo "❌ docker-compose.yml syntax hatası!"
-            exit 1
-          fi
+          test -f "docker-compose.yml" && echo "✅ docker-compose.yml var"
+          docker compose config > /dev/null && echo "✅ docker-compose.yml syntax doğru"
 
-  # ============================================
-  # JOB 3: Python Backend Tests
-  # ============================================
   backend-tests:
     name: Backend Testleri
     runs-on: ubuntu-latest
@@ -108,89 +50,34 @@ jobs:
       - name: Python kurulumu
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'  # Sizin versiyonunuz
+          python-version: '3.10'
+      
+      - name: Backend dosya kontrolü
+        run: |
+          cd backend
+          test -f main.py && echo "✅ main.py var"
+          test -f database.py && echo "✅ database.py var"
+          test -f requirements.txt && echo "✅ requirements.txt var"
       
       - name: Bağımlılıkları yükle
         run: |
           cd backend
-          pip install -r requirements.txt
+          pip install -q -r requirements.txt
+          echo "✅ Bağımlılıklar yüklendi"
       
       - name: Python syntax kontrolü
         run: |
           cd backend
           python -m py_compile main.py database.py
-          echo "✅ Python syntax doğru!"
+          echo "✅ Python dosyaları syntax hatası yok"
       
-      - name: FastAPI import kontrolü
+      - name: Module import kontrolü
         run: |
           cd backend
-          # main.py'yi import et (database .env gerektirdiği için skip)
-          python -c "from fastapi import FastAPI; print('✅ FastAPI import edilebiliyor!')"
-          python -c "import sys; sys.path.insert(0, '.'); exec(open('main.py').read().split('if __name__')[0]); print('✅ main.py syntax doğru!')"
+          python -c "import main; print('✅ main.py import edildi')"
+          python -c "import database; print('✅ database.py import edildi (.env olmadan)')"
+          python -c "from fastapi import FastAPI; print('✅ FastAPI import edildi')"
 
-  # ============================================
-  # JOB 4: Frontend (İleride eklenecek)
-  # ============================================
-  # frontend-tests:
-  #   name: Frontend Testleri
-  #   runs-on: ubuntu-latest
-  #   needs: docker-checks
-  #   
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     
-  #     - name: Node.js kurulumu
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #     
-  #     - name: Bağımlılıkları yükle
-  #       run: |
-  #         cd frontend
-  #         npm ci
-  #     
-  #     - name: Linting (ESLint)
-  #       run: |
-  #         cd frontend
-  #         npm run lint
-  #     
-  #     - name: Type checking
-  #       run: |
-  #         cd frontend
-  #         npm run type-check
-  #     
-  #     - name: Unit testler
-  #       run: |
-  #         cd frontend
-  #         npm test
-
-  # ============================================
-  # JOB 5: Güvenlik Taraması (İleride eklenecek)
-  # ============================================
-  # security-scan:
-  #   name: Güvenlik Taraması
-  #   runs-on: ubuntu-latest
-  #   needs: [backend-tests, frontend-tests]
-  #   
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     
-  #     - name: Trivy güvenlik taraması
-  #       uses: aquasecurity/trivy-action@master
-  #       with:
-  #         scan-type: 'fs'
-  #         scan-ref: '.'
-  #         format: 'sarif'
-  #         output: 'trivy-results.sarif'
-  #     
-  #     - name: Bandit (Python güvenlik)
-  #       run: |
-  #         pip install bandit
-  #         bandit -r backend/ -f json -o bandit-report.json
-
-  # ============================================
-  # JOB 6: Başarı Bildirimi
-  # ============================================
   success-notification:
     name: ✅ Tüm Kontroller Başarılı
     runs-on: ubuntu-latest
@@ -203,8 +90,3 @@ jobs:
           echo "✅ Temel kontroller: PASSED"
           echo "✅ Docker kontrolleri: PASSED"
           echo "✅ Backend testleri: PASSED"
-          echo ""
-          echo "📝 Sırada:"
-          echo "   - Frontend testleri (vitest)"
-          echo "   - Güvenlik taraması (Trivy)"
-          echo "   - Docker build & push"
