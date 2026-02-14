@@ -81,10 +81,67 @@ export const api = {
         return response.data;
     },
 
+    // --- Manual Test Management ---
+    createTestCase: async (projectId: number, data: Partial<TestCase>): Promise<TestCase> => {
+        const response = await apiClient.post(`/projects/${projectId}/cases`, data);
+        return response.data; // { message, id } dönebilir, duruma göre ayarlarız
+    },
+
+    updateTestCase: async (caseId: number, data: Partial<TestCase>): Promise<any> => {
+        const response = await apiClient.put(`/projects/cases/${caseId}`, data);
+        return response.data;
+    },
+
+    deleteTestCase: async (caseId: number): Promise<void> => {
+        await apiClient.delete(`/projects/cases/${caseId}`);
+    },
+
+    // --- Statistics ---
+    getDashboardStats: async (): Promise<DashboardStats> => {
+        const response = await apiClient.get<DashboardStats>('/stats/dashboard');
+        return response.data;
+    },
+
+    getAlerts: async (): Promise<AlertsResponse> => {
+        const response = await apiClient.get<AlertsResponse>('/stats/alerts');
+        return response.data;
+    },
+
     getHealth: async () => {
         return apiClient.get('/health');
     }
 };
+
+export interface DashboardStats {
+    total_projects: number;
+    total_cases: number;
+    recent_runs: number;
+    success_rate: number;
+    recent_test_runs: {
+        id: number;
+        case_title: string;
+        status: string;
+        duration: string;
+        created_at: string;
+    }[];
+    weekly_trend: {
+        date: string;
+        count: number;
+    }[];
+}
+
+export interface AlertsResponse {
+    alerts: {
+        type: string;
+        title: string;
+        message: string;
+        action: string;
+        severity: 'high' | 'medium' | 'low';
+    }[];
+    total_alerts: number;
+    critical_count: number;
+    warning_count: number;
+}
 
 export interface TestExecutionResult {
     case_id: number;

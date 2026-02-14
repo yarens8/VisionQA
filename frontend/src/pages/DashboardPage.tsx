@@ -1,34 +1,28 @@
-
-import { useEffect, useState } from 'react'
-import { Server, Database, Activity, Clock, Plus, Zap } from 'lucide-react'
-import axios from 'axios'
-import { Link } from 'react-router-dom'
-// import { cn } from "@/lib/utils"
-
-interface HealthStatus {
-    status: string
-    service: string
-    database: string
-    version?: string
-}
+import { useQuery } from '@tanstack/react-query';
+import { Server, Database, Activity, Clock, Plus, Zap, TrendingUp, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { api } from '../services/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { formatDistanceToNow } from 'date-fns';
 
 export function DashboardPage() {
-    const [health, setHealth] = useState<HealthStatus | null>(null)
+    // Fetch dashboard stats
+    const { data: stats, isLoading } = useQuery({
+        queryKey: ['dashboardStats'],
+        queryFn: api.getDashboardStats,
+        refetchInterval: 30000 // Her 30 saniyede bir yenile
+    });
 
-    useEffect(() => {
-        axios.get('/api/health')
-            .then(res => {
-                setHealth(res.data)
-            })
-            .catch(err => {
-                console.error("Backend bağlantı hatası:", err)
-            })
-    }, [])
+    // Fetch alerts
+    const { data: alerts } = useQuery({
+        queryKey: ['alerts'],
+        queryFn: api.getAlerts,
+        refetchInterval: 60000 // Her 1 dakikada bir kontrol et
+    });
 
     return (
         <div className="space-y-8">
-
-            {/* 🟢 Hero Section */}
+            {/* Hero Section */}
             <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-8 shadow-sm">
                 <h2 className="text-3xl font-bold text-white mb-2">Welcome Back, Admin 👋</h2>
                 <p className="text-slate-400 max-w-2xl">
@@ -45,71 +39,214 @@ export function DashboardPage() {
                 </div>
             </div>
 
-            {/* 🔵 System Status Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Intelligent Alerts Panel */}
+            {alerts && alerts.total_alerts > 0 && (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                            Intelligent Alerts
+                            <span className="ml-2 bg-red-500/10 text-red-400 text-xs px-2 py-1 rounded-full border border-red-500/20 font-bold">
+                                {alerts.critical_count} Critical
+                            </span>
+                            <span className="bg-yellow-500/10 text-yellow-400 text-xs px-2 py-1 rounded-full border border-yellow-500/20 font-bold">
+                                {alerts.warning_count} Warning
+                            </span>
+                        </h3>
+                    </div>
 
-                {/* Card 1: Backend API */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-blue-500/50 transition-colors">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Server className="h-24 w-24 text-blue-500" />
+                    <div className="space-y-3">
+                        {alerts.alerts.map((alert, index) => (
+                            <div
+                                key={index}
+                                className={`p-4 rounded-lg border ${alert.severity === 'high'
+                                    ? 'bg-red-500/5 border-red-500/30'
+                                    : alert.severity === 'medium'
+                                        ? 'bg-yellow-500/5 border-yellow-500/30'
+                                        : 'bg-blue-500/5 border-blue-500/30'
+                                    }`}
+                            >
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className={`h-5 w-5 mt-0.5 ${alert.severity === 'high' ? 'text-red-500'
+                                        : alert.severity === 'medium' ? 'text-yellow-500'
+                                            : 'text-blue-500'
+                                        }`} />
+                                    <div className="flex-1">
+                                        <h4 className="text-white font-semibold">{alert.title}</h4>
+                                        <p className="text-slate-400 text-sm mt-1">{alert.message}</p>
+                                        <p className="text-slate-500 text-xs mt-2 italic">
+                                            💡 <strong>Action:</strong> {alert.action}
+                                        </p>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${alert.severity === 'high'
+                                        ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                        : alert.severity === 'medium'
+                                            ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                        }`}>
+                                        {alert.severity.toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">System Status</h3>
-                        {health ? (
-                            <span className="bg-green-500/10 text-green-400 text-xs px-2 py-1 rounded-full border border-green-500/20 font-bold">ONLINE</span>
-                        ) : (
-                            <span className="bg-red-500/10 text-red-400 text-xs px-2 py-1 rounded-full border border-red-500/20 font-bold">OFFLINE</span>
-                        )}
-                    </div>
-                    <div className="text-3xl font-bold text-white mb-1">
-                        {health ? "Operational" : "System Error"}
-                    </div>
-                    <p className="text-sm text-slate-500">API Latency: ~45ms</p>
                 </div>
+            )}
 
-                {/* Card 2: Active Tests */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-purple-500/50 transition-colors">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Zap className="h-24 w-24 text-purple-500" />
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Total Projects */}
+                <Link to="/projects" className="block">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-blue-500/50 transition-colors cursor-pointer">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Database className="h-24 w-24 text-blue-500" />
+                        </div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Projects</h3>
+                            <span className="text-blue-400 text-xs">View →</span>
+                        </div>
+                        <div className="text-3xl font-bold text-white mb-1">
+                            {isLoading ? '...' : stats?.total_projects || 0}
+                        </div>
+                        <p className="text-sm text-slate-500">Total active projects</p>
                     </div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Active Tests</h3>
-                        <span className="bg-blue-500/10 text-blue-400 text-xs px-2 py-1 rounded-full border border-blue-500/20 font-bold">RUNNING</span>
-                    </div>
-                    <div className="text-3xl font-bold text-white mb-1">0</div>
-                    <p className="text-sm text-slate-500">Scheduled: 12</p>
-                </div>
+                </Link>
 
-                {/* Card 3: Total Projects */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-orange-500/50 transition-colors">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <Database className="h-24 w-24 text-orange-500" />
+                {/* Total Test Cases */}
+                <Link to="/projects" className="block">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-purple-500/50 transition-colors cursor-pointer">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Zap className="h-24 w-24 text-purple-500" />
+                        </div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Test Cases</h3>
+                        </div>
+                        <div className="text-3xl font-bold text-white mb-1">
+                            {isLoading ? '...' : stats?.total_cases || 0}
+                        </div>
+                        <p className="text-sm text-slate-500">AI + Manual tests</p>
                     </div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Projects</h3>
-                        <Link to="/projects" className="text-orange-400 text-xs hover:underline">View All →</Link>
-                    </div>
-                    <div className="text-3xl font-bold text-white mb-1">--</div>
-                    <p className="text-sm text-slate-500">Last updated: Just now</p>
-                </div>
+                </Link>
 
+                {/* Recent Runs (Last 7 days) */}
+                <Link to="/test-runs" className="block">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-orange-500/50 transition-colors cursor-pointer">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <TrendingUp className="h-24 w-24 text-orange-500" />
+                        </div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Recent Runs</h3>
+                        </div>
+                        <div className="text-3xl font-bold text-white mb-1">
+                            {isLoading ? '...' : stats?.recent_runs || 0}
+                        </div>
+                        <p className="text-sm text-slate-500">Last 7 days</p>
+                    </div>
+                </Link>
+
+                {/* Success Rate */}
+                <Link to="/findings" className="block">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 relative overflow-hidden group hover:border-green-500/50 transition-colors cursor-pointer">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Server className="h-24 w-24 text-green-500" />
+                        </div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Success Rate</h3>
+                            <span className={`text-xs px-2 py-1 rounded-full border font-bold ${(stats?.success_rate || 0) >= 80
+                                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                    : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                }`}>
+                                {isLoading ? '...' : `${stats?.success_rate || 0}%`}
+                            </span>
+                        </div>
+                        <div className="text-3xl font-bold text-white mb-1">
+                            {isLoading ? '...' : `${stats?.success_rate || 0}%`}
+                        </div>
+                        <p className="text-sm text-slate-500">Pass rate (all time)</p>
+                    </div>
+                </Link>
             </div>
 
-            {/* 🔴 Recent Activity Limit */}
+            {/* Weekly Trend Chart */}
+            {stats && stats.weekly_trend && stats.weekly_trend.length > 0 && (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-blue-400" />
+                        Weekly Test Activity
+                    </h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                        <LineChart data={stats.weekly_trend}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                            <XAxis
+                                dataKey="date"
+                                stroke="#94a3b8"
+                                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                                labelStyle={{ color: '#e2e8f0' }}
+                            />
+                            <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 4 }} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
+
+            {/* Recent Test Runs */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-slate-400" /> Recent Activity
+                        <Clock className="h-5 w-5 text-slate-400" /> Recent Test Runs
                     </h3>
+                    <Link to="/test-runs" className="text-blue-400 text-sm hover:underline">View All →</Link>
                 </div>
 
-                <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-800 rounded-lg bg-slate-950/50">
-                    <Activity className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                    <p>No recent activity found.</p>
-                    <button className="text-blue-400 text-sm mt-2 hover:underline">Start your first test run</button>
-                </div>
+                {isLoading ? (
+                    <div className="text-center py-12 text-slate-500">
+                        <Activity className="h-12 w-12 mx-auto mb-3 opacity-20 animate-pulse" />
+                        <p>Loading...</p>
+                    </div>
+                ) : stats && stats.recent_test_runs && stats.recent_test_runs.length > 0 ? (
+                    <div className="space-y-3">
+                        {stats.recent_test_runs.slice(0, 5).map((run) => (
+                            <div key={run.id} className="flex items-center justify-between p-4 bg-slate-950 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors">
+                                <div className="flex items-center gap-4">
+                                    {run.status === 'completed' ? (
+                                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                    ) : (
+                                        <XCircle className="h-5 w-5 text-red-500" />
+                                    )}
+                                    <div>
+                                        <p className="text-white font-medium">{run.case_title}</p>
+                                        <p className="text-xs text-slate-500">
+                                            {run.created_at ? formatDistanceToNow(new Date(run.created_at), { addSuffix: true }) : 'Unknown time'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className="text-sm text-slate-400">{run.duration}</span>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${run.status === 'completed'
+                                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                        }`}>
+                                        {run.status}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12 text-slate-500 border-2 border-dashed border-slate-800 rounded-lg bg-slate-950/50">
+                        <Activity className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                        <p>No recent activity found.</p>
+                        <Link to="/projects" className="text-blue-400 text-sm mt-2 hover:underline inline-block">
+                            Start your first test run
+                        </Link>
+                    </div>
+                )}
             </div>
-
         </div>
-    )
+    );
 }

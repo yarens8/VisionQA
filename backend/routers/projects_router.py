@@ -126,3 +126,104 @@ async def generate_cases(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+# ============================================
+# MANUAL CRUD OPERATIONS
+# ============================================
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    """Projeyi ve bağlı tüm testleri sil"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    db.delete(project)
+    db.commit()
+    return None
+
+@router.post("/{project_id}/cases", response_model=Dict[str, Any])
+def create_manual_test_case(project_id: int, case_data: Dict[str, Any], db: Session = Depends(get_db)):
+    """El ile manuel test case oluştur"""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    new_case = TestCase(
+        project_id=project.id,
+        title=case_data.get("title", "Untitled Case"),
+        description=case_data.get("description", ""),
+        priority=case_data.get("priority", "medium"),
+        status="draft"
+    )
+    db.add(new_case)
+    db.commit()
+    db.refresh(new_case)
+    
+    # Adımları Kaydet (Varsa)
+    steps = case_data.get("steps", [])
+    for step in steps:
+        db_step = TestStep(
+            test_case_id=new_case.id,
+            order=step.get("order", 1),
+            action=step.get("action", "wait"),
+            target=step.get("target", ""),
+            value=step.get("value", ""),
+            expected_result=step.get("expected_result", "")
+        )
+        db.add(db_step)
+        
+    db.commit()
+    return {"message": "Manual case created successfully", "id": new_case.id}
+
+@router.delete("/cases/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_test_case(case_id: int, db: Session = Depends(get_db)):
+    """Test Case'i sil"""
+    case = db.query(TestCase).filter(TestCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Test Case not found")
+    
+    db.delete(case)
+    db.commit()
+    return None
+
+@router.put("/cases/{case_id}", response_model=Dict[str, Any])
+def update_test_case(case_id: int, case_data: Dict[str, Any], db: Session = Depends(get_db)):
+    """Test Case'i güncelle (Başlık, Öncelik ve Adımlar)"""
+    case = db.query(TestCase).filter(TestCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Test Case not found")
+    
+    # 1. Ana Bilgileri Güncelle
+    if "title" in case_data:
+        case.title = case_data["title"]
+    if "description" in case_data:
+        case.description = case_data["description"]
+    if "priority" in case_data:
+        case.priority = case_data["priority"]
+    if "status" in case_data:
+        case.status = case_data["status"]
+    
+    # 2. Adımları Güncelle (Varsa)
+    # Strateji: Eski adımları sil, yenilerini ekle (En temiz yöntem)
+    if "steps" in case_data:
+        # Önce eskileri sil
+        db.query(TestStep).filter(TestStep.test_case_id == case_id).delete()
+        
+        # Yenileri ekle
+        new_steps = case_data["steps"]
+        for step in new_steps:
+            db_step = TestStep(
+                test_case_id=case.id,
+                order=step.get("order", 1),
+                action=step.get("action", "wait"),
+                target=step.get("target", ""),
+                value=step.get("value", ""),
+                expected_result=step.get("expected_result", "")
+            )
+            db.add(db_step)
+            
+    db.commit()
+    db.refresh(case)
+    
+    return {"message": "Case updated successfully", "id": case.id}

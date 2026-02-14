@@ -55,9 +55,10 @@ def health_check():
     }
 
 
-from routers import projects_router, execution_router
+from routers import projects_router, execution_router, stats_router
 
 # Router Bağlantıları
 app.include_router(projects_router.router)
 app.include_router(execution_router.router)
+app.include_router(stats_router.router)
 
