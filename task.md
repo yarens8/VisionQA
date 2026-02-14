@@ -50,36 +50,21 @@
 - [x] İlk migration dosyasını oluştur ve çalıştır
 
 ### 1.5 AI Model API Entegrasyonu
-- [ ] SAM3 (Segment Anything) API setup
-  - [ ] API key al (Replicate/HuggingFace)
-  - [ ] Python client wrapper yaz (backend/core/models/sam3_client.py)
-  - [ ] detect_ui_elements(screenshot, platform) metodu
-  - [ ] Test: Web + Mobile + Desktop screenshot'larla dene
-  
-- [ ] DINO-X (Visual Grounding) API setup
-  - [ ] API key al
-  - [ ] Python client wrapper yaz (backend/core/models/dinox_client.py)
-  - [ ] ground_text_to_element(screenshot, query) metodu
-  - [ ] Test: "login button" → bounding box
-  
-- [ ] LLM API setup (GPT-4 / Claude / Ollama)
-  - [ ] API key al
-  - [ ] Python client wrapper yaz (backend/core/models/llm_client.py)
-  - [ ] generate_test_scenarios(context, platform) metodu
-  - [ ] generate_report(findings, platform) metodu
-  - [ ] Prompt template sistemi kur (backend/core/prompts/)
+- [x] Hugging Face Inference API
+  - [x] SAM (Segment Anything) client (backend/core/models/sam3_client.py)
+  - [x] DINO-X (Detection) client (backend/core/models/dinox_client.py)
+  - [x] LLM (Mistral/GPT) client (backend/core/models/llm_client.py)
+  - [x] Token doğrulaması (whoami test)
+  - [ ] Gerçek API testleri (screenshot ile)
 
-### 1.6 Platform Executor'ları Kurulum
-
-#### 1.6.1 Web Executor (Playwright)
-- [ ] Playwright kurulumu
-  - [ ] Python Playwright paketi yükle
-  - [ ] Browser'ları indir (chromium, firefox, webkit)
+### 1.6 Platform Executor'ları
+- [x] Web Executor (Playwright)
+  - [x] Playwright kurulumu
+  - [x] Browser'ları indir (chromium, firefox, webkit)
+  - [x] WebExecutor sınıfı (backend/executors/web/web_executor.py)
+  - [x] start(), navigate(), screenshot(), click(), type(), stop()
+  - [x] Test: Google screenshot alma
   - [ ] Docker image'a ekle
-- [ ] WebExecutor sınıfı yaz (backend/executors/web/web_executor.py)
-  - [ ] initialize(), navigate(), screenshot(), interact(), cleanup()
-  - [ ] Multi-browser support
-- [ ] Test: Örnek web sayfası screenshot al
 
 #### 1.6.2 Mobile Executor (Appium)
 - [ ] Appium server kurulumu
