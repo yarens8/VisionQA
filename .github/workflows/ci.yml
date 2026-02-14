@@ -92,6 +92,15 @@ jobs:
           test -f alembic/env.py && echo "✅ alembic/env.py var"
           python -c "from alembic.config import Config; Config('alembic.ini'); print('✅ Alembic config geçerli')"
 
+      - name: Run Backend Tests (Pytest)
+        run: |
+          cd backend
+          pip install pytest-asyncio
+          # Önce test_ai_case_gen.py (Standalone test, ama pytest ile de çalışmalı)
+          pytest tests/test_ai_case_gen.py
+          # Şimdi de Web Executor Headless Testi
+          pytest tests/test_web_executor_ci.py
+
   frontend-tests:
     name: Frontend Testleri
     runs-on: ubuntu-latest

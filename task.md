@@ -142,47 +142,36 @@
 
 ## Faz 2: MVP - Evrensel Core Modüller (Hafta 3-6)
 
-### 2.1 🤖 Evrensel Otonom Test Ajanı (Hafta 3-4)
+### 2.1 🤖 AI Destekli Akıllı Test Süreci (Hafta 3-4)
 
-#### Backend
-- [ ] BaseAgent sınıfı (backend/core/agents/base_agent.py)
-- [ ] UniversalAutonomousTester sınıfı (backend/core/agents/autonomous_tester.py)
-  - [ ] analyze_screen(executor, platform)
-  - [ ] generate_scenarios(context, platform)
-  - [ ] execute_scenario(executor, scenario, platform)
-  - [ ] validate_outcome(executor, expected)
-  - [ ] run_test(platform, target, goal)
-- [ ] Platform-specific adapters
-  - [ ] WebTestAdapter
-  - [ ] MobileTestAdapter
-  - [ ] DesktopTestAdapter
-  - [ ] APITestAdapter
-  - [ ] DatabaseTestAdapter
-- [ ] Test scenario data model (backend/core/schemas/test_scenario.py)
-- [ ] API endpoints (backend/api/routes/autonomous_test.py)
-  - [ ] POST /api/tests/autonomous
-  - [ ] GET /api/tests/{id}
-  - [ ] GET /api/tests/{id}/logs
+#### Backend (Test Case Management)
+- [x] Database Schema Güncellemesi
+  - [x] TestCase model (title, description, status: draft/approved)
+  - [x] TestStep model (order, action, target_element, expected_result)
+  - [x] TestSuite model (group of test cases)
+- [x] AI Case Generator (backend/core/agents/case_generator.py)
+  - [x] scan_page_for_features(url, platform) -> Login, Search, Cart (Mock/Fallback entegre)
+  - [x] generate_case_drafts(features) -> JSON list
+  - [x] LLM ile "Scenario Description" -> "Step-by-Step Instructions" dönüşümü
+- [x] Execution Engine (backend/core/engine/execution_engine.py -> routers/execution_router.py)
+  - [x] execute_case(test_case_id, platform)
+  - [x] Step-by-step execution (Find Element -> Action -> Verify) (WebExecutor ile)
+  - [ ] Screenshot & Video recording (Screenshot var, Video yolda)
 
-#### Frontend
-- [ ] Multi-Platform Test Form (frontend/src/pages/AutonomousTest.tsx)
-  - [ ] Platform selector
-  - [ ] Target input (URL/App/Endpoint/DB)
-  - [ ] Test goal textarea
-  - [ ] Platform-specific settings
-- [ ] Test execution view
-  - [ ] Platform badge
-  - [ ] Real-time progress
-  - [ ] Live logs
-- [ ] Results view
-  - [ ] Cross-platform screenshots
-  - [ ] Findings listesi
+#### Frontend (Test Studio)
+- [x] Test Case Library (frontend/src/pages/TestLibraryPage.tsx)
+  - [x] Liste görünümü (Draft vs Approved)
+  - [x] "Generate with AI" butonu (URL gir -> Case üret)
+  - [x] Case detay görüntüleme (Adımları listeleme)
+- [x] Test Runner Interface (Entegre edildi)
+  - [x] Select cases to run (Run butonu eklendi)
+  - [x] Live execution view (Browser'ın açılması)
+  - [x] Pass/Fail status per step (Alert ile feedback)
 
 #### Testing
-- [ ] Web test: https://example.com login flow
-- [ ] Mobile test: Android calculator app
-- [ ] API test: JSONPlaceholder API
-- [ ] Database test: PostgreSQL schema validation
+- [x] E-Ticaret Login Case (AI/Demo ile üretilip koşuldu - SauceDemo)
+- [x] Search Product Case
+- [x] Add to Cart Case
 
 ### 2.2 📹 Evrensel Hata Analizcisi (Hafta 5)
 

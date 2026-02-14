@@ -33,6 +33,30 @@ export interface ProjectCreate {
     platforms: string[];
 }
 
+export interface TestStep {
+    id?: number;
+    order: number;
+    action: string;
+    target: string;
+    value?: string;
+    expected_result?: string;
+}
+
+export interface TestCase {
+    id: number;
+    project_id: number;
+    title: string;
+    description?: string;
+    status: 'draft' | 'approved' | 'archived';
+    priority: string;
+    steps: TestStep[];
+}
+
+export interface GenerateCasesResponse {
+    message: string;
+    cases: TestCase[];
+}
+
 // 🛠️ API Servis Fonksiyonları
 export const api = {
     // --- Projects ---
@@ -46,7 +70,30 @@ export const api = {
         return response.data;
     },
 
+    // --- Tests ---
+    generateCases: async (projectId: number): Promise<TestCase[]> => {
+        const response = await apiClient.post<GenerateCasesResponse>(`/projects/${projectId}/generate-cases`);
+        return response.data.cases;
+    },
+
+    runTestCase: async (caseId: number): Promise<any> => {
+        const response = await apiClient.post(`/execution/run-case/${caseId}`);
+        return response.data;
+    },
+
     getHealth: async () => {
         return apiClient.get('/health');
     }
 };
+
+export interface TestExecutionResult {
+    case_id: number;
+    status: 'completed' | 'crashed';
+    steps: {
+        order: number;
+        action: string;
+        status: 'passed' | 'failed' | 'pending';
+        error?: string;
+    }[];
+    error?: string;
+}

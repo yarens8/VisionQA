@@ -106,9 +106,9 @@ function ProjectCard({ project }: { project: Project }) {
                     <Calendar className="h-3 w-3 mr-1" />
                     {new Date(project.created_at).toLocaleDateString()}
                 </span>
-                <button className="text-blue-400 hover:text-blue-300 flex items-center font-medium">
-                    View Details <ExternalLink className="ml-1 h-3 w-3" />
-                </button>
+                <Link to={`/projects/${project.id}/tests`} className="text-blue-400 hover:text-blue-300 flex items-center font-medium">
+                    Test Library <ExternalLink className="ml-1 h-3 w-3" />
+                </Link>
             </div>
         </div>
     )

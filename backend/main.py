@@ -1,3 +1,10 @@
+import sys
+import asyncio
+
+# ⚡ WINDOWS DÜZELTMESİ (Playwright İçin)
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 from typing import List
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,22 +55,9 @@ def health_check():
     }
 
 
-# ============================================
-# PROJECT API ENDPOINTS
-# ============================================
+from routers import projects_router, execution_router
 
-@app.post("/projects", response_model=schemas.Project)
-def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
-    """Yeni proje oluştur"""
-    db_project = ProjectModel(**project.dict())
-    db.add(db_project)
-    db.commit()
-    db.refresh(db_project)
-    return db_project
+# Router Bağlantıları
+app.include_router(projects_router.router)
+app.include_router(execution_router.router)
 
-
-@app.get("/projects", response_model=List[schemas.Project])
-def get_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """Projeleri listele"""
-    projects = db.query(ProjectModel).offset(skip).limit(limit).all()
-    return projects
