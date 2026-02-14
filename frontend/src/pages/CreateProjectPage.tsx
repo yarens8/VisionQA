@@ -7,12 +7,12 @@ import { Link } from "react-router-dom"
 import { cn } from "@/lib/utils"
 
 const PLATFORMS = [
-    { id: "WEB", name: "Web Application", icon: Globe },
-    { id: "MOBILE_ANDROID", name: "Android App", icon: Smartphone },
-    { id: "MOBILE_IOS", name: "iOS App", icon: Smartphone },
-    { id: "API", name: "REST API", icon: Terminal },
-    { id: "DATABASE", name: "Database", icon: Database },
-    { id: "DESKTOP", name: "Desktop App", icon: Monitor },
+    { id: "web", name: "Web Application", icon: Globe },
+    { id: "mobile_android", name: "Android App", icon: Smartphone },
+    { id: "mobile_ios", name: "iOS App", icon: Smartphone },
+    { id: "api", name: "REST API", icon: Terminal },
+    { id: "database", name: "Database", icon: Database },
+    { id: "desktop_windows", name: "Desktop App", icon: Monitor },
 ]
 
 export function CreateProjectPage() {

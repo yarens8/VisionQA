@@ -59,11 +59,14 @@ jobs:
           test -f database.py && echo "✅ database.py var"
           test -f requirements.txt && echo "✅ requirements.txt var"
       
-      - name: Bağımlılıkları yükle
+      - name: Install dependencies
+        working-directory: ./backend
         run: |
-          cd backend
-          pip install -q -r requirements.txt
-          echo "✅ Bağımlılıklar yüklendi"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Install Playwright browsers
+        run: python -m playwright install --with-deps chromium
       
       - name: Python syntax kontrolü
         run: |
