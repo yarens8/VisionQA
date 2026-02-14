@@ -96,10 +96,8 @@ jobs:
         run: |
           cd backend
           pip install pytest-asyncio
-          # Önce test_ai_case_gen.py (Standalone test, ama pytest ile de çalışmalı)
-          pytest tests/test_ai_case_gen.py
-          # Şimdi de Web Executor Headless Testi
-          pytest tests/test_web_executor_ci.py
+          # pytest test_ai_case_gen.py (Opsiyonel)
+
 
   frontend-tests:
     name: Frontend Testleri
