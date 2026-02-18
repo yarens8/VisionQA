@@ -92,11 +92,24 @@ jobs:
           test -f alembic/env.py && echo "✅ alembic/env.py var"
           python -c "from alembic.config import Config; Config('alembic.ini'); print('✅ Alembic config geçerli')"
 
+      - name: Router import kontrolü
+        run: |
+          cd backend
+          export PYTHONPATH=$PYTHONPATH:.
+          python -c "from routers.stats_router import router; print('✅ stats_router import OK')"
+          python -c "from routers import projects_router; print('✅ projects_router import OK')"
+          python -c "from database.models import Project, TestCase, TestRun, Finding; print('✅ Tüm modeller import OK')"
+
       - name: Run Backend Tests (Pytest)
         run: |
           cd backend
-          pip install pytest-asyncio
-          # pytest test_ai_case_gen.py (Opsiyonel)
+          export PYTHONPATH=$PYTHONPATH:.
+          pip install pytest pytest-asyncio httpx
+          if [ -d "tests" ] && [ "$(ls -A tests/)" ]; then
+            pytest tests/ -v --tb=short
+          else
+            echo "⚠️ Henüz test dosyası yok, adım atlanıyor."
+          fi
 
 
   frontend-tests:

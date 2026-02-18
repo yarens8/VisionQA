@@ -107,19 +107,33 @@ export const api = {
         return response.data;
     },
 
+    getPlatformStats: async () => {
+        const response = await apiClient.get('/stats/platforms');
+        return response.data;
+    },
+
     getHealth: async () => {
         return apiClient.get('/health');
     }
 };
+
+export interface PlatformBreakdown {
+    platform: string;
+    total_runs: number;
+    success_rate: number;
+}
 
 export interface DashboardStats {
     total_projects: number;
     total_cases: number;
     recent_runs: number;
     success_rate: number;
+    platform_breakdown: PlatformBreakdown[];
     recent_test_runs: {
         id: number;
         case_title: string;
+        platform: string;
+        module: string;
         status: string;
         duration: string;
         created_at: string;

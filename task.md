@@ -66,22 +66,18 @@
   - [x] Test: Google screenshot alma
   - [ ] Docker image'a ekle
 
-#### 1.6.2 Mobile Executor (Appium)
+#### 1.6.2 Mobile Executor (Appium - Android First)
 - [ ] Appium server kurulumu
   - [ ] Node.js Appium yükle
   - [ ] Android SDK kurulumu (Docker'da)
-  - [ ] iOS simulator kurulumu (macOS varsa)
 - [ ] MobileExecutor sınıfı yaz (backend/executors/mobile/mobile_executor.py)
-  - [ ] iOS driver configuration
   - [ ] Android driver configuration
   - [ ] initialize(), screenshot(), tap(), swipe()
 - [ ] Test: Android emulator'da örnek app aç
 
-#### 1.6.3 Desktop Executor
+#### 1.6.3 Desktop Executor (Windows First)
 - [ ] DesktopExecutor sınıfı yaz (backend/executors/desktop/desktop_executor.py)
   - [ ] Windows: WinAppDriver wrapper
-  - [ ] macOS: Appium Mac Driver wrapper
-  - [ ] Linux: PyAutoGUI wrapper
 - [ ] Test: Notepad.exe screenshot al
 
 #### 1.6.4 API Executor
@@ -142,21 +138,26 @@
 
 ## Faz 2: MVP - Evrensel Core Modüller (Hafta 3-6)
 
-### 2.1 🤖 AI Destekli Akıllı Test Süreci (Hafta 3-4)
+### 2.1 🤖 AI Destekli "Otonom Test Mimarı" (Hafta 3-4)
 
-#### Backend (Test Case Management)
+#### Backend (AI Test Architect)
 - [x] Database Schema Güncellemesi
   - [x] TestCase model (title, description, status: draft/approved)
   - [x] TestStep model (order, action, target_element, expected_result)
   - [x] TestSuite model (group of test cases)
-- [x] AI Case Generator (backend/core/agents/case_generator.py)
-  - [x] scan_page_for_features(url, platform) -> Login, Search, Cart (Mock/Fallback entegre)
-  - [x] generate_case_drafts(features) -> JSON list
-  - [x] LLM ile "Scenario Description" -> "Step-by-Step Instructions" dönüşümü
-- [x] Execution Engine (backend/core/engine/execution_engine.py -> routers/execution_router.py)
+- [ ] Advanced AI Case Generator (Otonom Mimar) -> `backend/core/agents/case_generator.py`
+  - [ ] **Gözlem (Observation):** URL veya Screenshot üzerinden SAM3 + DINO-X ile gerçek sayfa analizi (sadece LLM tahmini değil)
+  - [ ] **Planlama (Engineering):** LLM'e "Senior QA Engineer" personası kazandır
+    - [ ] Happy Path (Başarılı senaryolar)
+    - [ ] Negative Path (Hatalı giriş, validasyon kontrolleri)
+    - [ ] Edge Cases (Boş input, maksimum karakter, özel karakterler)
+    - [ ] Security Scenarios (Basit SQLi, XSS denemeleri)
+  - [ ] **Multi-Modal Input:** URL yoksa Tasarım (Resim) veya API (Swagger) üzerinden senaryo üretimi
+- [x] Execution Engine (backend/core/engine/execution_engine.py)
   - [x] execute_case(test_case_id, platform)
   - [x] Step-by-step execution (Find Element -> Action -> Verify) (WebExecutor ile)
-  - [ ] Screenshot & Video recording (Screenshot var, Video yolda)
+  - [ ] **Self-Healing:** Element ID değişse bile SAM3 ile görsel olarak bulup teste devam etme
+  - [ ] Screenshot & Video recording
 
 #### Frontend (Test Studio)
 - [x] Test Case Library (frontend/src/pages/TestLibraryPage.tsx)
@@ -222,9 +223,13 @@
   - [ ] Arama
 
 #### Backend
+#### Backend
 - [ ] Projects CRUD endpoints (platforms array)
 - [ ] Test runs listesi (platform filter)
-- [ ] Platform statistics endpoint (GET /api/stats/platforms)
+- [ ] **Dashboard Stats & Alerts** (`backend/routers/stats_router.py`)
+  - [ ] Genel istatistikler (Success rate, total runs)
+  - [ ] Haftalık trend analizi
+  - [ ] Akıllı Alarmler (Flaky test tespiti, performans düşüşü uyarısı)
 
 **✅ Faz 2 Tamamlanma (MVP):**
 - [ ] Otonom test 5 platformda çalıştı (Web, Android, Windows, API, PostgreSQL)
@@ -236,16 +241,18 @@
 
 ## Faz 3: UI/UX ve Veri Modülleri (Hafta 7-9)
 
-### 3.1 🎨 Cross-Platform UI/UX Denetçisi (Hafta 7-8)
+### 3.1 🎨 Cross-Platform UI/UX Denetçisi & Akıllı Danışman (Hafta 7-8)
 
 - [ ] VisualComparator sınıfı (backend/core/analyzers/visual_comparator.py)
   - [ ] compare_images(design, live, platform)
   - [ ] Platform-specific difference detection
   - [ ] annotate_screenshot()
+- [ ] **Smart UX Advisor** (LLM + VLM) -> `backend/core/agents/ux_advisor.py`
+  - [ ] **Danışmanlık:** Tasarım hataları için iyileştirme önerileri ("Buton mobilde çok küçük", "Renk paleti uyumsuz")
+  - [ ] **Best Practices:** Platforma özel (iOS vs Android) guideline kontrolü
 - [ ] CrossPlatformUIUXAuditor (backend/core/agents/uiux_auditor.py)
   - [ ] audit(design, live_targets[])
   - [ ] cross_platform_consistency_check()
-  - [ ] analyze_ux_impact(differences, platform)
   - [ ] generate_audit_report()
 - [ ] API endpoints
   - [ ] POST /api/tests/uiux
@@ -284,14 +291,13 @@
 
 ## Faz 4: Güvenlik ve Erişilebilirlik (Hafta 10-12)
 
-### 4.1 🔒 Multi-Platform Güvenlik Denetçisi (Hafta 10-11)
+### 4.1 🔒 Multi-Platform "Visual Hacking" Denetçisi (Hafta 10-11)
 
 - [ ] OCR integration (EasyOCR/Tesseract)
 - [ ] MultiPlatformSecurityAuditor (backend/core/agents/security_auditor.py)
-  - [ ] detect_exposed_credentials(screenshot, platform)
-  - [ ] check_password_masking(platform)
-  - [ ] analyze_error_messages()
-  - [ ] scan_for_vulnerabilities(platform)
+  - [ ] **Visual Data Leakage:** Ekranda maskelenmemiş kredi kartı, şifre, API key tespiti
+  - [ ] **Sensitive Content Analysis:** QR kod, barkod içindeki gizli verilerin analizi
+  - [ ] analyze_error_messages() (Stack trace ekrana basılmış mı?)
 - [ ] Platform-specific patterns
   - [ ] Web: XSS, HTTPS, console exposure
   - [ ] Mobile: Screenshot sensitive data, biometric
@@ -307,14 +313,15 @@
   - [ ] Severity filtering
 - [ ] Test: Vulnerable pages tüm platformlarda
 
-### 4.2 ♿ Multi-Platform Erişilebilirlik (Hafta 12)
+### 4.2 ♿ Multi-Platform Erişilebilirlik & Simülasyon (Hafta 12)
 
 - [ ] UniversalAccessibilityExpert (backend/core/agents/accessibility_expert.py)
   - [ ] Web: WCAG 2.1 (contrast, alt-text, ARIA)
   - [ ] Mobile: VoiceOver/TalkBack, touch target size
   - [ ] Desktop: Screen reader, keyboard shortcuts
-  - [ ] check_color_contrast(screenshot, platform)
-  - [ ] validate_alt_texts(platform)
+- [ ] **Accessibility Simulator:**
+  - [ ] **Vision Simulator:** Renk körlüğü (Protanopia, Deuteranopia) filtreleri uygulama
+  - [ ] **Screen Reader Simulator:** Sayfanın nasıl okunacağını simüle etme
   - [ ] generate_compliance_report(platform)
 - [ ] API endpoints
   - [ ] POST /api/tests/accessibility
@@ -397,12 +404,12 @@
   - [ ] Schema upload (.sql)
   - [ ] Results (integrity issues, optimizations)
 
-### 5.5 Multi-Platform Orchestration
+### 5.5 Multi-Platform Orchestration & Story Testing
 
 - [ ] MultiPlatformOrchestrator (backend/core/orchestrator.py)
-  - [ ] run_full_suite(platforms[], modules[])
+  - [ ] **Cross-Platform Story Testing:** Kullanıcı yolculuğu senaryoları (Web'den başla -> Mobile geç -> DB kontrol et)
+  - [ ] **AI Root Cause Analysis:** Hata anında Log + Screenshot + Video + Network verisini birleştirip tek bir "Sebep" üretme
   - [ ] Parallel platform execution
-  - [ ] Cross-platform inconsistency detection
   - [ ] Unified report generation
 - [ ] API endpoint
   - [ ] POST /api/tests/full-suite
@@ -489,10 +496,10 @@
 
 ### 6.3 Optimization & Polish (Hafta 17)
 
-#### Cost Optimization
-- [ ] VLM/LLM API call caching (platform-agnostic)
-- [ ] Image compression (tüm platformlar)
-- [ ] Batch processing (10 screenshots → 1 VLM call)
+#### Cost & Speed Optimization (Smart Strategy)
+- [ ] **Smart Caching:** Ekran değişmediyse SAM3 çağırma (Hash check)
+- [ ] **Hybrid Execution:** Test yazarken AI kullan, koşarken Playwright selector kullan
+- [ ] **Batch Processing:** Çoklu screenshot analizi
 - [ ] Rate limiting
 
 #### UX Improvements
@@ -565,18 +572,18 @@
 - [ ] **M6 (Hafta 14):** 10 modül + 5 platform entegre
 - [ ] **M7 (Hafta 17):** PRODUCTION LAUNCH 🚀
 
-## Platform Durum
+## Platform Durum (MVP Focus)
 
-| Platform | Executor | AI | Modül | Durum |
-|----------|----------|-----|-------|-------|
-| Web | Playwright | SAM3+DINO | 10/10 | ⏳ |
-| iOS | Appium | SAM3+DINO | 9/10 | ⏳ |
-| Android | Appium | SAM3+DINO | 9/10 | ⏳ |
-| Windows | WinAppDriver | SAM3+DINO | 8/10 | ⏳ |
-| macOS | Appium Mac | SAM3+DINO | 8/10 | ⏳ |
-| Linux | PyAutoGUI | SAM3+DINO | 7/10 | ⏳ |
-| API (REST) | Requests | LLM | 6/10 | ⏳ |
-| Database (SQL) | SQLAlchemy | LLM | 4/10 | ⏳ |
+| Platform | Executor | AI Strategy | Modül | Durum |
+|----------|----------|-------------|-------|-------|
+| **Web** | Playwright | **Full Autonomous** | 10/10 | ⏳ |
+| **Android** | Appium | **Full Autonomous** | 9/10 | ⏳ |
+| **Windows** | WinAppDriver | **Full Autonomous** | 8/10 | ⏳ |
+| *iOS* | *Appium* | *Planned (v2.0)* | - | ⏸️ |
+| *macOS* | *Appium Mac* | *Planned (v2.0)* | - | ⏸️ |
+| *Linux* | *PyAutoGUI* | *Planned (v2.0)* | - | ⏸️ |
+| API (REST) | Requests | LLM Generation | 6/10 | ⏳ |
+| Database (SQL) | SQLAlchemy | LLM Validation | 4/10 | ⏳ |
 
 ---
 

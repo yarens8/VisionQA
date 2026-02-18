@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Activity, Play, CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';

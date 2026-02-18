@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Server, Database, Activity, Clock, Plus, Zap, TrendingUp, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Server, Database, Activity, Clock, Plus, Zap, TrendingUp, CheckCircle2, XCircle, AlertTriangle, Globe, Smartphone, Monitor, Code2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -153,8 +153,8 @@ export function DashboardPage() {
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider">Success Rate</h3>
                             <span className={`text-xs px-2 py-1 rounded-full border font-bold ${(stats?.success_rate || 0) >= 80
-                                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                                    : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                                ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
                                 }`}>
                                 {isLoading ? '...' : `${stats?.success_rate || 0}%`}
                             </span>
@@ -194,6 +194,45 @@ export function DashboardPage() {
                 </div>
             )}
 
+            {/* Platform Breakdown */}
+            {stats && stats.platform_breakdown && stats.platform_breakdown.length > 0 && (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                        <Globe className="h-5 w-5 text-purple-400" />
+                        Platform Breakdown
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {stats.platform_breakdown.map((p) => {
+                            const platformIcons: Record<string, React.ReactNode> = {
+                                web: <Globe className="h-5 w-5" />,
+                                mobile_android: <Smartphone className="h-5 w-5" />,
+                                desktop_windows: <Monitor className="h-5 w-5" />,
+                                api: <Code2 className="h-5 w-5" />,
+                                database: <Database className="h-5 w-5" />,
+                            };
+                            const platformColors: Record<string, string> = {
+                                web: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+                                mobile_android: 'text-green-400 bg-green-500/10 border-green-500/20',
+                                desktop_windows: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+                                api: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+                                database: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+                            };
+                            const colorClass = platformColors[p.platform] || 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+                            return (
+                                <div key={p.platform} className={`rounded-xl border p-4 ${colorClass}`}>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        {platformIcons[p.platform] || <Server className="h-5 w-5" />}
+                                        <span className="font-semibold text-sm capitalize">{p.platform.replace('_', ' ')}</span>
+                                    </div>
+                                    <div className="text-2xl font-bold mb-1">{p.total_runs}</div>
+                                    <div className="text-xs opacity-70">runs • {p.success_rate}% success</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             {/* Recent Test Runs */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -214,15 +253,21 @@ export function DashboardPage() {
                             <div key={run.id} className="flex items-center justify-between p-4 bg-slate-950 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors">
                                 <div className="flex items-center gap-4">
                                     {run.status === 'completed' ? (
-                                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                        <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
                                     ) : (
-                                        <XCircle className="h-5 w-5 text-red-500" />
+                                        <XCircle className="h-5 w-5 text-red-500 shrink-0" />
                                     )}
                                     <div>
                                         <p className="text-white font-medium">{run.case_title}</p>
-                                        <p className="text-xs text-slate-500">
-                                            {run.created_at ? formatDistanceToNow(new Date(run.created_at), { addSuffix: true }) : 'Unknown time'}
-                                        </p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs text-slate-500 capitalize">{run.platform?.replace('_', ' ')}</span>
+                                            <span className="text-slate-700">•</span>
+                                            <span className="text-xs text-slate-500">{run.module}</span>
+                                            <span className="text-slate-700">•</span>
+                                            <span className="text-xs text-slate-500">
+                                                {run.created_at ? formatDistanceToNow(new Date(run.created_at), { addSuffix: true }) : 'Unknown time'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">

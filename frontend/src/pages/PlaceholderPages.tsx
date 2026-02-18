@@ -1,6 +1,4 @@
 
-import React from 'react';
-
 // --- Placeholder Sayfalar ---
 
 export function TestRunsPage() {
