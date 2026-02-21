@@ -100,6 +100,16 @@ jobs:
           python -c "from routers import projects_router; print('✅ projects_router import OK')"
           python -c "from database.models import Project, TestCase, TestRun, Finding; print('✅ Tüm modeller import OK')"
 
+      - name: Core AI modül kontrolü (Otonom Test Mimarisi)
+        run: |
+          cd backend
+          export PYTHONPATH=$PYTHONPATH:.
+          python -c "from core.models.llm_client import LLMClient; print('✅ LLMClient import OK')"
+          python -c "from core.models.sam3_client import SAM3Client; print('✅ SAM3Client import OK')"
+          python -c "from core.agents.case_generator import AICaseGenerator; print('✅ AICaseGenerator import OK')"
+          python -c "from core.models.llm_client import LLMClient; assert hasattr(LLMClient, 'IDENTITY_SYSTEM_PROMPT'); assert hasattr(LLMClient, 'TESTGEN_SYSTEM_PROMPT'); assert hasattr(LLMClient, 'ERROR_ANALYSIS_SYSTEM_PROMPT'); print('✅ Tüm System Prompt sabitleri mevcut')"
+          echo "✅ Core AI modülleri sorunsuz"
+
       - name: Run Backend Tests (Pytest)
         run: |
           cd backend
