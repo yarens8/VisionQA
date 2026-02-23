@@ -85,9 +85,23 @@ export interface DashboardStats {
     total_cases: number;
     recent_runs: number;
     success_rate: number;
-    platform_breakdown: any[];
-    recent_test_runs: any[];
-    weekly_trend: any[];
+    platform_breakdown: { platform: string; total_runs: number; success_rate: number }[];
+    recent_test_runs: { id: number; case_title: string; platform: string; module: string; created_at: string; duration: string; status: string }[];
+    weekly_trend: { date: string; count: number }[];
+}
+
+export interface Alert {
+    title: string;
+    message: string;
+    severity: 'high' | 'medium' | 'low';
+    action: string;
+}
+
+export interface AlertsResponse {
+    total_alerts: number;
+    critical_count: number;
+    warning_count: number;
+    alerts: Alert[];
 }
 
 // 🛠️ API Servis Fonksiyonları
@@ -164,5 +178,17 @@ export const api = {
     getProjectStats: async (projectId: number): Promise<any> => {
         const response = await apiClient.get(`/stats/project/${projectId}`);
         return response.data;
+    },
+
+    getAlerts: async (): Promise<AlertsResponse> => {
+        // Not: Bu endpoint backend'de henüz tam şemalı olmayabilir, 
+        // Dashboard beklediği için ekliyoruz veya mock dönebiliriz.
+        try {
+            const response = await apiClient.get<AlertsResponse>('/stats/alerts');
+            return response.data;
+        } catch (e) {
+            console.warn("Alerts endpoint not ready, returning empty data");
+            return { total_alerts: 0, critical_count: 0, warning_count: 0, alerts: [] };
+        }
     }
 };

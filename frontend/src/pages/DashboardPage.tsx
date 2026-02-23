@@ -1,20 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { Server, Database, Activity, Clock, Plus, Zap, TrendingUp, CheckCircle2, XCircle, AlertTriangle, Globe, Smartphone, Monitor, Code2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, AlertsResponse, DashboardStats, Alert } from '../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatDistanceToNow } from 'date-fns';
 
 export function DashboardPage() {
     // Fetch dashboard stats
-    const { data: stats, isLoading } = useQuery({
+    const { data: stats, isLoading } = useQuery<DashboardStats>({
         queryKey: ['dashboardStats'],
         queryFn: api.getDashboardStats,
         refetchInterval: 30000 // Her 30 saniyede bir yenile
     });
 
     // Fetch alerts
-    const { data: alerts } = useQuery({
+    const { data: alerts } = useQuery<AlertsResponse>({
         queryKey: ['alerts'],
         queryFn: api.getAlerts,
         refetchInterval: 60000 // Her 1 dakikada bir kontrol et
@@ -56,7 +56,7 @@ export function DashboardPage() {
                     </div>
 
                     <div className="space-y-3">
-                        {alerts.alerts.map((alert, index) => (
+                        {alerts.alerts.map((alert: Alert, index: number) => (
                             <div
                                 key={index}
                                 className={`p-4 rounded-lg border ${alert.severity === 'high'

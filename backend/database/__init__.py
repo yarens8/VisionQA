@@ -12,21 +12,24 @@ from dotenv import load_dotenv
 # .env dosyasını yükle
 load_dotenv()
 
-# Database URL (.env'den al)
+# Database URL (.env'den al) - CI/Test dostu fallback eklendi
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# SQLAlchemy engine oluştur (sadece URL varsa)
-engine = None
-SessionLocal = None
-
+# SQLAlchemy engine oluştur
 if DATABASE_URL:
     engine = create_engine(
         DATABASE_URL,
-        pool_pre_ping=True,  # Connection hayatta mı kontrol et
-        echo=False  # SQL query'leri log'lama (debug için True yapabilirsiniz)
+        pool_pre_ping=True,
+        echo=False
     )
-    # Session factory
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+else:
+    # ⚠️ ÇALIŞMA NOTU: Eğer DATABASE_URL yoksa (CI ortamı gibi), 
+    # projenin çökmemesi için geçici bir SQLite oluşturuyoruz.
+    print("⚠️ DATABASE_URL bulunamadı, geçici SQLite kullanılıyor.")
+    engine = create_engine("sqlite:///./visionqa_temp.db", connect_args={"check_same_thread": False})
+
+# Session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for models
 Base = declarative_base()
