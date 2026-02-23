@@ -43,7 +43,9 @@ function LogsModal({ run, onClose }: { run: TestRun; onClose: () => void }) {
             steps = parsed.steps || [];
             summary = parsed.summary || null;
         }
-    } catch { }
+    } catch (e) {
+        console.error("Logs parse error", e);
+    }
 
     const passed = steps.filter(s => s.status === 'passed').length;
 
@@ -233,7 +235,9 @@ export function TestRunsPage() {
                     const data = await response.json();
                     setRuns(data);
                 }
-            } catch { }
+            } catch (e) {
+                console.error("Polling error", e);
+            }
         }, 5000);
 
         return () => clearInterval(interval);

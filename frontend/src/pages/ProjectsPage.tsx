@@ -142,7 +142,11 @@ export function ProjectsPage() {
             queryClient.invalidateQueries({ queryKey: ['projects'] });
             // localStorage'daki summary'yi de temizle
             if (confirmProject) {
-                try { localStorage.removeItem(`visionqa_summary_project_${confirmProject.id}`); } catch { }
+                try {
+                    localStorage.removeItem(`visionqa_summary_project_${confirmProject.id}`);
+                } catch (e) {
+                    console.error("Localstorage cleanup error", e);
+                }
             }
             setConfirmProject(null);
         },

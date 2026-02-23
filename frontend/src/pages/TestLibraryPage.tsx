@@ -202,7 +202,7 @@ export function TestLibraryPage() {
         if (searchParams.get('generate') === 'true' && !isGenerating && Array.isArray(cases) && cases.length === 0) {
             generateMutation.mutate();
         }
-    }, [searchParams, cases]);
+    }, [searchParams, cases, isGenerating, generateMutation]);
 
     const runMutation = useMutation({
         mutationFn: (id: number) => api.runTestCase(id),
