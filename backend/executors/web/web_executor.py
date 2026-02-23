@@ -2,6 +2,7 @@
 from playwright.async_api import async_playwright, Browser, Page
 from typing import Optional
 import base64
+import asyncio
 
 class WebExecutor:
     """
@@ -24,13 +25,14 @@ class WebExecutor:
         print("✅ [WebExecutor] Tarayıcı hazır!")
     
     async def navigate(self, url: str):
-        """Belirtilen URL'e git"""
+        """Web sayfasını açar — Daha esnek yükleme stratejisi ile."""
         if not self.page:
-            raise Exception("Tarayıcı başlatılmamış! Önce start() çağırın.")
+            raise Exception("Tarayıcı başlatılmadı!")
         
         print(f"🌐 [WebExecutor] Gidiliyor: {url}")
-        await self.page.goto(url, wait_until="networkidle")
-        print(f"✅ [WebExecutor] Sayfa yüklendi: {self.page.url}")
+        # 'domcontentloaded' ağır sayfalar için daha güvenlidir, timeout'u 60sn'ye çektik
+        await self.page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        print(f"✅ [WebExecutor] Sayfa yüklendi: {url}")
     
     async def screenshot(self, path: Optional[str] = None) -> bytes:
         """
@@ -49,34 +51,108 @@ class WebExecutor:
         
         return screenshot_bytes
     
+    async def highlight_element(self, selector_or_locator):
+        """
+        � Lazer İşaretleyici v6 (Ultra-Neon): Elementi kör edici bir parlaklıkla vurgular.
+        """
+        if not self.page: return
+        try:
+            if hasattr(selector_or_locator, "element_handle"):
+                handle = await selector_or_locator.element_handle()
+            else:
+                handle = await self.page.query_selector(selector_or_locator)
+
+            if handle:
+                await self.page.evaluate("""
+                    (el) => {
+                        if (el) {
+                            // Eski lazerleri temizle
+                            document.querySelectorAll('.visionqa-target').forEach(e => e.remove());
+                            
+                            const rect = el.getBoundingClientRect();
+                            const overlay = document.createElement('div');
+                            overlay.className = 'visionqa-ui visionqa-target';
+                            overlay.style.position = 'fixed';
+                            overlay.style.zIndex = '3000000';
+                            overlay.style.top = (rect.top) + 'px';
+                            overlay.style.left = (rect.left) + 'px';
+                            overlay.style.width = rect.width + 'px';
+                            overlay.style.height = rect.height + 'px';
+                            overlay.style.border = '10px solid #FFFF00';
+                            overlay.style.boxShadow = '0 0 100px #FFFF00, inset 0 0 50px #FFFF00';
+                            overlay.style.borderRadius = '12px';
+                            overlay.style.pointerEvents = 'none';
+                            overlay.style.transition = 'all 0.3s ease';
+
+                            // 🎯 OK İŞARETİ (Elementin üstünde)
+                            const arrow = document.createElement('div');
+                            arrow.innerHTML = '⬇️ HEDEF BURASI! ⬇️';
+                            arrow.style.position = 'absolute';
+                            arrow.style.top = '-60px';
+                            arrow.style.left = '50%';
+                            arrow.style.transform = 'translateX(-50%)';
+                            arrow.style.background = '#FFFF00';
+                            arrow.style.color = '#000';
+                            arrow.style.padding = '8px 15px';
+                            arrow.style.fontWeight = '900';
+                            arrow.style.fontSize = '18px';
+                            arrow.style.borderRadius = '10px';
+                            arrow.style.whiteSpace = 'nowrap';
+                            arrow.style.boxShadow = '0 5px 15px rgba(0,0,0,0.5)';
+                            overlay.appendChild(arrow);
+
+                            document.body.appendChild(overlay);
+
+                            // Parlama efekti
+                            overlay.animate([
+                                { opacity: 0.6, transform: 'scale(1)' },
+                                { opacity: 1, transform: 'scale(1.1)' },
+                                { opacity: 0.6, transform: 'scale(1)' }
+                            ], { duration: 500, iterations: Infinity });
+                            
+                            // 3 saniye sonra sil ki kullanıcı görsün
+                            setTimeout(() => { 
+                                overlay.style.opacity = '0';
+                                setTimeout(() => overlay.remove(), 300);
+                            }, 3000);
+                        }
+                    }
+                """, handle)
+                await asyncio.sleep(3.0) # Tam 3 saniye boyunca donup bekler
+        except:
+            pass
+
     async def click_element(self, selector: str, timeout: int = 5000):
-        """Verilen selector (ID/Class) üzerine tıkla"""
-        if not self.page:
-            raise Exception("Sayfa yok!")
-        
-        print(f"👆 [WebExecutor] Tıklanıyor: {selector}")
+        """Elementi bul, NEON parlat ve tıkla."""
+        if not self.page: raise Exception("Sayfa yok!")
         try:
             elm = self.page.locator(selector).first
             await elm.wait_for(timeout=timeout)
+            await elm.scroll_into_view_if_needed()
+            
+            # 🔥 NEON PARLAMA
+            await self.highlight_element(elm)
+            
+            await elm.hover()
             await elm.click()
-            print(f"✅ Tıklandı: {selector}")
         except Exception as e:
-            print(f"❌ Tıklama Hatası ({selector}): {str(e)}")
-            raise e # Hatayı yukarı fırlat ki test runner yakalasın
+            raise e
 
-    async def type_input(self, selector: str, text: str):
-        """Input alanına yazı yaz"""
-        if not self.page:
-            raise Exception("Sayfa yok!")
-        
-        print(f"⌨️ [WebExecutor] Yazılıyor ({selector}): {text}")
+    async def type_input(self, selector: str, text: str, delay_ms: int = 150):
+        """Alanı bul, NEON parlat ve ağır çekim yaz."""
+        if not self.page: raise Exception("Sayfa yok!")
         try:
             elm = self.page.locator(selector).first
             await elm.wait_for(timeout=3000)
-            await elm.fill(text)
-            print(f"✅ Yazıldı: {text}")
+            await elm.scroll_into_view_if_needed()
+            
+            # 🔥 NEON PARLAMA
+            await self.highlight_element(elm)
+            
+            await elm.click()
+            await elm.fill("")
+            await self.page.keyboard.type(text, delay=delay_ms)
         except Exception as e:
-            print(f"❌ Yazma Hatası ({selector}): {str(e)}")
             raise e
 
     async def verify_element(self, selector: str, timeout: int = 3000) -> bool:

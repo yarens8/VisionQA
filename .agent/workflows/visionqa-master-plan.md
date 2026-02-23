@@ -48,17 +48,19 @@ Bu plan, VisionQA'yı sadece butonlara basan bir araçtan, siteyi anlayan ve ken
 4.  ✅ **`analyze_error()` güçlendirildi:** Kök neden analizi, self-healing action önerileri
 5.  ✅ **`_format_cases()` güncellendi:** LLM risk_level'dan dinamik priority, zengin meta veriler (covers_rule, violation_strategy)
 
-### ⬜ Faz 2: Gözleri Tak (DINO-X Cloud API Entegrasyonu)
-1.  ⬜ `dinox_client.py` oluşturulacak
-2.  ⬜ SAM3 + DINO-X çıktıları → Unified World View
-3.  ⬜ Semantik etiketler LLM prompt'larına beslenecek
+### ✅ Faz 2: Gözleri Tak (DINO-X Cloud API Entegrasyonu) — TAMAMLANDI
+1.  ✅ `dinox_client.py` oluşturuldu.
+2.  ✅ SAM3 + DINO-X çıktıları → Unified World View altyapısı kuruldu.
+3.  ✅ Semantik etiketler ve yüksek seviyeli sayfa analizi `AICaseGenerator`'a entegre edildi.
 
-### ⬜ Faz 3: Kasları Güçlendir (Self-Healing Executor)
-1.  ⬜ `self_healing_executor.py` oluşturulacak
-2.  ⬜ Cookie/Pop-up solver
-3.  ⬜ Smart Wait mekanizması
+### ✅ Faz 3: Kasları Güçlendir (Self-Healing Executor) — TAMAMLANDI
+1.  ✅ `self_healing_executor.py` oluşturuldu.
+2.  ✅ Global Solvers (Cookie/Pop-up dismissal) eklendi.
+3.  ✅ `new_selector` destekli akıllı onarım (Healing) entegre edildi.
+4.  ✅ `execution_router.py` yeni sisteme geçirildi.
 
-### ⬜ Faz 4: Denetçiyi Koy (V.A.D — Visual Anomaly Detection)
-1.  ⬜ `visual_auditor.py` oluşturulacak
-2.  ⬜ Taşma, üst üste binme, kırık görsel tespiti
-3.  ⬜ Kök neden analizi (LLM + DINO-X birlikte)
+### ⬜ Faz 4: Denetleyiciyi Ata (Visual Anomaly Detection & Auditor)
+1.  ⬜ V.A.D. (Visual Anomaly Detection) entegrasyonu
+2.  ⬜ Post-test görsel analiz
+3.  ⬜ Gelişmiş hata raporlama (Video/Screenshot karşılaştırma)
+4.  ⬜ Kök neden analizi (LLM + DINO-X birlikte)

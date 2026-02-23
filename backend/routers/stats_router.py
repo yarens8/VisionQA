@@ -230,6 +230,60 @@ def get_alerts(db: Session = Depends(get_db)) -> Dict[str, Any]:
     }
 
 
+@router.get("/project/{project_id}")
+def get_project_stats(project_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Belirli bir projenin istatistiklerini döner.
+    """
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return {"error": "Project not found"}
+
+    # 1. Toplam Test Case Sayısı
+    total_cases = db.query(func.count(TestCase.id)).filter(TestCase.project_id == project_id).scalar() or 0
+
+    # 2. Test Run İstatistikleri
+    run_stats = db.query(
+        func.count(TestRun.id).label("total"),
+        func.sum(
+            case((TestRun.status == TestStatus.COMPLETED, 1), else_=0)
+        ).label("completed"),
+        func.sum(
+            case((TestRun.status == TestStatus.FAILED, 1), else_=0)
+        ).label("failed")
+    ).filter(TestRun.project_id == project_id).one()
+
+    total_runs = run_stats.total or 0
+    completed_runs = run_stats.completed or 0
+    success_rate = round((completed_runs / total_runs) * 100, 1) if total_runs > 0 else 0.0
+
+    # 3. Son Test Run'lar
+    recent_runs = (
+        db.query(TestRun, TestCase.title.label("case_title"))
+        .outerjoin(TestCase, TestRun.test_case_id == TestCase.id)
+        .filter(TestRun.project_id == project_id)
+        .order_by(TestRun.created_at.desc())
+        .limit(5)
+        .all()
+    )
+
+    recent_runs_data = []
+    for run, case_title in recent_runs:
+        recent_runs_data.append({
+            "id": run.id,
+            "case_title": case_title or "Exploratory Test",
+            "status": run.status.value if run.status else "unknown",
+            "created_at": run.created_at.isoformat() if run.created_at else None
+        })
+
+    return {
+        "project_name": project.name,
+        "total_cases": total_cases,
+        "total_runs": total_runs,
+        "success_rate": success_rate,
+        "recent_runs": recent_runs_data
+    }
+
 @router.get("/platforms")
 def get_platform_stats(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """

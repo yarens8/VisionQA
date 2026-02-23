@@ -31,7 +31,7 @@ class TestStatus(str, enum.Enum):
 
 
 class Project(Base):
-    """Proje modeli - Kullanıcıların oluşturduğu projeler"""
+    """Proje modeli - Kullanıcıların oluşturduğu ana çatılar (Örn: Trendyol)"""
     __tablename__ = "projects"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -42,11 +42,32 @@ class Project(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # İlişkiler
-    test_runs = relationship("TestRun", back_populates="project", cascade="all, delete-orphan")
-    test_cases = relationship("TestCase", back_populates="project", cascade="all, delete-orphan")
+    pages = relationship("Page", back_populates="project", cascade="all, delete-orphan", passive_deletes=True)
+    test_runs = relationship("TestRun", back_populates="project", cascade="all, delete-orphan", passive_deletes=True)
+    test_cases = relationship("TestCase", back_populates="project", cascade="all, delete-orphan", passive_deletes=True)
     
     def __repr__(self):
         return f"<Project(id={self.id}, name='{self.name}')>"
+
+
+class Page(Base):
+    """Sayfa modeli - Proje altındaki farklı URL'ler (Örn: Login Sayfası, Sepet Sayfası)"""
+    __tablename__ = "pages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    name = Column(String(255), nullable=False)  # "Login Sayfası"
+    url = Column(String(500), nullable=False)   # "https://www.trendyol.com/login"
+    description = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # İlişkiler
+    project = relationship("Project", back_populates="pages")
+    test_cases = relationship("TestCase", back_populates="page", cascade="all, delete-orphan", passive_deletes=True)
+
+    def __repr__(self):
+        return f"<Page(id={self.id}, name='{self.name}', url='{self.url}')>"
 
 
 class TestRun(Base):
@@ -55,25 +76,25 @@ class TestRun(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    page_id = Column(Integer, ForeignKey("pages.id"), nullable=True) # Hangi URL üzerinde koştu
     platform = Column(SQLEnum(PlatformType), nullable=False)
-    module_name = Column(String(100), nullable=False)  # "autonomous_tester", "bug_analyzer", vs.
-    target = Column(String(500), nullable=False)  # URL, app path, API endpoint, vs.
-    test_case_id = Column(Integer, ForeignKey("test_cases.id"), nullable=True) # Opsiyonel (Otonom/Exploratory test olabilir)
+    module_name = Column(String(100), nullable=False)
+    target = Column(String(500), nullable=False)
+    test_case_id = Column(Integer, ForeignKey("test_cases.id"), nullable=True)
     status = Column(SQLEnum(TestStatus), default=TestStatus.PENDING)
     
-    # Test detayları
-    config = Column(JSON, nullable=True)  # Test konfigürasyonu
-    logs = Column(Text, nullable=True)  # Çalıştırma logları
+    config = Column(JSON, nullable=True)
+    logs = Column(Text, nullable=True)
     
-    # Zamanlar
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # İlişkiler
     project = relationship("Project", back_populates="test_runs")
+    page = relationship("Page") # Page silinince TestRun null'a çekilebilir veya cascade edilebilir.
     test_case = relationship("TestCase", back_populates="test_runs")
-    findings = relationship("Finding", back_populates="test_run", cascade="all, delete-orphan")
+    findings = relationship("Finding", back_populates="test_run", cascade="all, delete-orphan", passive_deletes=True)
     
     def __repr__(self):
         return f"<TestRun(id={self.id}, platform='{self.platform}', status='{self.status}')>"
@@ -86,15 +107,12 @@ class Finding(Base):
     id = Column(Integer, primary_key=True, index=True)
     test_run_id = Column(Integer, ForeignKey("test_runs.id"), nullable=False)
     
-    # Bulgu detayları
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=False)
-    severity = Column(String(50), nullable=False)  # "critical", "high", "medium", "low"
-    category = Column(String(100), nullable=False)  # "security", "performance", "accessibility", vs.
-    
-    # Ek bilgiler
-    screenshot_url = Column(String(500), nullable=True)  # Screenshot path/URL
-    extra_data = Column(JSON, nullable=True)  # Ek bilgiler (coords, metrics, vs.)
+    severity = Column(String(50), nullable=False)
+    category = Column(String(100), nullable=False)
+    screenshot_url = Column(String(500), nullable=True)
+    extra_data = Column(JSON, nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     
@@ -106,24 +124,28 @@ class Finding(Base):
 
 
 class TestCase(Base):
-    """Test Case Modeli - Senaryo Tanımı"""
+    """Test Case Modeli - Artık bir Sayfaya (URL) bağlı"""
     __tablename__ = "test_cases"
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    page_id = Column(Integer, ForeignKey("pages.id"), nullable=True) # Yeni sayfa bağlantısı
     
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    status = Column(String(50), default="draft")  # 'draft', 'approved', 'archived'
-    priority = Column(String(50), default="medium") # 'low', 'medium', 'high', 'critical'
+    category = Column(String(50), default="happy_path") # happy_path, negative_path, edge_case, security
+    status = Column(String(50), default="draft")
+    priority = Column(String(50), default="medium")
+    platform = Column(String(50), default="web") # PlatformType: web, api, mobile_android vs.
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # İlişkiler
-    steps = relationship("TestStep", back_populates="test_case", cascade="all, delete-orphan", order_by="TestStep.order")
-    test_runs = relationship("TestRun", back_populates="test_case")
+    steps = relationship("TestStep", back_populates="test_case", cascade="all, delete-orphan", order_by="TestStep.order", passive_deletes=True)
+    test_runs = relationship("TestRun", back_populates="test_case", cascade="all, delete-orphan", passive_deletes=True)
     project = relationship("Project", back_populates="test_cases")
+    page = relationship("Page", back_populates="test_cases")
 
 
 class TestStep(Base):
@@ -133,11 +155,11 @@ class TestStep(Base):
     id = Column(Integer, primary_key=True, index=True)
     test_case_id = Column(Integer, ForeignKey("test_cases.id"), nullable=False)
     
-    order = Column(Integer, nullable=False)  # Adım sırası (1, 2, 3...)
-    action = Column(String(100), nullable=False) # 'click', 'type', 'wait', 'verify'
-    target = Column(String(255), nullable=True) # 'login_button', 'username_input' (Element ID veya Description)
-    value = Column(Text, nullable=True) # 'user123' (Input değeri)
-    expected_result = Column(Text, nullable=True) # 'Dashboard görünmeli'
+    order = Column(Integer, nullable=False)
+    action = Column(String(100), nullable=False)
+    target = Column(String(255), nullable=True)
+    value = Column(Text, nullable=True)
+    expected_result = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 

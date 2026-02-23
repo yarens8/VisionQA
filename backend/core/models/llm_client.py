@@ -436,13 +436,11 @@ Every test must be precise, executable, and self-contained.
 
 ## TEST GENERATION STRATEGY: LOGICAL COVERAGE
 
-### Core Principle: NO FIXED TEST COUNT
-Do NOT produce a fixed number of tests. Instead:
-- For EACH business rule discovered above, generate:
-  • 1 POSITIVE test: The rule is correctly followed → expected success
-  • 1 NEGATIVE test: The rule is deliberately violated → expected error/prevention
-- Then add page-type-specific edge cases and security checks as the complexity demands.
-- A simple login page might produce 8 tests total. A complex checkout might produce 25. Let the LOGIC decide.
+### Strict Balance Requirement: Stallion's Rule
+You MUST produce a balanced set of scenarios. A test suite that is 100% "Happy Path" is USELESS.
+- For EVERY positive flow you find, you MUST find at least ONE logical way to break it (Negative Path).
+- Aim for a distribution of roughly 30% Happy Path, 40% Negative Path, 20% Edge Cases, and 10% Security.
+- If you only return Happy Paths, the autonomous engine will fail its mission. BE CRITICAL.
 
 ### Selector Strategy: SEMANTIC & RESILIENT
 NEVER use brittle selectors like `#dynamic-id-x7k2` or `.css-1a2b3c`.
@@ -620,7 +618,8 @@ Return ONLY this JSON:
     "root_cause_category": "selector_changed | timing_issue | overlay_blocking | backend_error | validation_error | scroll_needed | encoding_issue | network_error | other",
     "confidence": 0.85,
     "suggestion": "Specific, actionable fix",
-    "self_healing_action": "What the executor should try automatically (e.g., 'dismiss_overlay', 'wait_longer', 'scroll_to_element', 'retry_with_alternative_selector')",
+    "new_selector": "If root_cause_category is 'selector_changed', provide a new resilient CSS or semantic selector like button:has-text('Submit'). Else null.",
+    "self_healing_action": "What the executor should try automatically: dismiss_overlay | wait_longer | scroll_to_element | retry_with_new_selector | none",
     "severity": "Low|Medium|High|Critical",
     "prevention_tip": "How to prevent this in future test design"
 }}"""
@@ -642,6 +641,36 @@ Return ONLY this JSON:
             "severity": "Unknown",
             "raw_response": response_text
         }
+
+    SUMMARY_SYSTEM_PROMPT = """You are a QA Lead summarizing a recently completed automated test execution.
+Your goal is to provide a brief, professional, and insight-driven summary for a developer or product owner.
+Focus on:
+1. Overall success or failure.
+2. If failed, which step was the killer and why (briefly).
+3. Any self-healing actions taken by the AI.
+4. One clear recommendation.
+
+Keep it under 3-4 sentences. Use a professional but helpful tone. You output ONLY the summary text, no JSON."""
+
+    async def generate_execution_summary(self, execution_logs: str) -> str:
+        """
+        📝 Test sonuçlarını analiz eder ve insan dilinde profesyonel bir özet üretir.
+        """
+        print("📝 [LLM] Test Özeti Oluşturuluyor...")
+        
+        prompt = f"""## MISSION
+Please summarize the following test execution logs for a human reader.
+
+## EXECUTION LOGS
+{execution_logs[-3000:]}
+
+## SUMMARY REQUIREMENTS
+- Language: Turkish
+- Length: Short (3-4 sentences)
+- Focus: Success/Failure, Root Cause (if any), Self-healing actions, and Next Step."""
+
+        response_text = await self._query(prompt, system_prompt=self.SUMMARY_SYSTEM_PROMPT)
+        return response_text.strip() if response_text else "Test özeti oluşturulamadı."
 
     # ═══════════════════════════════════════════════════════════════
     #  FALLBACK TEST CASES

@@ -23,7 +23,9 @@ const navigation = [
 const tools = [
     { name: "Test Lab", href: "/lab", icon: FlaskConical },
     { name: "Database", href: "/database", icon: Database },
+    { name: "Scenarios", href: "/scenarios", icon: Layers },
     { name: "Security", href: "/security", icon: ShieldCheck },
+
     { name: "Accessibility", href: "/accessibility", icon: Accessibility },
 ]
 

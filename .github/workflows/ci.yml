@@ -22,7 +22,7 @@ jobs:
       - name: Proje yapısı kontrolü
         run: |
           echo "📁 Proje klasörleri kontrol ediliyor..."
-          for dir in backend frontend executors docs .github; do
+          for dir in backend frontend docs .github; do
             test -d "$dir" && echo "✅ $dir klasörü var" || (echo "❌ $dir yok" && exit 1)
           done
 
@@ -56,7 +56,7 @@ jobs:
         run: |
           cd backend
           test -f main.py && echo "✅ main.py var"
-          test -f database.py && echo "✅ database.py var"
+          test -d database && echo "✅ database klasörü var"
           test -f requirements.txt && echo "✅ requirements.txt var"
       
       - name: Install dependencies

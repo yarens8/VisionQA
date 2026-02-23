@@ -5,6 +5,16 @@
 
 ---
 
+## 📌 STRATEJİK VİZYON GÜNCELLEMESİ (19 Şubat 2026)
+**Hedef:** VisionQA sadece bir web sitesi (SaaS) değil, tekrar kullanılabilir bir **Test Otomasyon Framework'ü (Engine)** olarak konumlandırılacak.
+*   **Yaklaşım:** Hibrit (Web + CLI).
+*   **Core Engine:** `backend/` mantığı dışarıdan çağrılabilir bir Python kütüphanesi (`pip install visionqa`) olacak.
+*   **Kullanım Senaryosu 1 (Geliştirici):** Terminalden `visionqa run` komutuyla veya Python koduyla import ederek kullanır.
+*   **Kullanım Senaryosu 2 (Tüketici):** Web arayüzü (Dashboard) üzerinden görsel olarak kullanır. Web arayüzü, arka planda aynı Core Engine'i kullanır.
+*   **Aksiyon:** Web geliştirmesine devam edilecek, ancak kodlar modüler (bağımsız çalışabilir) tutulacak. İlerleyen fazlarda CLI katmanı eklenecek.
+
+---
+
 ## Faz 1: Evrensel Altyapı Kurulumu (Hafta 1-2)
 **Amaç:** Tüm platformları destekleyecek temel altyapıyı kurmak
 
@@ -29,14 +39,14 @@
 
 ### 1.3 CI/CD Pipeline
 - [x] GitHub Actions workflow dosyası oluştur (.github/workflows/ci.yml)
-  - [x] Backend test job (pytest, ruff, mypy)
-  - [x] Frontend test job (npm test, eslint)
+  - [x] Backend test job (pytest, ruff, mypy) - Router import + unit testler eklendi
+  - [x] Frontend test job (npm test, eslint) - React import hataları düzeltildi
   - [ ] Web test job (Playwright)
   - [ ] Mobile test job (Android emulator)
   - [ ] API test job
   - [ ] Docker build job
   - [ ] Security scanning (Trivy)
-- [x] CI/CD pipeline'ı test et
+- [x] CI/CD pipeline'ı test et (✅ Tüm joblar yeşil - 18 Şubat 2026)
 
 ### 1.4 Database Setup (Evrensel Schema)
 - [ ] PostgreSQL database schema tasarla (ERD diyagramı çiz)
@@ -81,22 +91,29 @@
 - [ ] Test: Notepad.exe screenshot al
 
 #### 1.6.4 API Executor
-- [ ] APIExecutor sınıfı yaz (backend/executors/api/api_executor.py)
-  - [ ] REST support (requests/httpx)
-  - [ ] GraphQL support (gql)
-  - [ ] WebSocket support
-  - [ ] make_request(), validate_response()
-- [ ] Test: Public API çağrısı yap
+- [x] APIExecutor sınıfı yaz (backend/executors/api/api_executor.py) (✅ 22 Şubat 2026)
+  - [x] REST support (requests/httpx)
+  - [x] GraphQL support (gql)
+  - [x] Swagger/OpenAPI Import & Parsing (✅ 22 Şubat 2026)
+  - [x] Load Testing (Yük Testi) motoru (✅ 22 Şubat 2026)
+  - [x] make_request(), validate_response()
+- [x] API Test Playground (Frontend - Pro Version)
+- [x] Test: Public API çağrısı yap
 
 #### 1.6.5 Database Executor
-- [ ] DatabaseExecutor sınıfı yaz (backend/executors/database/db_executor.py)
-  - [ ] SQLAlchemy connection manager
-  - [ ] execute_query(), validate_schema(), check_integrity()
-- [ ] Test: Local PostgreSQL'e bağlan
+- [x] DatabaseExecutor sınıfı yaz (backend/executors/database/db_executor.py) (✅ 22 Şubat 2026)
+  - [x] SQLAlchemy connection manager
+  - [x] execute_query(), validate_schema()
+  - [x] Slow Query Analysis (✅ 22 Şubat 2026)
+  - [x] Schema Validation UI (✅ 22 Şubat 2026)
+- [x] DB Playground (Frontend - Pro Version)
+- [x] Test: Local PostgreSQL'e bağlan
 
-### 1.7 Platform Abstraction Layer
+### 1.7 Platform Abstraction Layer & Orchestration
+- [x] ScenarioExecutor motoru yazıldı (backend/core/scenario_executor.py) (✅ 22 Şubat 2026)
+- [x] Cross-platform Variable Sharing (Hafıza sistemi) (✅ 22 Şubat 2026)
+- [x] Scenario Orchestrator UI (Oyun Kurucu Paneli) (✅ 22 Şubat 2026)
 - [ ] ExecutorFactory sınıfı yaz (backend/core/executor_factory.py)
-  - [ ] create(platform) → Doğru executor'ı döndür
   - [ ] Platform enum (WEB, MOBILE_IOS, MOBILE_ANDROID, DESKTOP_WINDOWS, API, DATABASE)
 - [ ] PlatformExecutor base interface (backend/core/interfaces/executor.py)
 - [ ] Test: Her platform için executor oluştur
@@ -132,7 +149,7 @@
 - [ ] Docker'da TÜM platform executor'ları çalışıyor
 - [ ] 5 platform test edildi (Web, Mobile, Desktop, API, DB)
 - [ ] AI API'leri (SAM3, DINO-X, LLM) çalışıyor
-- [ ] CI/CD pipeline yeşil ✓
+- [x] CI/CD pipeline yeşil ✓ (✅ 18 Şubat 2026 - Tüm joblar geçti)
 
 ---
 
@@ -145,17 +162,24 @@
   - [x] TestCase model (title, description, status: draft/approved)
   - [x] TestStep model (order, action, target_element, expected_result)
   - [x] TestSuite model (group of test cases)
-- [ ] Advanced AI Case Generator (Otonom Mimar) -> `backend/core/agents/case_generator.py`
-  - [ ] **Gözlem (Observation):** URL veya Screenshot üzerinden SAM3 + DINO-X ile gerçek sayfa analizi (sadece LLM tahmini değil)
-  - [ ] **Planlama (Engineering):** LLM'e "Senior QA Engineer" personası kazandır
-    - [ ] Happy Path (Başarılı senaryolar)
-    - [ ] Negative Path (Hatalı giriş, validasyon kontrolleri)
-    - [ ] Edge Cases (Boş input, maksimum karakter, özel karakterler)
-    - [ ] Security Scenarios (Basit SQLi, XSS denemeleri)
+- [x] Advanced AI Case Generator (Otonom Mimar) → `backend/core/agents/case_generator.py` (✅ 20 Şubat 2026)
+  - [x] **Gözlem (Observation):** URL'den bağlam çıkarımı + SAM3 ile screenshot analizi (fallback mekanizmalı)
+  - [x] **LLM Entegrasyonu:** Groq + Llama 3.3 70B (HF Mistral'dan geçildi - 10x hızlı, ücretsiz)
+    - [x] LLM kendi kararıyla senaryo sayısına karar veriyor (sayfa karmaşıklığına göre)
+  - [x] **Planlama (Engineering):** LLM "Senior QA Engineer" personasıyla üretiyor
+    - [x] Happy Path (Başarılı senaryolar)
+    - [x] Negative Path (Hatalı giriş, validasyon kontrolleri)
+    - [x] Edge Cases (Boş input, maksimum karakter, özel karakterler)
+    - [x] Security Scenarios (SQLi, XSS denemeleri)
   - [ ] **Multi-Modal Input:** URL yoksa Tasarım (Resim) veya API (Swagger) üzerinden senaryo üretimi
+- [x] Cases API Router → `backend/routers/cases_router.py` (✅ 20 Şubat 2026)
+  - [x] POST /cases/generate (AI ile senaryo üret + opsiyonel DB kaydı)
+  - [x] GET /cases/ (Listeleme, filtreleme)
+  - [x] GET /cases/{id} (Detay)
+  - [x] PATCH /cases/{id}/status (Draft → Approved)
 - [x] Execution Engine (backend/core/engine/execution_engine.py)
   - [x] execute_case(test_case_id, platform)
-  - [x] Step-by-step execution (Find Element -> Action -> Verify) (WebExecutor ile)
+  - [x] Step-by-step execution (Find Element → Action → Verify) (WebExecutor ile)
   - [ ] **Self-Healing:** Element ID değişse bile SAM3 ile görsel olarak bulup teste devam etme
   - [ ] Screenshot & Video recording
 
@@ -208,11 +232,11 @@
 ### 2.3 📊 Unified Dashboard (Hafta 6)
 
 #### Frontend
-- [ ] Ana dashboard (frontend/src/pages/Dashboard.tsx)
-  - [ ] Platform breakdown chart (Web 40%, Mobile 30%, etc.)
-  - [ ] Son test runs (platform icon'larıyla)
-  - [ ] İstatistikler (platform bazlı trend)
-  - [ ] Quick actions
+- [x] Ana dashboard (frontend/src/pages/DashboardPage.tsx)
+  - [x] Platform breakdown chart (Web, Android, Windows, API, DB kartları) (✅ 18 Şubat 2026)
+  - [x] Son test runs (platform + module bilgisiyle)
+  - [x] İstatistikler (haftalık trend chart)
+  - [x] Quick actions (New Project, View Test Runs)
 - [x] Multi-Platform Projects yönetimi
   - [x] Project oluştur (desteklenen platformlar seç)
   - [x] Project listesi (platform badges)
@@ -223,18 +247,19 @@
   - [ ] Arama
 
 #### Backend
-#### Backend
-- [ ] Projects CRUD endpoints (platforms array)
-- [ ] Test runs listesi (platform filter)
-- [ ] **Dashboard Stats & Alerts** (`backend/routers/stats_router.py`)
-  - [ ] Genel istatistikler (Success rate, total runs)
-  - [ ] Haftalık trend analizi
-  - [ ] Akıllı Alarmler (Flaky test tespiti, performans düşüşü uyarısı)
+- [x] Projects CRUD endpoints (platforms array)
+- [x] Test runs listesi (platform filter)
+- [x] **Dashboard Stats & Alerts** (`backend/routers/stats_router.py`) (✅ 18 Şubat 2026)
+  - [x] Genel istatistikler (Success rate, total runs)
+  - [x] Platform bazlı breakdown (`platform_breakdown` field)
+  - [x] Haftalık trend analizi
+  - [x] Akıllı Alarmler (Flaky test tespiti, performans düşüşü uyarısı)
+  - [x] Yeni `/stats/platforms` endpoint (detaylı platform istatistikleri)
 
 **✅ Faz 2 Tamamlanma (MVP):**
 - [ ] Otonom test 5 platformda çalıştı (Web, Android, Windows, API, PostgreSQL)
 - [ ] Bug analyzer video + log analiz etti
-- [ ] Dashboard platform breakdown gösteriyor
+- [x] Dashboard platform breakdown gösteriyor (✅ 18 Şubat 2026)
 - [ ] DEMO YAPILABİLİR ✓
 
 ---
@@ -360,6 +385,10 @@
   - [ ] Platform-specific metrics visualization
   - [ ] UX recommendations
 - [ ] Test: Slow vs fast tüm platformlarda
+- [ ] **Comparative Benchmarks:**
+  - [ ] **Robustness Test:** ID değişimi (Web) sonrası Self-Healing başarısı ölçümü
+  - [ ] **Productivity Test:** 10 adımlık senaryo üretim süresi (VisionQA vs Manual)
+  - [ ] **Accuracy Test:** 500 ekran görüntüsünde element tespiti başarısı
 
 ### 5.2 📱 Mobile-Specific Test Suite
 
@@ -379,51 +408,50 @@
 ### 5.3 🔌 API Test Suite
 
 - [ ] APITestSuite (backend/core/agents/api_tester.py)
-  - [ ] test_from_spec(openapi_spec)
-  - [ ] generate_scenarios(spec)
-  - [ ] load_test(endpoint, rps, duration)
+  - [x] test_from_spec(openapi_spec) (✅ 22 Şubat 2026)
+  - [x] generate_scenarios(spec) (✅ 22 Şubat 2026)
+  - [x] load_test(endpoint, rps, duration) (✅ 22 Şubat 2026)
   - [ ] security_test(endpoint)
 - [ ] API endpoints
   - [ ] POST /api/tests/api-suite
 - [ ] Frontend
-  - [ ] OpenAPI file upload
-  - [ ] Generated scenarios preview
-  - [ ] Load test config
-  - [ ] Results (p50/p95/p99)
+  - [x] OpenAPI file upload / Swagger URL import (✅ 22 Şubat 2026)
+  - [x] Generated scenarios preview
+  - [x] Load test config (✅ 22 Şubat 2026)
+  - [x] Results (p50/p95/p99) (✅ 22 Şubat 2026)
 
 ### 5.4 🗄️ Database Quality Checker
 
-- [ ] DatabaseQualityChecker (backend/core/agents/db_checker.py)
-  - [ ] validate_schema(expected, actual)
+- [x] DatabaseQualityChecker (backend/core/agents/db_checker.py) (✅ 22 Şubat 2026)
+  - [x] validate_schema(expected, actual) (✅ 22 Şubat 2026)
   - [ ] check_integrity()
-  - [ ] analyze_queries(slow_query_log)
+  - [x] analyze_queries(slow_query_log) (✅ 22 Şubat 2026)
 - [ ] API endpoints
   - [ ] POST /api/tests/database
 - [ ] Frontend
-  - [ ] DB connection form
+  - [x] DB connection form (✅ 22 Şubat 2026)
   - [ ] Schema upload (.sql)
-  - [ ] Results (integrity issues, optimizations)
+  - [x] Results (integrity issues, optimizations) (✅ 22 Şubat 2026)
 
 ### 5.5 Multi-Platform Orchestration & Story Testing
 
-- [ ] MultiPlatformOrchestrator (backend/core/orchestrator.py)
-  - [ ] **Cross-Platform Story Testing:** Kullanıcı yolculuğu senaryoları (Web'den başla -> Mobile geç -> DB kontrol et)
+- [x] MultiPlatformOrchestrator (backend/core/scenario_executor.py) (✅ 22 Şubat 2026)
+  - [x] **Cross-Platform Story Testing:** Kullanıcı yolculuğu senaryoları (Web'den başla -> Mobile geç -> DB kontrol et) (✅ 22 Şubat 2026)
   - [ ] **AI Root Cause Analysis:** Hata anında Log + Screenshot + Video + Network verisini birleştirip tek bir "Sebep" üretme
-  - [ ] Parallel platform execution
-  - [ ] Unified report generation
-- [ ] API endpoint
-  - [ ] POST /api/tests/full-suite
-- [ ] Frontend
-  - [ ] Multi-platform + Multi-module builder
-  - [ ] Execution matrix (platform × module grid)
-  - [ ] Unified results dashboard
-  - [ ] Cross-platform findings highlight
+  - [x] Parallel platform execution (Partial - Async logic)
+  - [x] Unified report generation (Results list)
+- [x] API endpoint (backend/routers/scenario_router.py) (✅ 22 Şubat 2026)
+- [x] Frontend (frontend/src/pages/ScenarioPage.tsx) (✅ 22 Şubat 2026)
+  - [x] Multi-platform + Multi-module builder
+  - [x] Execution matrix (Timeline view)
+  - [x] Unified results dashboard
+  - [x] Cross-platform findings highlight (Variable context)
 
 ### 5.6 Report Export & Integration
 
 - [ ] Multi-platform PDF exporter
 - [ ] HTML exporter
-- [ ] JSON exporter
+- [x] JSON exporter (✅ 22 Şubat 2026)
 - [ ] Jira integration (platform field ekli)
 - [ ] GitHub issues integration
 - [ ] Slack/Discord webhook
@@ -547,6 +575,7 @@
   - [ ] Web: <3s page load
   - [ ] Mobile: <2s app launch
   - [ ] API: <200ms p95
+  - [ ] **Academic Metrics:** Fragility Score, Acceleration Rate, F1 Score raporlandı
 - [ ] Documentation complete ✓
 - [ ] Platform matrix tested (5 platforms × 10 modules) ✓
 - [ ] Backup strategy ✓

@@ -29,9 +29,11 @@ class AICaseGenerator:
     def __init__(self):
         from core.models.llm_client import LLMClient
         from core.models.sam3_client import SAM3Client
+        from core.models.dinox_client import DINOXClient
         self.llm = LLMClient()
         self.sam = SAM3Client()
-        print("✅ [AICaseGenerator] LLM (Groq) + SAM3 (HF) hazır.")
+        self.dinox = DINOXClient()
+        print("✅ [AICaseGenerator] LLM + SAM3 + DINO-X (Gözler) hazır.")
 
     # ─────────────────────────────────────────────
     # ANA METOD: URL → Test Cases
@@ -112,10 +114,16 @@ class AICaseGenerator:
             screenshot_path = await self._take_screenshot(url)
 
             if screenshot_path:
-                # SAM3 ile elementleri tespit et
-                elements = self.sam.detect_ui_elements(screenshot_path, platform="web")
-                context = self._elements_to_context(elements, url)
-                print(f"👁️ [SAM3] {len(elements)} element tespit edildi.")
+                # 1. SAM3 (Görsel Segmentasyon) - Piksel Hassasiyeti
+                sam_elements = self.sam.detect_ui_elements(screenshot_path, platform="web")
+                
+                # 2. DINO-X (Semantik Tanımlama) - Anlamsal Etiketleme
+                dinox_elements = await self.dinox.detect_elements(screenshot_path)
+                
+                # 3. Unified World View (Birleşik Dünya Görüşü)
+                context = self._build_unified_world_view(url, sam_elements, dinox_elements)
+                
+                print(f"👁️ [World View] SAM3: {len(sam_elements)} | DINO-X: {len(dinox_elements)} element birleştirildi.")
                 return context
             else:
                 print("⚠️ [Screenshot] Alınamadı, URL'den çıkarım yapılıyor.")
@@ -148,8 +156,31 @@ class AICaseGenerator:
             print(f"⚠️ [Screenshot] Playwright hatası: {e}")
             return None
 
+    def _build_unified_world_view(self, url: str, sam_elements: List[Dict], dinox_elements: List[Dict]) -> str:
+        """
+        SAM3 ve DINO-X verilerini tek bir anlamlı bağlamda birleştirir.
+        """
+        lines = [f"URL: {url}", "### UNIFIED WORLD VIEW (Visual + Semantic Analysis)"]
+        
+        # Önce DINO-X (Semantik Etiketler) - LLM için en değerli bilgi
+        lines.append("\nSemantic Elements (What they MEAN):")
+        for i, elem in enumerate(dinox_elements, 1):
+            label = elem.get("label", "unknown")
+            score = elem.get("score", 0)
+            box = elem.get("box", [])
+            lines.append(f"  {i}. {label.upper()}: position={box}, confidence={score:.2f}")
+
+        # Sonra SAM3 (Piksel Segmentleri) - Geometrik Bilgi
+        lines.append("\nVisual Segments (Exact Boundaries):")
+        for i, elem in enumerate(sam_elements, 1):
+            label = elem.get("label", "unknown")
+            box = elem.get("box", [])
+            lines.append(f"  - Segment {i} ({label}): {box}")
+
+        return "\n".join(lines)
+
     def _elements_to_context(self, elements: List[Dict], url: str) -> str:
-        """SAM3 element listesini LLM için okunabilir metne çevirir."""
+        """(Legacy) SAM3 element listesini LLM için okunabilir metne çevirir."""
         if not elements:
             return self._infer_context_from_url(url)
 
