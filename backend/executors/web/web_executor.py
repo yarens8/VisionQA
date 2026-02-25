@@ -1,7 +1,6 @@
 
 from playwright.async_api import async_playwright, Browser, Page
 from typing import Optional
-import base64
 import asyncio
 
 class WebExecutor:
@@ -10,8 +9,10 @@ class WebExecutor:
     Görev: Siteleri açmak, tıklamak, screenshot almak.
     """
     
-    def __init__(self, headless: bool = False):
+    def __init__(self, headless: bool = False, nav_retries: int = 1, nav_retry_delay_sec: float = 0.4):
         self.headless = headless
+        self.nav_retries = max(0, nav_retries)
+        self.nav_retry_delay_sec = max(0.0, nav_retry_delay_sec)
         self.playwright = None
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
@@ -31,8 +32,20 @@ class WebExecutor:
         
         print(f"🌐 [WebExecutor] Gidiliyor: {url}")
         # 'domcontentloaded' ağır sayfalar için daha güvenlidir, timeout'u 60sn'ye çektik
-        await self.page.goto(url, wait_until="domcontentloaded", timeout=60000)
-        print(f"✅ [WebExecutor] Sayfa yüklendi: {url}")
+        last_error: Optional[Exception] = None
+        for attempt in range(1, self.nav_retries + 2):
+            try:
+                await self.page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                print(f"✅ [WebExecutor] Sayfa yüklendi: {url}")
+                return
+            except Exception as exc:
+                last_error = exc
+                if attempt <= self.nav_retries:
+                    await asyncio.sleep(self.nav_retry_delay_sec)
+                    continue
+                break
+
+        raise last_error if last_error else Exception(f"Navigation failed: {url}")
     
     async def screenshot(self, path: Optional[str] = None) -> bytes:
         """
@@ -123,20 +136,67 @@ class WebExecutor:
             pass
 
     async def click_element(self, selector: str, timeout: int = 5000):
-        """Elementi bul, NEON parlat ve tıkla."""
+        """
+        Elementi bul, NEON parlat ve tıkla. 
+        🤖 SELF-HEALING: Eğer selector bulunamazsa AI'ya sor!
+        """
         if not self.page: raise Exception("Sayfa yok!")
+        
         try:
+            # Önce normal yöntemle dene
             elm = self.page.locator(selector).first
             await elm.wait_for(timeout=timeout)
             await elm.scroll_into_view_if_needed()
-            
-            # 🔥 NEON PARLAMA
             await self.highlight_element(elm)
-            
             await elm.hover()
             await elm.click()
+            print(f"✅ [WebExecutor] Tıklandı: {selector}")
+            
         except Exception as e:
-            raise e
+            print(f"⚠️ [Self-Healing] {selector} bulunamadı, AI moduna geçiliyor...")
+            
+            try:
+                from core.models.llm_client import LLMClient
+                llm = LLMClient()
+                
+                # 1. Mevcut ekranın görüntüsünü al
+                screenshot = await self.screenshot()
+                # 2. Sayfanın HTML yapısından ipucu al (sadece clickable elementler)
+                page_data = await self.page.evaluate("""() => {
+                    return Array.from(document.querySelectorAll('button, a, input[type="submit"], [role="button"]'))
+                        .map(el => el.innerText || el.getAttribute('aria-label') || el.value)
+                        .filter(t => t && t.length > 1).join(', ')
+                }""")
+                
+                # 3. AI'dan kök neden ve yeni konum iste
+                analysis = await llm.analyze_error(
+                    logs=f"Failed to find selector: {selector}. Visible elements: {page_data}",
+                    screenshot_desc="Element not found. Screen layout captured."
+                )
+                
+                # 4. Eğer AI yeni bir selector veya koordinat önerirse uygula
+                new_sel = analysis.get("new_selector")
+                if new_sel and new_sel != selector:
+                    print(f"✨ [Self-Healing] AI yeni selector önerdi: {new_sel}")
+                    elm = self.page.locator(new_sel).first
+                    await elm.wait_for(timeout=3000)
+                    await elm.click()
+                    print(f"✅ [Self-Healing] Başarılı! {new_sel} kullanıldı.")
+                    return
+
+                # 5. Koordinat tabanlı tıklama (Visual fallback)
+                print("🧠 [Self-Healing] Görsel analiz ile koordinat tahmini deneniyor...")
+                # Basit bir brute-force: Buton metnine göre sayfa içinde ara (Playwright text search)
+                text_match = selector.split("'")[-2] if "'" in selector else selector
+                try:
+                    await self.page.get_by_text(text_match, exact=False).first.click()
+                    print(f"✅ [Self-Healing] Metin eşleşmesi ile tıklandı: {text_match}")
+                except:
+                    raise e # Hala başarısızsa orijinal hatayı fırlat
+                    
+            except Exception as final_e:
+                print(f"❌ [Self-Healing] Başarısız: {str(final_e)}")
+                raise e
 
     async def type_input(self, selector: str, text: str, delay_ms: int = 150):
         """Alanı bul, NEON parlat ve ağır çekim yaz."""

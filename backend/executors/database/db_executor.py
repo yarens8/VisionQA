@@ -3,6 +3,7 @@ import time
 from typing import Dict, Any, List, Optional
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import OperationalError
 
 class DatabaseExecutor:
     """
@@ -10,41 +11,65 @@ class DatabaseExecutor:
     Veritabanı şeması doğrulama, sorgu performansı ve veri bütünlüğü kontrolleri yapar.
     """
 
-    def __init__(self, connection_string: str):
+    def __init__(
+        self,
+        connection_string: str,
+        max_retries: int = 1,
+        retry_delay_sec: float = 0.3,
+    ):
         self.connection_string = connection_string
-        self.engine = create_engine(connection_string)
+        self.max_retries = max(0, max_retries)
+        self.retry_delay_sec = max(0.0, retry_delay_sec)
+        self.engine = create_engine(connection_string, pool_pre_ping=True)
         self.Session = sessionmaker(bind=self.engine)
         self.history = []
 
     def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Bir SQL sorgusu çalıştırır ve performansını ölçer."""
         start_time = time.time()
-        try:
-            with self.engine.connect() as connection:
-                result = connection.execute(text(query), params or {})
-                # Select sorgusu ise verileri çek
-                if result.returns_rows:
-                    rows = [dict(row._mapping) for row in result.all()]
-                    row_count = len(rows)
-                else:
-                    rows = []
-                    row_count = result.rowcount
+        attempt = 0
+        last_error: Optional[Exception] = None
+        while attempt <= self.max_retries:
+            attempt += 1
+            try:
+                with self.engine.connect() as connection:
+                    result = connection.execute(text(query), params or {})
+                    # Select sorgusu ise verileri çek
+                    if result.returns_rows:
+                        rows = [dict(row._mapping) for row in result.all()]
+                        row_count = len(rows)
+                    else:
+                        rows = []
+                        row_count = result.rowcount
 
-            duration = (time.time() - start_time) * 1000
-            res = {
-                "success": True,
-                "data": rows,
-                "row_count": row_count,
-                "duration_ms": round(duration, 2),
-                "query": query
-            }
-        except Exception as e:
-            res = {
-                "success": False,
-                "error": str(e),
-                "duration_ms": round((time.time() - start_time) * 1000, 2),
-                "query": query
-            }
+                duration = (time.time() - start_time) * 1000
+                res = {
+                    "success": True,
+                    "data": rows,
+                    "row_count": row_count,
+                    "duration_ms": round(duration, 2),
+                    "query": query,
+                    "attempts": attempt,
+                }
+                self.history.append(res)
+                return res
+            except OperationalError as e:
+                last_error = e
+                if attempt <= self.max_retries:
+                    time.sleep(self.retry_delay_sec)
+                    continue
+                break
+            except Exception as e:
+                last_error = e
+                break
+
+        res = {
+            "success": False,
+            "error": str(last_error) if last_error else "Unknown query failure",
+            "duration_ms": round((time.time() - start_time) * 1000, 2),
+            "query": query,
+            "attempts": attempt,
+        }
         
         self.history.append(res)
         return res

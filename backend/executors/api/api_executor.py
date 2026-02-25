@@ -10,15 +10,25 @@ class APIExecutor:
     Bu sınıf, API test senaryolarını adım adım çalıştırmak için tasarlanmıştır.
     """
 
-    def __init__(self, base_url: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        timeout_sec: float = 30.0,
+        max_retries: int = 1,
+        retry_delay_sec: float = 0.4,
+    ):
         self.base_url = base_url
+        self.timeout_sec = timeout_sec
+        self.max_retries = max(0, max_retries)
+        self.retry_delay_sec = max(0.0, retry_delay_sec)
         self.headers = headers or {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": "VisionQA-API-Engine/1.0"
         }
         # base_url None ise AsyncClient'a gönderilmemeli (bazı versiyonlarda hata verebilir)
-        client_kwargs = {"headers": self.headers, "timeout": 30.0}
+        client_kwargs = {"headers": self.headers, "timeout": self.timeout_sec}
         if base_url:
             client_kwargs["base_url"] = base_url
             
@@ -47,31 +57,53 @@ class APIExecutor:
             except:
                 pass
 
-        try:
-            response = await self.client.request(
-                method=method,
-                url=url,
-                json=body if method != "GET" else None,
-                params=kwargs.get("params"),
-                headers=kwargs.get("headers")
-            )
-            
-            duration = (time.time() - start_time) * 1000
-            
+        attempt = 0
+        response = None
+        last_error: Optional[Exception] = None
+
+        while attempt <= self.max_retries:
+            attempt += 1
+            try:
+                response = await self.client.request(
+                    method=method,
+                    url=url,
+                    json=body if method != "GET" else None,
+                    params=kwargs.get("params"),
+                    headers=kwargs.get("headers"),
+                )
+                # Retry only on transient server errors.
+                if response.status_code >= 500 and attempt <= self.max_retries:
+                    await self._sleep_before_retry()
+                    continue
+                break
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                last_error = exc
+                if attempt <= self.max_retries:
+                    await self._sleep_before_retry()
+                    continue
+                break
+            except Exception as exc:
+                last_error = exc
+                break
+
+        duration = (time.time() - start_time) * 1000
+        if response is not None:
             result = {
                 "status_code": response.status_code,
                 "success": 200 <= response.status_code < 300,
                 "duration_ms": round(duration, 2),
                 "response_body": response.json() if "application/json" in response.headers.get("content-type", "") else response.text,
                 "headers": dict(response.headers),
-                "timestamp": datetime.utcnow().isoformat()
+                "attempts": attempt,
+                "timestamp": datetime.utcnow().isoformat(),
             }
-        except Exception as e:
+        else:
             result = {
                 "success": False,
-                "error": str(e),
-                "duration_ms": round((time.time() - start_time) * 1000, 2),
-                "timestamp": datetime.utcnow().isoformat()
+                "error": str(last_error) if last_error else "Unknown request failure",
+                "duration_ms": round(duration, 2),
+                "attempts": attempt,
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
         self.history.append({
@@ -80,6 +112,12 @@ class APIExecutor:
         })
         
         return result
+
+    async def _sleep_before_retry(self) -> None:
+        import asyncio
+
+        if self.retry_delay_sec > 0:
+            await asyncio.sleep(self.retry_delay_sec)
 
     async def graphql_query(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
