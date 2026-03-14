@@ -1,130 +1,109 @@
 # VisionQA Ultimate Platform
 
-> **AI-Powered Universal Software Quality Assurance & Testing Platform**  
-> Cross-Platform Testing: Web • Mobile • Desktop • API • Database
+AI Destekli Cok Platformlu Yazilim Kalite ve Test Framework'u
 
-[![Platform](https://img.shields.io/badge/Platform-Multi--Platform-blue)]()
-[![AI](https://img.shields.io/badge/AI-VLM%20%2B%20LLM-green)]()
-[![Status](https://img.shields.io/badge/Status-In%20Development-yellow)]()
+## 1. Giris
 
-## 🎯 Overview
+VisionQA, yalnizca fonksiyonel dogrulamaya odaklanan klasik test araclarinin otesinde; guvenlik, performans, erisilebilirlik, UI/UX, API ve veritabani kalite kontrollerini tek bir framework altinda birlestirmeyi hedefler.
 
-VisionQA is a revolutionary AI-powered testing platform that unifies quality assurance across all software platforms. Using Vision-Language Models (VLM) and Large Language Models (LLM), it provides autonomous testing, visual validation, security auditing, and performance analysis for:
+Bu proje bir son kullanici uygulamasi degil, gelistirici ve QA ekiplerinin kullanabilecegi yeniden kullanilabilir bir test altyapisidir.
 
-- 🌐 **Web Applications** (React, Angular, Vue, etc.)
-- 📱 **Mobile Apps** (iOS, Android, React Native, Flutter)
-- 🖥️ **Desktop Applications** (Windows, macOS, Linux, Electron)
-- 🔌 **API Services** (REST, GraphQL, WebSocket, gRPC)
-- 🗄️ **Databases** (PostgreSQL, MySQL, MongoDB, Redis)
+## 2. Projenin Amaci
 
-## ✨ Key Features
+VisionQA'nin amaci kalite kontrol sureclerini tek bir cati altinda toplamak:
 
-### 10 AI-Powered Testing Modules
+- Coklu platform test yurutme
+- Moduler kalite kontrol
+- Otonom test uretimi
+- Guvenlik ve performans analizi
+- Erisilebilirlik denetimi
+- API dogrulama
+- Veritabani kalite kontrolu
+- AI veri seti dogrulama
 
-1. **🤖 Universal Autonomous Tester** - Self-generating test scenarios
-2. **🎨 Cross-Platform UI/UX Auditor** - Design vs. implementation validation
-3. **💾 AI Dataset Validator** - ML dataset quality assurance
-4. **📹 Universal Bug Analyzer** - Video/log-based bug reporting
-5. **🔒 Multi-Platform Security Auditor** - Visual security scanning
-6. **♿ Universal Accessibility Expert** - WCAG/iOS/Android compliance
-7. **🚀 Cross-Platform Performance Analyzer** - UX-focused performance
-8. **📱 Mobile-Specific Test Suite** - Gestures, fragmentation, network
-9. **🔌 API Test Suite** - Schema-driven, load testing
-10. **🗄️ Database Quality Checker** - Integrity, schema validation
+## 3. Framework Mimarisi
 
-## 🏗️ Architecture
+VisionQA 3 ana katmandan olusur:
 
-```
-┌────────────────────────────────────────┐
-│   VisionQA Unified Dashboard (React)   │
-└───────────────┬────────────────────────┘
-                │ REST API + WebSocket
-        ┌───────┼───────┐
-        ▼       ▼       ▼
-┌─────────┐ ┌─────┐ ┌──────────┐
-│FastAPI  │ │AI   │ │PostgreSQL│
-│Backend  │ │Engine│ │  +Redis  │
-└────┬────┘ └──┬──┘ └──────────┘
-     │         │
-┌────┴─────────┴────────────────────┐
-│   Platform Execution Layer        │
-├────────┬─────────┬─────────┬──────┤
-│  Web   │ Mobile  │Desktop  │ API  │
-│Executor│Executor │Executor │Exec. │
-└────────┴─────────┴─────────┴──────┘
-```
+1. Core Engine
+- Test yasam dongusunu orkestre eder
+- Modulleri dinamik yukler
+- Uygun executor secer
+- Sonuclari toplar ve raporu baslatir
 
-## 🚀 Quick Start
+2. Executor Katmani
+- Platforma baglanir ve adimlari yurutur
+- Ortam bilgisini toplar
+- Sonuclari Core Engine'e iletir
+- Hedef platformlar: Web, Mobile, API, Database
 
-### Prerequisites
+3. Modul Katmani
+- Her modul tek bir kalite alanina odaklanir
+- Standart cikti uretir
+- Bagimsiz gelistirilip devreye alinabilir
 
-- Docker Desktop (recommended)
-- Python 3.11+
+## 4. Framework Modulleri (10)
+
+1. Otonom Test Modulu
+2. Hata Analiz ve Raporlama Modulu
+3. UI/UX Denetim Modulu
+4. Veri Seti Dogrulama Modulu
+5. Guvenlik Denetim Modulu
+6. Erisilebilirlik Modulu
+7. Performans Analiz Modulu
+8. API Test Modulu
+9. Mobil Test Modulu
+10. Veritabani Kalite Modulu
+
+## 5. Mevcut Durum (Kisa)
+
+- 4.1 Otonom Test Modulu: Calisiyor (analiz, case uretimi, step-based execution)
+- 4.2 Hata Analiz ve Raporlama: Kismi (step error/success ozetleri var, standart raporlama gelistiriliyor)
+- Diger moduller: yol haritasinda
+
+## 6. Gelistirme Prensipleri
+
+- Platform bagimsizlik
+- Moduler genisletilebilirlik
+- Low coupling / high cohesion
+- Merkezi orkestrasyon
+- Uzun vadeli surdurulebilirlik
+
+## 7. Hizli Baslangic
+
+Gereksinimler:
+
+- Python 3.10+
 - Node.js 20+
-- AI API Keys (SAM3, DINO-X, GPT-4/Claude)
+- PostgreSQL (opsiyonel, SQLite fallback destekli)
+- Playwright Chromium
 
-### Installation
+Kurulum:
 
 ```bash
-# Clone repository
-git clone https://github.com/YOUR_USERNAME/VisionQA.git
+git clone <repo-url>
 cd VisionQA
-
-# Setup environment
 cp .env.example .env
-# Edit .env and add your API keys
-
-# Start with Docker
-docker-compose up -d
-
-# Initialize database
-docker-compose exec backend alembic upgrade head
-
-# Access dashboard
-open http://localhost:3000
 ```
 
-## 🛠️ Tech Stack
+Backend:
 
-**Backend:** FastAPI, Python 3.11, Celery  
-**Frontend:** React 18, TypeScript, Vite, TailwindCSS  
-**Database:** PostgreSQL, Redis  
-**AI:** SAM3 (VLM), DINO-X (VLM), GPT-4 (LLM)  
-**Automation:** Playwright, Appium, WinAppDriver  
-**Infrastructure:** Docker, GitHub Actions
+```bash
+cd backend
+python run_server.py
+```
 
-## 📋 Project Status
+Frontend:
 
-**Phase:** Foundation Setup (Week 1-2)  
-**Progress:** See [task.md](task.md) for detailed checklist
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### Milestones
+## 8. Dokumanlar
 
-- [ ] **M1 (Week 2):** Infrastructure - 5 platform executors running
-- [ ] **M2 (Week 4):** Web + Mobile autonomous testing
-- [ ] **M3 (Week 6):** MVP - Multi-platform testing operational
-- [ ] **M4 (Week 9):** UI/UX cross-platform audit
-- [ ] **M5 (Week 12):** Security + Accessibility modules
-- [ ] **M6 (Week 14):** 10 modules + 5 platforms integrated
-- [ ] **M7 (Week 17):** Production Launch 🚀
+- `PROJECT_PLAN.md` -> Proje plani
+- `PROJECT_REPORT.md` -> Akademik/teknik rapor
+- `task.md` -> Uygulama gorev plani
 
-## 📚 Documentation
-
-- [Project Plan](PROJECT_PLAN.md) - Executive summary
-- [Project Report](PROJECT_REPORT.md) - Academic report
-- [Task List](task.md) - Development checklist
-
-## 🤝 Contributing
-
-This is an academic research project. Contributions welcome after initial release.
-
-## 📄 License
-
-[To be determined]
-
----
-
-**Author:** [Yaren APAYDIN]  
-**Institution:** [Fırat University]  
-**Date:** February 2026  
-**Version:** 2.0 - Universal Platform Edition

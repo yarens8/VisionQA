@@ -14,19 +14,32 @@ load_dotenv()
 
 # Database URL (.env'den al) - CI/Test dostu fallback eklendi
 DATABASE_URL = os.getenv("DATABASE_URL")
+SQLITE_FALLBACK_URL = "sqlite:///./visionqa_temp.db"
+
+
+def _build_engine():
+    """DB engine'i oluştur; yapılandırılmış DB erişilemiyorsa SQLite fallback'e düş."""
+    if DATABASE_URL:
+        primary_engine = create_engine(
+            DATABASE_URL,
+            pool_pre_ping=True,
+            echo=False
+        )
+        try:
+            with primary_engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+            return primary_engine
+        except Exception as e:
+            print(f"⚠️ DATABASE_URL erişilemiyor ({e}). Geçici SQLite fallback kullanılacak.")
+
+    if not DATABASE_URL:
+        print("⚠️ DATABASE_URL bulunamadı, geçici SQLite kullanılıyor.")
+
+    return create_engine(SQLITE_FALLBACK_URL, connect_args={"check_same_thread": False})
+
 
 # SQLAlchemy engine oluştur
-if DATABASE_URL:
-    engine = create_engine(
-        DATABASE_URL,
-        pool_pre_ping=True,
-        echo=False
-    )
-else:
-    # ⚠️ ÇALIŞMA NOTU: Eğer DATABASE_URL yoksa (CI ortamı gibi), 
-    # projenin çökmemesi için geçici bir SQLite oluşturuyoruz.
-    print("⚠️ DATABASE_URL bulunamadı, geçici SQLite kullanılıyor.")
-    engine = create_engine("sqlite:///./visionqa_temp.db", connect_args={"check_same_thread": False})
+engine = _build_engine()
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

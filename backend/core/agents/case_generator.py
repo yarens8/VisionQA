@@ -6,6 +6,7 @@ import base64
 import tempfile
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
+import requests
 
 load_dotenv()
 
@@ -17,7 +18,7 @@ class AICaseGenerator:
     Akış:
     1. URL al
     2. WebExecutor ile sayfayı aç ve screenshot al  (Eller)
-    3. SAM3/DINO-X ile screenshot'taki UI elementlerini tespit et  (Gözler)
+    3. Grounding DINO ile screenshot'taki UI elementlerini tespit et  (Gözler)
     4. Groq + Llama 3.3 70B ile test senaryoları üret  (Beyin)
     5. Happy Path + Negative + Edge Case + Security senaryolarını döndür
 
@@ -28,12 +29,17 @@ class AICaseGenerator:
 
     def __init__(self):
         from core.models.llm_client import LLMClient
-        from core.models.sam3_client import SAM3Client
-        from core.models.dinox_client import DINOXClient
         self.llm = LLMClient()
-        self.sam = SAM3Client()
-        self.dinox = DINOXClient()
-        print("✅ [AICaseGenerator] LLM + SAM3 + DINO-X (Gözler) hazır.")
+        self._dinox = None  # Lazy: sadece use_screenshot=True olduğunda yüklenir
+        print("✅ [AICaseGenerator] LLM (Groq) hazır. DINO ekran analizi için bekleniyor.")
+
+    def _get_dinox(self):
+        """Grounding DINO istemcisini ihtiyaç duyulduğunda başlatır."""
+        if self._dinox is None:
+            from core.models.dinox_client import DINOXClient
+            self._dinox = DINOXClient()
+        return self._dinox
+
 
     # ─────────────────────────────────────────────
     # ANA METOD: URL → Test Cases
@@ -43,7 +49,9 @@ class AICaseGenerator:
         self,
         url: str,
         platform: str = "web",
-        use_screenshot: bool = True
+        use_screenshot: bool = True,
+        strict_visual: bool = False,
+        require_live_show: bool = False
     ) -> List[Dict[str, Any]]:
         """
         URL'den otonom olarak test senaryoları üretir.
@@ -51,7 +59,7 @@ class AICaseGenerator:
         Args:
             url:            Test edilecek sayfa URL'si
             platform:       "web" | "mobile" | "api"
-            use_screenshot: True → Gerçek sayfa analizi (SAM3)
+            use_screenshot: True → Gerçek sayfa analizi (Grounding DINO)
                             False → Sadece LLM tahmini (hızlı)
         Returns:
             [
@@ -68,8 +76,13 @@ class AICaseGenerator:
         print(f"🧠 [AICaseGenerator] Analiz Başlıyor: {url}")
         print(f"{'='*60}")
 
-        # ADIM 1: Görsel ve Yapısal Analiz (Eyes: SAM3 + DINO-X)
-        page_analysis = await self._analyze_page(url, use_screenshot)
+        # ADIM 1: Görsel ve Yapısal Analiz (Eyes: Grounding DINO)
+        page_analysis = await self._analyze_page(
+            url=url,
+            use_screenshot=use_screenshot,
+            strict_visual=strict_visual,
+            require_live_show=require_live_show
+        )
 
         # ADIM 2: Sayfayı Anlamlandırma (Identity Phase)
         # LLM'e sayfadaki elementleri ve URL'i verip sitenin amacını ve akışını çözdürürüz.
@@ -98,100 +111,152 @@ class AICaseGenerator:
         return cases
 
     # ─────────────────────────────────────────────
-    # ADIM 1: Sayfa Analizi (SAM3 + Screenshot)
+    # ADIM 1: Sayfa Analizi (Grounding DINO + Screenshot)
     # ─────────────────────────────────────────────
 
-    async def _analyze_page(self, url: str, use_screenshot: bool) -> str:
+    async def _analyze_page(
+        self,
+        url: str,
+        use_screenshot: bool,
+        strict_visual: bool = False,
+        require_live_show: bool = False
+    ) -> str:
         """
-        Sayfayı analiz eder ve UI elementlerini metin olarak döndürür.
-        SAM3 başarısız olursa URL'den çıkarım yapar.
+        Sayfayı analiz eder, UI elementlerini çizer ve metin olarak döndürür.
         """
         if not use_screenshot:
             return self._infer_context_from_url(url)
 
-        try:
-            # Screenshot al
-            screenshot_path = await self._take_screenshot(url)
-
-            if screenshot_path:
-                # 1. SAM3 (Görsel Segmentasyon) - Piksel Hassasiyeti
-                sam_elements = self.sam.detect_ui_elements(screenshot_path, platform="web")
-                
-                # 2. DINO-X (Semantik Tanımlama) - Anlamsal Etiketleme
-                dinox_elements = await self.dinox.detect_elements(screenshot_path)
-                
-                # 3. Unified World View (Birleşik Dünya Görüşü)
-                context = self._build_unified_world_view(url, sam_elements, dinox_elements)
-                
-                print(f"👁️ [World View] SAM3: {len(sam_elements)} | DINO-X: {len(dinox_elements)} element birleştirildi.")
-                return context
-            else:
-                print("⚠️ [Screenshot] Alınamadı, URL'den çıkarım yapılıyor.")
-                return self._infer_context_from_url(url)
-
-        except Exception as e:
-            print(f"⚠️ [Analiz] Hata: {e}. URL'den çıkarım yapılıyor.")
-            return self._infer_context_from_url(url)
-
-    async def _take_screenshot(self, url: str) -> Optional[str]:
-        """Playwright ile sayfanın screenshot'ını alır."""
+        screenshot_path = None
+        executor = None
         try:
             from executors.web.web_executor import WebExecutor
+            import tempfile
+            import os
+            import json
+
+            # Backend kendi sessiz işine (Headless) devam eder
             executor = WebExecutor(headless=True)
             await executor.start()
             await executor.navigate(url)
+            source_viewport = {"width": 1280, "height": 720}
+            if getattr(executor, "page", None) and executor.page.viewport_size:
+                source_viewport = executor.page.viewport_size
 
-            # Temp dosyaya kaydet
             tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
             screenshot_path = tmp.name
             tmp.close()
 
-            await executor.screenshot(screenshot_path)
-            await executor.stop()
+            # DINO için full-page yerine viewport screenshot kullanıyoruz.
+            # Bu, canlı şovdaki kutu koordinat kaymalarını ciddi şekilde azaltır.
+            await executor.screenshot(screenshot_path, full_page=False)
+            
+            # DINO analiz
+            elements = await self._get_dinox().detect_elements(screenshot_path)
 
-            print(f"📸 [Screenshot] Alındı: {screenshot_path}")
-            return screenshot_path
+            # --- CANLI ŞOV: DINO sonuçlarıyla birlikte Bridge'e gönder ---
+            try:
+                print(f"🚦 [AI] Kullanıcının ekranında CANLI ŞOV başlatılıyor... ({url})")
+                bridge_payload = {
+                    "url": url,
+                    "elements": elements if elements else [],
+                    "source_viewport": source_viewport,
+                    "wait_for_completion": True
+                }
+
+                # Backend bazen host'ta, bazen container içinde çalışır.
+                # Bu yüzden bridge için birden fazla adres deneriz.
+                configured_bridge = os.getenv("DESKTOP_BRIDGE_URL", "").strip()
+                bridge_candidates = []
+                if configured_bridge:
+                    bridge_candidates.append(configured_bridge.rstrip("/"))
+                bridge_candidates.extend([
+                    "http://127.0.0.1:8001",
+                    "http://localhost:8001",
+                    "http://host.docker.internal:8001",
+                ])
+
+                sent = False
+                last_bridge_error = None
+                for bridge_base in dict.fromkeys(bridge_candidates):
+                    launch_url = f"{bridge_base}/launch-vision"
+                    try:
+                        # connect timeout kısa, read timeout uzun: canlı şov bitene kadar bekleyebilir.
+                        response = requests.post(
+                            launch_url,
+                            json=bridge_payload,
+                            timeout=(3, 900)
+                        )
+                        response.raise_for_status()
+                        print(
+                            f"✅ [AI] Bridge'e {len(elements) if elements else 0} element gönderildi! "
+                            f"({bridge_base})"
+                        )
+                        sent = True
+                        break
+                    except Exception as bridge_err:
+                        last_bridge_error = bridge_err
+                        print(f"⚠️ [AI] Bridge denemesi başarısız ({bridge_base}): {bridge_err}")
+
+                if not sent:
+                    raise RuntimeError(last_bridge_error or "Desktop Bridge endpointlerine bağlanılamadı.")
+                # Bridge senkron modda tamamlanana kadar beklediği için ekstra bekleme gerekmez.
+            except Exception as e:
+                print(f"⚠️ [AI] Köprüye ulaşılamadı: {e}")
+                if require_live_show:
+                    raise RuntimeError(f"Desktop Bridge çalışmıyor: {e}") from e
+            # ----------------------------------------------------------------
+
+            context = self._build_world_view(url, elements, use_url_inference_fallback=False)
+            if strict_visual and "No UI elements detected visually." in context:
+                raise RuntimeError("Görsel analiz tamamlandı ancak DINO hiçbir UI elementi tespit edemedi.")
+            return context
 
         except Exception as e:
-            print(f"⚠️ [Screenshot] Playwright hatası: {e}")
-            return None
+            if strict_visual:
+                raise RuntimeError(f"Görsel analiz başarısız: {e}") from e
+            print(f"⚠️ [Analiz] Hata: {e}. URL'den çıkarım yapılıyor.")
+            return self._infer_context_from_url(url)
+        finally:
+            if executor is not None:
+                try:
+                    await executor.stop()
+                except Exception:
+                    pass
+            if screenshot_path:
+                try:
+                    os.remove(screenshot_path)
+                except Exception:
+                    pass
 
-    def _build_unified_world_view(self, url: str, sam_elements: List[Dict], dinox_elements: List[Dict]) -> str:
+    def _build_world_view(
+        self,
+        url: str,
+        elements: List[Dict],
+        use_url_inference_fallback: bool = True
+    ) -> str:
         """
-        SAM3 ve DINO-X verilerini tek bir anlamlı bağlamda birleştirir.
+        Grounding DINO çıktısını LLM için okunabilir bağlama çevirir.
         """
-        lines = [f"URL: {url}", "### UNIFIED WORLD VIEW (Visual + Semantic Analysis)"]
+        lines = [f"URL: {url}", "### VISUAL WORLD VIEW (Detected via Grounding DINO)"]
         
-        # Önce DINO-X (Semantik Etiketler) - LLM için en değerli bilgi
-        lines.append("\nSemantic Elements (What they MEAN):")
-        for i, elem in enumerate(dinox_elements, 1):
+        if not elements:
+            lines.append("\nNo UI elements detected visually.")
+            if use_url_inference_fallback:
+                lines.append("Using URL-based inference as fallback.")
+                lines.append(self._infer_context_from_url(url))
+            return "\n".join(lines)
+
+        lines.append(f"\nDetected {len(elements)} UI elements:")
+        for i, elem in enumerate(elements, 1):
             label = elem.get("label", "unknown")
             score = elem.get("score", 0)
             box = elem.get("box", [])
             lines.append(f"  {i}. {label.upper()}: position={box}, confidence={score:.2f}")
 
-        # Sonra SAM3 (Piksel Segmentleri) - Geometrik Bilgi
-        lines.append("\nVisual Segments (Exact Boundaries):")
-        for i, elem in enumerate(sam_elements, 1):
-            label = elem.get("label", "unknown")
-            box = elem.get("box", [])
-            lines.append(f"  - Segment {i} ({label}): {box}")
-
         return "\n".join(lines)
 
-    def _elements_to_context(self, elements: List[Dict], url: str) -> str:
-        """(Legacy) SAM3 element listesini LLM için okunabilir metne çevirir."""
-        if not elements:
-            return self._infer_context_from_url(url)
 
-        lines = [f"URL: {url}", "Detected UI Elements:"]
-        for elem in elements:
-            label = elem.get("label", "unknown")
-            score = elem.get("score", 0)
-            box = elem.get("box", [])
-            lines.append(f"  - {label} (confidence: {score:.2f}, position: {box})")
-
-        return "\n".join(lines)
 
     def _infer_context_from_url(self, url: str) -> str:
         """
@@ -247,12 +312,19 @@ class AICaseGenerator:
         """
         cases = []
 
-        # LLM çıktısındaki kategori anahtarları → iç kategori isimlerimiz
+        # LLM kategori anahtarlarını daha esnek normalize et
         category_map = {
             "happy_path": "happy_path",
+            "happy": "happy_path",
+            "positive": "happy_path",
             "negative_path": "negative_path",
+            "negative": "negative_path",
             "edge_cases": "edge_case",
-            "security_checks": "security"
+            "edge_case": "edge_case",
+            "edge": "edge_case",
+            "security_checks": "security",
+            "security": "security",
+            "security_check": "security",
         }
 
         # risk_level → priority dönüşümü (LLM'in verdiği risk seviyesinden)
@@ -267,17 +339,19 @@ class AICaseGenerator:
         fallback_priority = {
             "happy_path": "high",
             "negative_path": "high",
-            "edge_cases": "medium",
+            "edge_case": "medium",
             "security_checks": "critical"
         }
+
+        def normalize_category(raw_key: str) -> str:
+            k = str(raw_key or "").strip().lower()
+            return category_map.get(k, "happy_path")
 
         for category_key, scenarios in raw_cases.items():
             # Meta alanları atla (page_analysis_summary, total_rules_covered vb.)
             if not isinstance(scenarios, list):
                 continue
-            # Bilinmeyen kategori anahtarlarını atla
-            if category_key not in category_map:
-                continue
+            normalized_category = normalize_category(category_key)
 
             for scenario in scenarios:
                 if not isinstance(scenario, dict):
@@ -303,15 +377,26 @@ class AICaseGenerator:
                             "value": step.get("value", ""),
                             "expected": step.get("expected", "Step completes successfully")
                         })
+                # LLM çıktısını mümkün olduğunca aynen taşımak için,
+                # boş/uyumsuz step alanlarını minimum normalize ediyoruz.
+                # (agresif "enrich/override" burada uygulanmıyor)
+                if not formatted_steps:
+                    formatted_steps = [{
+                        "order": 1,
+                        "action": "navigate",
+                        "target": url,
+                        "value": "",
+                        "expected": "Page opens successfully"
+                    }]
 
                 # Priority: Önce LLM'in risk_level'ını kullan, yoksa kategori fallback
                 llm_risk = scenario.get("risk_level", "").lower()
-                priority = risk_to_priority.get(llm_risk, fallback_priority.get(category_key, "medium"))
+                priority = risk_to_priority.get(llm_risk, fallback_priority.get(normalized_category, "medium"))
 
                 case_data = {
                     "title": scenario.get("title", f"Test Case {len(cases) + 1}"),
                     "description": scenario.get("expected_outcome", scenario.get("expected", scenario.get("description", ""))),
-                    "category": category_map.get(category_key, category_key),
+                    "category": normalized_category,
                     "priority": priority,
                     "source_url": url,
                     "steps": formatted_steps
@@ -326,6 +411,117 @@ class AICaseGenerator:
                 cases.append(case_data)
 
         return cases
+
+    def _enrich_steps_for_case(
+        self,
+        formatted_steps: List[Dict[str, Any]],
+        scenario: Dict[str, Any],
+        category_key: str
+    ) -> List[Dict[str, Any]]:
+        """
+        LLM'in döndürdüğü şablon adımları daha çalıştırılabilir ve birbirinden ayrışır hale getirir.
+        """
+        title = str(scenario.get("title", "")).lower()
+        enriched = []
+        is_invalid_email_case = (
+            category_key == "negative_path"
+            and ("invalid" in title and ("email" in title or "mail" in title))
+        )
+        for s in formatted_steps:
+            step = dict(s)
+            action = str(step.get("action", "")).lower()
+            target = str(step.get("target", ""))
+            value = str(step.get("value", ""))
+            t = target.lower()
+
+            # İngilizce sabit placeholder/selectors'ı daha genel hale getir
+            if action == "type":
+                if "placeholder='email'" in t or "placeholder=\"email\"" in t:
+                    step["target"] = "input[type='email']"
+                elif "placeholder='password'" in t or "placeholder=\"password\"" in t:
+                    step["target"] = "input[type='password']"
+
+            if action == "click":
+                if "has-text('submit')" in t or 'has-text("submit")' in t:
+                    step["target"] = "button[type='submit']"
+                # Login sayfalarında submit benzeri butonları normalize et
+                if any(k in t for k in ["devam et", "giriş yap", "giris yap", "continue", "login"]):
+                    step["target"] = "button[type='submit']"
+
+            # Negatif/edge/security senaryolarda value'yu daha belirgin yap
+            if action == "type" and not value.strip():
+                if "email" in t or "mail" in t:
+                    if "invalid" in title or "format" in title or category_key == "negative_path":
+                        step["value"] = "invalid-email-format"
+                    elif "empty" in title:
+                        step["value"] = ""
+                    else:
+                        step["value"] = "user@example.com"
+                elif "password" in t or "şifre" in t or "sifre" in t:
+                    if "short" in title or "length" in title:
+                        step["value"] = "123"
+                    elif "empty" in title:
+                        step["value"] = ""
+                    elif "sql" in title or "injection" in title:
+                        step["value"] = "' OR 1=1 --"
+                    else:
+                        step["value"] = "ValidPass123!"
+                elif "sql" in title or "injection" in title:
+                    step["value"] = "' OR 1=1 --"
+                elif "xss" in title:
+                    step["value"] = "<script>alert('xss')</script>"
+
+            enriched.append(step)
+
+        # Invalid email senaryosunda password typing adımını çıkar:
+        # Beklenen akış: email yaz -> submit/devam -> hata doğrula
+        if is_invalid_email_case:
+            filtered = []
+            for e in enriched:
+                if str(e.get("action", "")).lower() == "type":
+                    tt = str(e.get("target", "")).lower()
+                    if "password" in tt or "şifre" in tt or "sifre" in tt:
+                        continue
+                filtered.append(e)
+            enriched = filtered
+
+            has_submit_click = any(
+                str(e.get("action", "")).lower() == "click"
+                and ("submit" in str(e.get("target", "")).lower() or "devam" in str(e.get("target", "")).lower())
+                for e in enriched
+            )
+            if not has_submit_click:
+                enriched.append({
+                    "order": len(enriched) + 1,
+                    "action": "click",
+                    "target": "button[type='submit']",
+                    "value": "",
+                    "expected": "Form submit attempt edilir"
+                })
+
+            has_verify = any(str(e.get("action", "")).lower() == "verify" for e in enriched)
+            if not has_verify:
+                enriched.append({
+                    "order": len(enriched) + 1,
+                    "action": "verify",
+                    "target": ".error, .error-message, .alert, [role='alert']",
+                    "value": "",
+                    "expected": "Geçersiz email için hata mesajı görünür"
+                })
+
+            # order alanlarını yeniden sırala
+            for idx, e in enumerate(enriched, start=1):
+                e["order"] = idx
+
+        # Aynı aksiyon/target pattern'i tekrar ediyorsa verify adımını güçlendir
+        actions_targets = [(e.get("action"), e.get("target")) for e in enriched]
+        if len(actions_targets) == len(set(actions_targets)):
+            return enriched
+
+        for e in enriched:
+            if str(e.get("action", "")).lower() == "verify" and str(e.get("target", "")).strip() in [".error-message", ".error"]:
+                e["target"] = ".error, .error-message, .alert, [role='alert']"
+        return enriched
 
     def _infer_action(self, step_text: str) -> str:
         """Adım metninden aksiyon türünü çıkarır."""

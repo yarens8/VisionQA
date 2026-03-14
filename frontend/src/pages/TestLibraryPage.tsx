@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, TestCase } from '../services/api';
 import {
@@ -21,6 +21,9 @@ interface StepResult {
     reason: string;
     error?: string;
     screenshot?: string;
+    duration_ms?: number;
+    selector_used?: string;
+    attempts?: { selector: string; error: string }[];
 }
 
 interface ExecutionResult {
@@ -94,6 +97,19 @@ const TestResultModal: React.FC<{ result: ExecutionResult; onClose: () => void }
                                 <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">AI Vision Analysis</p>
                                     <p className="text-white text-sm font-medium leading-relaxed">"{result.steps[activeStep].reason}"</p>
+                                    <p className="text-slate-500 text-xs mt-3 font-mono">
+                                        Duration: {result.steps[activeStep].duration_ms ?? 0} ms
+                                    </p>
+                                    {result.steps[activeStep].selector_used && (
+                                        <p className="text-slate-500 text-xs mt-1 font-mono">
+                                            Selector Used: {result.steps[activeStep].selector_used}
+                                        </p>
+                                    )}
+                                    {result.steps[activeStep].attempts && result.steps[activeStep].attempts!.length > 0 && (
+                                        <p className="text-slate-500 text-xs mt-1 font-mono">
+                                            Attempts: {result.steps[activeStep].attempts!.length}
+                                        </p>
+                                    )}
                                 </div>
                                 {result.steps[activeStep].screenshot && (
                                     <div className="rounded-2xl border border-slate-800 overflow-hidden shadow-2xl">
@@ -140,7 +156,7 @@ const TestCaseCard: React.FC<{
                 <div className="flex items-center gap-2">
                     <button onClick={() => onRun(testCase.id)} disabled={running} className={`h-10 px-6 rounded-xl flex items-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 ${running ? 'bg-slate-800 text-amber-500 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-950/20'}`}>
                         {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-3.5 w-3.5 fill-current" />}
-                        {running ? 'Loading' : 'Deploy'}
+                        {running ? 'Running' : 'Deploy'}
                     </button>
                     <button onClick={() => onDelete(testCase.id)} className="h-10 w-10 bg-slate-950 hover:bg-rose-500/10 text-slate-800 hover:text-rose-500 rounded-xl border border-slate-800 hover:border-rose-500/30 transition-all flex items-center justify-center">
                         <Trash2 className="h-4 w-4" />
@@ -168,11 +184,12 @@ const TestCaseCard: React.FC<{
 
 export function TestLibraryPage() {
     const { projectId, pageId } = useParams();
-    const [searchParams] = useSearchParams();
     const queryClient = useQueryClient();
     const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
     const [runningCaseId, setRunningCaseId] = useState<number | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [runProgressText, setRunProgressText] = useState('');
+    const [liveMode, setLiveMode] = useState(true);
 
     const { data: cases, isLoading: isLoadingCases } = useQuery({
         queryKey: ['cases', projectId, pageId],
@@ -180,37 +197,116 @@ export function TestLibraryPage() {
         enabled: !!pageId
     });
 
-    const { data: projects } = useQuery({
-        queryKey: ['projects'],
-        queryFn: () => api.getProjects()
+    const { data: pages } = useQuery({
+        queryKey: ['pages', projectId],
+        queryFn: () => api.getPages(Number(projectId)),
+        enabled: !!projectId
     });
 
-    const currentProject = projects?.find(p => p.id === Number(projectId));
-    const currentPage = currentProject?.pages?.find(p => p.id === Number(pageId));
+    const currentPage = pages?.find(p => p.id === Number(pageId));
+    const hasValidPageUrl = !!(currentPage?.url && currentPage.url.trim().length > 0);
 
     const generateMutation = useMutation({
-        mutationFn: () => api.generateCasesForPage(Number(pageId)),
+        mutationFn: () => {
+            const rawUrl = String(currentPage?.url ?? '')
+                .replace(/\u200B/g, '') // zero-width space
+                .trim();
+            let finalUrl = rawUrl;
+            if (!finalUrl) {
+                throw new Error("Sayfa URL'i boş. Önce geçerli bir URL girin.");
+            }
+            if (finalUrl === 'true' || finalUrl === 'false') {
+                throw new Error(`URL değeri hatalı görünüyor: '${finalUrl}'. Sayfa kaydındaki URL'yi düzeltin.`);
+            }
+            if (finalUrl.startsWith('/')) {
+                throw new Error("Relative path tespit edildi. Lütfen tam URL girin (örn: https://example.com/login).");
+            }
+            if (finalUrl && !finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+                finalUrl = 'https://' + finalUrl;
+            }
+            try {
+                const parsed = new URL(finalUrl);
+                if (!parsed.hostname) {
+                    throw new Error("URL host alanı boş.");
+                }
+            } catch {
+                throw new Error("URL formatı geçersiz. Örn: https://example.com/login");
+            }
+            return api.generateCases({
+                url: finalUrl,
+                platform: 'web',
+                project_id: Number(projectId),
+                page_id: Number(pageId),
+                use_screenshot: true,
+                strict_visual: true,
+                require_live_show: true,
+            });
+        },
         onMutate: () => setIsGenerating(true),
-        onSuccess: () => {
+        onSuccess: (res) => {
             queryClient.invalidateQueries({ queryKey: ['cases', projectId, pageId] });
             setIsGenerating(false);
+            const generated = Number(res?.total_cases ?? 0);
+            const saved = Number(res?.saved_cases ?? generated);
+            if (generated > 0 && saved >= 0 && saved !== generated) {
+                alert(`AI ${generated} taslak case üretti, ${saved} case veritabanına kaydedildi.`);
+            }
         },
-        onError: () => setIsGenerating(false)
+        onError: (error: any) => {
+            setIsGenerating(false);
+            const msg = error.response?.data?.detail || error.message || "Hata: Lütfen analiz edilecek sayfanın URL'sini doğru girdiğinizden emin olun.";
+            alert(msg);
+        }
     });
 
-    useEffect(() => {
-        if (searchParams.get('generate') === 'true' && !isGenerating && Array.isArray(cases) && cases.length === 0) {
-            generateMutation.mutate();
-        }
-    }, [searchParams, cases, isGenerating, generateMutation]);
+    // Removed auto-generate useEffect to prevent infinite loops on error.
+    // Users will initiate generation via the designated button.
 
-    const runMutation = useMutation({
-        mutationFn: (id: number) => api.runTestCase(id),
-        onMutate: (id) => setRunningCaseId(id),
+const runMutation = useMutation({
+        mutationFn: async (id: number) => {
+            const start = await api.startTestCase(id, { live_mode: liveMode });
+            const runId = start.run_id;
+            const startedAt = Date.now();
+            const timeoutMs = 5 * 60 * 1000; // 5 dakika
+
+            while (Date.now() - startedAt < timeoutMs) {
+                const status = await api.getRunStatus(runId);
+                const steps = status.steps ?? [];
+                const passed = steps.filter((s: any) => s.status === 'passed').length;
+                const active = steps.find((s: any) => s.status === 'pending') || steps[steps.length - 1];
+                const activeText = active ? ` • Step ${active.order}: ${active.action}` : '';
+                setRunProgressText(`Run #${runId} • ${passed}/${steps.length} adım${activeText}`);
+
+                if (status.status !== 'running') {
+                    return {
+                        status: status.status,
+                        steps: steps,
+                        summary: status.summary || '',
+                    } as ExecutionResult;
+                }
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+            throw new Error('Canlı koşu zaman aşımına uğradı (5dk).');
+        },
+        onMutate: (id) => {
+            setRunningCaseId(id);
+            setRunProgressText('Koşu başlatılıyor...');
+        },
         onSuccess: (res) => {
-            setRunningCaseId(null);
             setExecutionResult(res as ExecutionResult);
-        }
+        },
+        onError: (error: any) => {
+            const msg =
+                error?.response?.data?.detail ||
+                error?.message ||
+                "Deploy sırasında beklenmeyen bir hata oluştu.";
+            alert(msg);
+        },
+        onSettled: () => {
+            // Başarılı/başarısız fark etmeksizin loading state'i temizle
+            setRunningCaseId(null);
+            setRunProgressText('');
+        },
     });
 
     return (
@@ -236,16 +332,32 @@ export function TestLibraryPage() {
 
                 <button
                     onClick={() => generateMutation.mutate()}
-                    disabled={isGenerating}
+                    disabled={isGenerating || !hasValidPageUrl}
                     className={`h-12 px-8 rounded-xl flex items-center gap-3 transition-all active:scale-95 disabled:opacity-30 bg-indigo-600 text-white shadow-xl shadow-indigo-900/20 font-black text-xs uppercase tracking-widest hover:bg-indigo-500`}
                 >
                     {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Command className="h-4 w-4" />}
                     {isGenerating ? 'AI Syncing...' : 'Generate Protocols'}
                 </button>
             </div>
+            <div className="flex items-center gap-3">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-500">Live Mode</label>
+                <button
+                    onClick={() => setLiveMode(v => !v)}
+                    className={`h-8 px-3 rounded-lg text-xs font-black uppercase tracking-wider border transition-all ${
+                        liveMode
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                            : 'bg-slate-900 text-slate-400 border-slate-700'
+                    }`}
+                >
+                    {liveMode ? 'On (Visible Browser)' : 'Off (Headless Fast)'}
+                </button>
+            </div>
 
             {/* List */}
             <div className="relative">
+                {runningCaseId && (
+                    <p className="mb-4 text-xs text-slate-500 font-mono">{runProgressText}</p>
+                )}
                 {isLoadingCases ? (
                     <div className="flex flex-col items-center justify-center h-64 bg-slate-900/30 rounded-3xl border border-slate-800">
                         <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
@@ -269,7 +381,13 @@ export function TestLibraryPage() {
                         </div>
                         <h2 className="text-xl font-bold text-slate-400 uppercase tracking-tighter">Station Offline</h2>
                         <p className="text-xs text-slate-600 mt-2 max-w-xs mx-auto font-medium">Click Generate Protocols to initialize the AI analysis for this target.</p>
-                        <button onClick={() => generateMutation.mutate()} className="mt-8 text-[10px] font-black text-indigo-500 hover:text-indigo-400 uppercase tracking-widest">Initialize Startup</button>
+                        <button
+                            onClick={() => generateMutation.mutate()}
+                            disabled={!hasValidPageUrl}
+                            className="mt-8 text-[10px] font-black text-indigo-500 hover:text-indigo-400 uppercase tracking-widest disabled:opacity-30"
+                        >
+                            Initialize Startup
+                        </button>
                     </div>
                 )}
             </div>

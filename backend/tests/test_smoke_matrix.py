@@ -36,6 +36,18 @@ def _is_url_ready(url: str, timeout: float = 3.0) -> bool:
         return False
 
 
+def _is_mobile_env_issue(error_text: str) -> bool:
+    """Classify known Appium/emulator startup issues as environment-dependent."""
+    hints = (
+        "Could not find a connected Android device",
+        "instrumentation process cannot be initialized",
+        "uiautomator2",
+        "ECONNREFUSED 127.0.0.1:8200",
+    )
+    normalized = error_text.lower()
+    return any(hint.lower() in normalized for hint in hints)
+
+
 @pytest.mark.smoke
 def test_smoke_backend_health():
     _require_smoke_enabled()
@@ -97,7 +109,16 @@ async def test_smoke_mobile_executor():
         app_activity=os.getenv("VISIONQA_ANDROID_APP_ACTIVITY", ".Settings"),
     )
     try:
-        await executor.start()
+        try:
+            await executor.start()
+        except httpx.HTTPStatusError as exc:
+            response_text = exc.response.text if exc.response is not None else ""
+            if _is_mobile_env_issue(response_text):
+                pytest.skip(f"Mobile environment not ready for smoke: {response_text[:240]}")
+            raise
+        except httpx.ReadTimeout:
+            # Appium may keep /session open while UiAutomator2 fails to boot on the device.
+            pytest.skip("Mobile environment timed out during Appium session bootstrap.")
         # Make mobile smoke visibly confirmable on emulator.
         screenshot_b64 = await executor.screenshot()
         await executor.tap(200, 500)

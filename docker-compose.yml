@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U visionqa -d visionqa_db"]
+      test: [ "CMD-SHELL", "pg_isready -U visionqa -d visionqa_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,7 +26,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,7 +49,65 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app/backend
+      - huggingface_cache:/root/.cache/huggingface
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend (React + Vite)
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: visionqa-frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_TARGET: http://backend:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+
+  # Web Executor Runtime (Playwright)
+  web-executor:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: visionqa-web-executor
+    depends_on:
+      - backend
+    working_dir: /app/backend
+    volumes:
+      - ./backend:/app/backend
+    command: sh -c "python -m playwright install chromium && tail -f /dev/null"
+
+  # Mobile Executor - Appium Server
+  appium:
+    image: appium/appium:latest
+    container_name: visionqa-appium
+    ports:
+      - "4723:4723"
+    environment:
+      # Let Appium use the host ADB server (for host Android emulator/device).
+      ANDROID_ADB_SERVER_ADDRESS: host.docker.internal
+      ANDROID_ADB_SERVER_PORT: 5037
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    command: appium --address 0.0.0.0 --port 4723 --base-path /
+
+  # Desktop Executor Runtime (Windows host integration placeholder)
+  desktop-executor:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: visionqa-desktop-executor
+    depends_on:
+      - backend
+    working_dir: /app/backend
+    volumes:
+      - ./backend:/app/backend
+    command: sh -c "echo 'Desktop executor should run on Windows host (GUI required). Container kept ready for orchestration.' && tail -f /dev/null"
 
   # Celery Worker
   celery-worker:
@@ -67,8 +125,10 @@ services:
       REDIS_URL: redis://redis:6379/0
     volumes:
       - ./backend:/app/backend
+      - huggingface_cache:/root/.cache/huggingface
     command: celery -A core.celery_app:celery_app worker -l info
 
 volumes:
   postgres_data:
   redis_data:
+  huggingface_cache:

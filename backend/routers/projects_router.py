@@ -15,6 +15,7 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 # ============================================
 
 @router.post("/", response_model=schemas.Project)
+@router.post("", response_model=schemas.Project)
 def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
     """Yeni proje oluştur (Örn: TRENDYOL)"""
     db_project = Project(**project.dict())
@@ -24,6 +25,7 @@ def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)
     return db_project
 
 @router.get("/", response_model=List[schemas.Project])
+@router.get("", response_model=List[schemas.Project])
 def get_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Projeleri listele"""
     projects = db.query(Project).offset(skip).limit(limit).all()
@@ -88,65 +90,75 @@ async def generate_cases_for_page(
     
     target_url = page.url
     
-    # 2. AI ile Üret
-    print(f"🤖 AI Case Generation başladı (Sayfa: {page.name}): {target_url}")
-    generator = AICaseGenerator()
-    generated_cases = await generator.generate_cases_from_url(target_url, platform="web")
-    
-    # AI yanıt vermezse Fallback (SauceDemo örneği ile)
-    if not generated_cases:
-        demo_url = target_url
-        generated_cases = [
-            {
-                "title": f"✨ {page.name} Akış Doğrulaması",
-                "description": f"{page.name} için AI tarafından üretilen önizleme senaryosu.",
-                "priority": "high",
-                "steps": [
-                    {"order": 1, "action": "navigate", "target": demo_url, "expected": "Sayfa yüklendi."},
-                    {"order": 2, "action": "verify", "target": "body", "expected": "Görsel elementler hazır."}
-                ]
-            }
-        ]
-
-    # 3. Veritabanına Kaydet (Page ID ile)
-    saved_cases = []
     try:
-        for case_data in generated_cases:
-            new_case = TestCase(
-                project_id=page.project_id,
-                page_id=page.id,
-                title=case_data.get("title", "Untitled Case"),
-                description=case_data.get("description", ""),
-                category=case_data.get("category", "happy_path"),
-                priority=case_data.get("priority", "medium"),
-                platform="web", # Şimdilik üretilenler web odaklı
-                status="draft"
+        # 2. AI ile Üret
+        print(f"🤖 AI Case Generation başladı (Sayfa: {page.name}): {target_url}")
+        generator = AICaseGenerator()
+        generated_cases = await generator.generate_cases_from_url(
+            target_url,
+            platform="web",
+            use_screenshot=True,
+            strict_visual=True,
+            require_live_show=True
+        )
+        if not generated_cases:
+            raise HTTPException(
+                status_code=500,
+                detail="AI senaryo üretemedi. Görsel analiz veya canlı şov katmanı kontrol edilmeli."
             )
-            db.add(new_case)
-            db.commit()
-            db.refresh(new_case)
-            
-            # Adımları Kaydet
-            steps = case_data.get("steps", [])
-            for step_data in steps:
-                new_step = TestStep(
-                    test_case_id=new_case.id,
-                    order=step_data.get("order", 1),
-                    action=step_data.get("action", "verify"),
-                    target=step_data.get("target", ""),
-                    value=step_data.get("value", ""),
-                    expected_result=step_data.get("expected_result", step_data.get("expected", ""))
-                )
-                db.add(new_step)
-            
-            db.commit()
-            saved_cases.append(new_case)
-            
-        return {"message": f"{len(saved_cases)} cases generated for {page.name}.", "cases": saved_cases}
 
+        # 3. Veritabanına Kaydet (Page ID ile)
+        saved_cases = []
+        try:
+            for case_data in generated_cases:
+                new_case = TestCase(
+                    project_id=page.project_id,
+                    page_id=page.id,
+                    title=case_data.get("title", "Untitled Case"),
+                    description=case_data.get("description", ""),
+                    category=case_data.get("category", "happy_path"),
+                    priority=case_data.get("priority", "medium"),
+                    platform="web", # Şimdilik üretilenler web odaklı
+                    status="draft"
+                )
+                db.add(new_case)
+                db.commit()
+                db.refresh(new_case)
+                
+                # Adımları Kaydet
+                steps = case_data.get("steps", [])
+                for step_data in steps:
+                    new_step = TestStep(
+                        test_case_id=new_case.id,
+                        order=step_data.get("order", 1),
+                        action=step_data.get("action", "verify"),
+                        target=step_data.get("target", ""),
+                        value=step_data.get("value", ""),
+                        expected_result=step_data.get("expected_result", step_data.get("expected", ""))
+                    )
+                    db.add(new_step)
+                
+                db.commit()
+                saved_cases.append(new_case)
+                
+            return {
+                "message": f"{len(saved_cases)} cases generated for {page.name}.", 
+                "cases": [{"id": c.id, "title": c.title, "category": c.category, "priority": c.priority} for c in saved_cases]
+            }
+
+        except Exception as e:
+            db.rollback()
+            import traceback
+            err = traceback.format_exc()
+            print("DB ERROR:", err)
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=500, content={"detail": f"Database error: {str(e)}", "trace": err})
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        import traceback
+        err = traceback.format_exc()
+        print("GENERATE ERROR:", err)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"detail": f"Generation error: {str(e)}", "trace": err})
 
 # ============================================
 # MANUAL CASE CRUD

@@ -1,0 +1,231 @@
+﻿🤖 [LLM] Provider: GROQ | Model: llama-3.3-70b-versatile
+✅ [AICaseGenerator] LLM (Groq) hazır. DINO ekran analizi için bekleniyor.
+
+============================================================
+🧠 [AICaseGenerator] Analiz Başlıyor: https://saucedemo.com
+============================================================
+🎭 [WebExecutor] Tarayıcı başlatılıyor (Headless: True)...
+⚠️ [Screenshot] Playwright hatası: BrowserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+⚠️ [Screenshot] Alınamadı, URL'den çıkarım yapılıyor.
+🔍 [LLM] Sayfa kimliği analiz ediliyor: https://saucedemo.com
+✅ [Identity] Sayfa tipi: e-commerce_login | İş kuralı: 8 | Güven: 0.95
+🆔 [Page Identity] Bu sayfa: e-commerce_login
+🏢 [Business Rules] Tespit edilen kurallar: 8
+🤖 [LLM] Dinamik test senaryoları üretiliyor: https://saucedemo.com (web)
+✅ [TestGen] Toplam 7 senaryo üretildi (Mantıksal Kapsama)
+   → happy_path: 2
+   → negative_path: 3
+   → edge_cases: 1
+   → security_checks: 1
+
+✅ [AICaseGenerator] Toplam 7 test senaryosu üretildi!
+   → Happy Path: 2
+   → Negative:   3
+   → Edge Case:  1
+   → Security:   1
+INFO:     172.18.0.1:56958 - "POST /cases/generate HTTP/1.1" 200 OK
+INFO:     172.18.0.7:46876 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:46870 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:47224 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:44316 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:46088 - "GET /docs HTTP/1.1" 200 OK
+INFO:     172.18.0.1:46088 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     172.18.0.7:33122 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:47168 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:47164 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:38096 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:38110 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:51506 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:50962 - "GET /projects/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:55312 - "OPTIONS /projects/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:55312 - "POST /projects/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:43282 - "OPTIONS /projects/15/pages/ HTTP/1.1" 200 OK
+INFO:     172.18.0.1:43282 - "POST /projects/15/pages/ HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:43282 - "OPTIONS /projects/15/pages HTTP/1.1" 200 OK
+INFO:     172.18.0.1:43292 - "POST /projects/15/pages HTTP/1.1" 200 OK
+INFO:     172.18.0.7:45840 - "GET /projects/15 HTTP/1.1" 405 Method Not Allowed
+INFO:     172.18.0.7:45860 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:45844 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:35876 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:53744 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:42964 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:42948 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:39666 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:50698 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:50704 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:49960 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:49976 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.1:52848 - "OPTIONS /cases/generate HTTP/1.1" 200 OK
+🤖 [LLM] Provider: GROQ | Model: llama-3.3-70b-versatile
+✅ [AICaseGenerator] LLM (Groq) hazır. DINO ekran analizi için bekleniyor.
+
+============================================================
+🧠 [AICaseGenerator] Analiz Başlıyor: https://saucedemo.com
+============================================================
+🎭 [WebExecutor] Tarayıcı başlatılıyor (Headless: True)...
+⚠️ [Screenshot] Playwright hatası: BrowserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+⚠️ [Screenshot] Alınamadı, URL'den çıkarım yapılıyor.
+🔍 [LLM] Sayfa kimliği analiz ediliyor: https://saucedemo.com
+INFO:     172.18.0.7:53134 - "GET /stats/dashboard HTTP/1.1" 200 OK
+✅ [Identity] Sayfa tipi: e-commerce_login | İş kuralı: 8 | Güven: 0.95
+🆔 [Page Identity] Bu sayfa: e-commerce_login
+🏢 [Business Rules] Tespit edilen kurallar: 8
+🤖 [LLM] Dinamik test senaryoları üretiliyor: https://saucedemo.com (web)
+✅ [TestGen] Toplam 6 senaryo üretildi (Mantıksal Kapsama)
+   → happy_path: 2
+   → negative_path: 2
+   → edge_cases: 1
+   → security_checks: 1
+
+✅ [AICaseGenerator] Toplam 6 test senaryosu üretildi!
+   → Happy Path: 2
+   → Negative:   2
+   → Edge Case:  1
+   → Security:   1
+INFO:     172.18.0.1:52848 - "POST /cases/generate HTTP/1.1" 200 OK
+INFO:     172.18.0.7:43134 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:43138 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:37168 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:37162 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:46912 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:57438 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:57186 - "GET / HTTP/1.1" 200 OK
+INFO:     172.18.0.1:57186 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     172.18.0.7:56438 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:56430 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:56454 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:46852 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:32916 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:32916 - "GET /projects/ HTTP/1.1" 200 OK
+INFO:     172.18.0.7:59480 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:59496 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:35136 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:51092 - "GET /health HTTP/1.1" 200 OK
+INFO:     172.18.0.7:50086 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:41866 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:41882 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:41888 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:41890 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:54820 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:54822 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:44530 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:44714 - "GET / HTTP/1.1" 200 OK
+INFO:     172.18.0.7:42126 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:42114 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:42142 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.7:40764 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:42924 - "GET /projects HTTP/1.1" 307 Temporary Redirect
+INFO:     172.18.0.1:42924 - "GET /projects/ HTTP/1.1" 200 OK
+INFO:     172.18.0.7:37184 - "GET /projects HTTP/1.1" 404 Not Found
+INFO:     172.18.0.7:37190 - "GET /projects HTTP/1.1" 404 Not Found
+INFO:     172.18.0.7:37214 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:37206 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:37220 - "GET /projects HTTP/1.1" 404 Not Found
+INFO:     172.18.0.7:37230 - "GET /projects HTTP/1.1" 404 Not Found
+INFO:     172.18.0.1:59798 - "GET /projects HTTP/1.1" 200 OK
+INFO:     172.18.0.7:34172 - "GET /projects HTTP/1.1" 200 OK
+INFO:     172.18.0.7:36426 - "GET /projects/11/pages HTTP/1.1" 200 OK
+INFO:     172.18.0.7:36428 - "GET /stats/project/11 HTTP/1.1" 200 OK
+INFO:     172.18.0.7:36436 - "GET /cases/?project_id=11&page_id=2 HTTP/1.1" 200 OK
+INFO:     172.18.0.7:33856 - "GET /projects/2/pages HTTP/1.1" 200 OK
+INFO:     172.18.0.7:33858 - "GET /stats/project/2 HTTP/1.1" 200 OK
+INFO:     172.18.0.7:33866 - "GET /projects/15/pages HTTP/1.1" 200 OK
+INFO:     172.18.0.7:33878 - "GET /stats/project/15 HTTP/1.1" 200 OK
+INFO:     172.18.0.7:43880 - "GET /cases/?project_id=15&page_id=5 HTTP/1.1" 200 OK
+🤖 [LLM] Provider: GROQ | Model: llama-3.3-70b-versatile
+✅ [AICaseGenerator] LLM (Groq) hazır. DINO ekran analizi için bekleniyor.
+
+============================================================
+🧠 [AICaseGenerator] Analiz Başlıyor: https://saucedemo.com
+============================================================
+🎭 [WebExecutor] Tarayıcı başlatılıyor (Headless: True)...
+⚠️ [Screenshot] Playwright hatası: BrowserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+⚠️ [Screenshot] Alınamadı, URL'den çıkarım yapılıyor.
+🔍 [LLM] Sayfa kimliği analiz ediliyor: https://saucedemo.com
+✅ [Identity] Sayfa tipi: e-commerce_login | İş kuralı: 9 | Güven: 0.95
+🆔 [Page Identity] Bu sayfa: e-commerce_login
+🏢 [Business Rules] Tespit edilen kurallar: 9
+🤖 [LLM] Dinamik test senaryoları üretiliyor: https://saucedemo.com (web)
+✅ [TestGen] Toplam 6 senaryo üretildi (Mantıksal Kapsama)
+   → happy_path: 2
+   → negative_path: 2
+   → edge_cases: 1
+   → security_checks: 1
+
+✅ [AICaseGenerator] Toplam 6 test senaryosu üretildi!
+   → Happy Path: 2
+   → Negative:   2
+   → Edge Case:  1
+   → Security:   1
+INFO:     172.18.0.7:43890 - "POST /cases/generate HTTP/1.1" 200 OK
+INFO:     172.18.0.7:43892 - "GET /cases/?project_id=15&page_id=5 HTTP/1.1" 200 OK
+INFO:     172.18.0.7:48888 - "POST /execution/run-case/143 HTTP/1.1" 500 Internal Server Error
+INFO:     172.18.0.7:45074 - "GET /stats/alerts HTTP/1.1" 200 OK
+INFO:     172.18.0.7:45072 - "GET /stats/dashboard HTTP/1.1" 200 OK
+INFO:     172.18.0.7:45076 - "GET /projects HTTP/1.1" 200 OK
+INFO:     172.18.0.7:45086 - "GET /projects/14/pages HTTP/1.1" 200 OK
+INFO:     172.18.0.7:45102 - "GET /stats/project/14 HTTP/1.1" 200 OK
+INFO:     172.18.0.7:45112 - "GET /cases/?project_id=14&page_id=4 HTTP/1.1" 200 OK
+🤖 [LLM] Provider: GROQ | Model: llama-3.3-70b-versatile
+✅ [AICaseGenerator] LLM (Groq) hazır. DINO ekran analizi için bekleniyor.
+
+============================================================
+🧠 [AICaseGenerator] Analiz Başlıyor: https://www.saucedemo.com
+============================================================
+🎭 [WebExecutor] Tarayıcı başlatılıyor (Headless: True)...
+🔗 [WebExecutor] Windows'taki canlı Chrome'a (port 9222) bağlanılıyor...
+⚠️ [WebExecutor] Windows host Chrome bulunamadı: BrowserType.connect_over_cdp: connect ECONNREFUSED 192.168.65.254:9222
+Call log:
+  - <ws preparing> retrieving websocket url from http://host.docker.internal:9222
+
+⚠️ [Analiz] Hata: BrowserType.launch: Executable doesn't exist at /root/.cache/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝. URL'den çıkarım yapılıyor.
+🔍 [LLM] Sayfa kimliği analiz ediliyor: https://www.saucedemo.com
+✅ [Identity] Sayfa tipi: e-commerce_login | İş kuralı: 7 | Güven: 0.95
+🆔 [Page Identity] Bu sayfa: e-commerce_login
+🏢 [Business Rules] Tespit edilen kurallar: 7
+🤖 [LLM] Dinamik test senaryoları üretiliyor: https://www.saucedemo.com (web)
+✅ [TestGen] Toplam 6 senaryo üretildi (Mantıksal Kapsama)
+   → happy_path: 2
+   → negative_path: 2
+   → edge_cases: 1
+   → security_checks: 1
+
+✅ [AICaseGenerator] Toplam 6 test senaryosu üretildi!
+   → Happy Path: 2
+   → Negative:   2
+   → Edge Case:  1
+   → Security:   1
+INFO:     172.18.0.7:41674 - "POST /cases/generate HTTP/1.1" 200 OK
+INFO:     172.18.0.7:41686 - "GET /cases/?project_id=14&page_id=4 HTTP/1.1" 200 OK

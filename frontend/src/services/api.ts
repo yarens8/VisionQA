@@ -75,9 +75,43 @@ export interface TestCase {
     created_at: string;
 }
 
+export interface GenerateCasesRequest {
+    url: string;
+    platform?: string;
+    project_id?: number;
+    page_id?: number;
+    use_screenshot?: boolean;
+    strict_visual?: boolean;
+    require_live_show?: boolean;
+}
+
 export interface GenerateCasesResponse {
-    message: string;
+    success: boolean;
+    url: string;
+    total_cases: number;
+    saved_cases?: number;
+    summary: { happy_path: number; negative_path: number; edge_case: number; security: number };
     cases: TestCase[];
+    saved_to_db: boolean;
+}
+
+export interface RunStartResponse {
+    run_id: number;
+    case_id: number;
+    status: 'running' | 'completed' | 'failed' | 'crashed';
+    live_mode?: boolean;
+}
+
+export interface RunStatusResponse {
+    run_id: number;
+    case_id: number;
+    status: 'running' | 'completed' | 'failed' | 'crashed';
+    summary?: string;
+    steps: any[];
+}
+
+export interface StartCaseRequest {
+    live_mode?: boolean;
 }
 
 export interface DashboardStats {
@@ -137,8 +171,16 @@ export const api = {
     },
 
     // --- Test Cases ---
-    generateCasesForPage: async (pageId: number): Promise<GenerateCasesResponse> => {
-        const response = await apiClient.post<GenerateCasesResponse>(`/projects/pages/${pageId}/generate-cases`);
+    generateCases: async (data: GenerateCasesRequest): Promise<GenerateCasesResponse> => {
+        const response = await apiClient.post<GenerateCasesResponse>('/cases/generate', {
+            url: data.url,
+            platform: data.platform ?? 'web',
+            project_id: data.project_id,
+            page_id: data.page_id,
+            use_screenshot: data.use_screenshot ?? true,  // Varsayılan: AI ekranı da görsün
+            strict_visual: data.strict_visual ?? true,    // Varsayılan: hayali fallback kapalı
+            require_live_show: data.require_live_show ?? true, // Varsayılan: canlı bridge zorunlu
+        });
         return response.data;
     },
 
@@ -151,7 +193,24 @@ export const api = {
     },
 
     runTestCase: async (caseId: number): Promise<any> => {
-        const response = await apiClient.post(`/execution/run-case/${caseId}`);
+        const response = await apiClient.post(
+            `/execution/run-case/${caseId}`,
+            {},
+            { timeout: 180000 } // 3 dakika: takılmaları sonsuza bırakma
+        );
+        return response.data;
+    },
+
+    startTestCase: async (caseId: number, data?: StartCaseRequest): Promise<RunStartResponse> => {
+        const response = await apiClient.post<RunStartResponse>(
+            `/execution/start-case/${caseId}`,
+            { live_mode: data?.live_mode ?? false }
+        );
+        return response.data;
+    },
+
+    getRunStatus: async (runId: number): Promise<RunStatusResponse> => {
+        const response = await apiClient.get<RunStatusResponse>(`/execution/run-status/${runId}`);
         return response.data;
     },
 

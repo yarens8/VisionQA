@@ -467,6 +467,12 @@ When creating negative tests, think like this:
 - If the rule says "field is required" → leave it empty, submit, verify error message
 - If the rule says "minimum 8 characters" → type only 3 characters, verify rejection
 
+### Diversity Requirement (MANDATORY)
+- Scenarios MUST NOT be template clones.
+- Two scenarios cannot share exactly the same action-target sequence.
+- Use varied invalid data per test (e.g., invalid-email, empty string, SQL payload, overlong input).
+- Prefer locale-agnostic selectors when possible (type=email, type=password, type=submit) instead of exact English placeholders.
+
 ## OUTPUT FORMAT
 Return a JSON object with these categories:
 

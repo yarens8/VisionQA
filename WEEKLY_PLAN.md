@@ -15,23 +15,28 @@ Execution rules:
 - [x] Complete missing Phase 1 infra gaps: ERD, ExecutorFactory, base executor interface, Celery bootstrap
 - [x] Make Mobile/Desktop executor skeletons runnable (minimal commands)
 - [x] Verify all 5 platform executors instantiate successfully
-- [ ] Finish Docker gaps for platform services where required
-- [ ] Exit criteria: Milestone M1 completed in task.md
+- [x] Finish Docker gaps for platform services where required
+- [x] Exit criteria: Milestone M1 completed in task.md
 
 ## Week 2 (3 Mar - 9 Mar) | Platform Executors to Demo-Ready
 - [x] Mobile executor: initialize/screenshot/tap/swipe + emulator smoke test
 - [x] Desktop executor: launch/screenshot/click/type + Notepad smoke test
 - [x] Web/API/DB executor reliability pass (timeouts/retries/logging)
-- [x] Run 5-platform smoke matrix and log failures
-- [ ] Exit criteria: "5 platform test edildi" and related executor tests checked
+- [x] Run 5-platform smoke matrix and log failures (6/6 pass — 27 Şubat 2026)
+- [x] Exit criteria: "5 platform test edildi" and related executor tests checked
 
-## Week 3 (10 Mar - 16 Mar) | Bug Analyzer Module
+> **Not:** task.md Faz 2.1 "Otonom Test Mimarı" (AI Case Generator, Execution Engine,
+> Self-Healing, Cases API, Frontend Test Studio) Week 1-2'de tamamlandı.
+> Açık kalan tek madde: Multi-Modal Input (Tasarım/Swagger'dan senaryo üretimi) → Week 3'e taşındı.
+
+## Week 3 (10 Mar - 16 Mar) | Bug Analyzer Module + Otonom Test Tamamlama
 - [ ] Implement UniversalBugAnalyzer + VideoProcessor + LogProcessor
 - [ ] Add bug report templates (Jira/GitHub/Generic)
 - [ ] Build backend routes for bug analysis
 - [ ] Build frontend upload + results pages
 - [ ] Execute 4 analysis demos (web/mobile/api/db artifacts)
-- [ ] Exit criteria: Bug analyzer backend/frontend/testing items checked
+- [ ] Multi-Modal Input: URL yoksa Tasarım (Resim) veya API (Swagger) üzerinden senaryo üretimi
+- [ ] Exit criteria: Bug analyzer backend/frontend/testing items + Multi-Modal Input checked
 
 ## Week 4 (17 Mar - 23 Mar) | UI/UX Auditor Module
 - [ ] Implement VisualComparator

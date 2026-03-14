@@ -2,6 +2,7 @@
 from playwright.async_api import async_playwright, Browser, Page
 from typing import Optional
 import asyncio
+import re
 
 class WebExecutor:
     """
@@ -9,10 +10,17 @@ class WebExecutor:
     Görev: Siteleri açmak, tıklamak, screenshot almak.
     """
     
-    def __init__(self, headless: bool = False, nav_retries: int = 1, nav_retry_delay_sec: float = 0.4):
+    def __init__(
+        self,
+        headless: bool = False,
+        nav_retries: int = 1,
+        nav_retry_delay_sec: float = 0.4,
+        highlight_enabled: bool = True
+    ):
         self.headless = headless
         self.nav_retries = max(0, nav_retries)
         self.nav_retry_delay_sec = max(0.0, nav_retry_delay_sec)
+        self.highlight_enabled = highlight_enabled
         self.playwright = None
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
@@ -24,7 +32,7 @@ class WebExecutor:
         self.browser = await self.playwright.chromium.launch(headless=self.headless)
         self.page = await self.browser.new_page()
         print("✅ [WebExecutor] Tarayıcı hazır!")
-    
+
     async def navigate(self, url: str):
         """Web sayfasını açar — Daha esnek yükleme stratejisi ile."""
         if not self.page:
@@ -47,7 +55,7 @@ class WebExecutor:
 
         raise last_error if last_error else Exception(f"Navigation failed: {url}")
     
-    async def screenshot(self, path: Optional[str] = None) -> bytes:
+    async def screenshot(self, path: Optional[str] = None, full_page: bool = True) -> bytes:
         """
         Ekran görüntüsü al
         Returns: Screenshot bytes (PNG format)
@@ -55,7 +63,7 @@ class WebExecutor:
         if not self.page:
             raise Exception("Sayfa yok!")
         
-        screenshot_bytes = await self.page.screenshot(full_page=True)
+        screenshot_bytes = await self.page.screenshot(full_page=full_page)
         
         if path:
             with open(path, "wb") as f:
@@ -68,6 +76,8 @@ class WebExecutor:
         """
         � Lazer İşaretleyici v6 (Ultra-Neon): Elementi kör edici bir parlaklıkla vurgular.
         """
+        if not self.highlight_enabled:
+            return
         if not self.page: return
         try:
             if hasattr(selector_or_locator, "element_handle"):
@@ -201,19 +211,53 @@ class WebExecutor:
     async def type_input(self, selector: str, text: str, delay_ms: int = 150):
         """Alanı bul, NEON parlat ve ağır çekim yaz."""
         if not self.page: raise Exception("Sayfa yok!")
-        try:
-            elm = self.page.locator(selector).first
-            await elm.wait_for(timeout=3000)
-            await elm.scroll_into_view_if_needed()
-            
-            # 🔥 NEON PARLAMA
-            await self.highlight_element(elm)
-            
-            await elm.click()
-            await elm.fill("")
-            await self.page.keyboard.type(text, delay=delay_ms)
-        except Exception as e:
-            raise e
+        target = str(selector or "").lower()
+        candidates = [("primary", self.page.locator(selector).first)]
+
+        if any(k in target for k in ["email", "e-posta", "mail"]):
+            candidates.extend([
+                ("form-near-submit", self.page.locator("xpath=(//button[@type='submit']/ancestor::form//input[not(@type='hidden') and not(@disabled)])[1]").first),
+                ("login-card-input", self.page.locator("xpath=(//*[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜ', 'abcdefghijklmnopqrstuvwxyzçğiöşü'), 'giriş yap')]/ancestor-or-self::*[1]//input[not(@type='hidden') and not(@disabled)])[1]").first),
+                ("label-email", self.page.get_by_label(re.compile(r"(e-?posta|email|mail)", re.I)).first),
+                ("placeholder-email", self.page.get_by_placeholder(re.compile(r"(e-?posta|email|mail)", re.I)).first),
+                ("name-email", self.page.locator("input[name*='email' i], input[id*='email' i]").first),
+                ("autocomplete-email", self.page.locator("input[autocomplete='email'], input[autocomplete='username']").first),
+                ("inputmode-email", self.page.locator("input[inputmode='email']").first),
+                ("generic-input", self.page.locator("form input:not([type='hidden']):not([disabled]), input[type='text']:not([disabled])").first),
+            ])
+        elif any(k in target for k in ["password", "şifre", "sifre"]):
+            candidates.extend([
+                ("label-password", self.page.get_by_label(re.compile(r"(password|şifre|sifre)", re.I)).first),
+                ("placeholder-password", self.page.get_by_placeholder(re.compile(r"(password|şifre|sifre)", re.I)).first),
+                ("password-input", self.page.locator("input[type='password']").first),
+                ("name-password", self.page.locator("input[name*='password' i], input[id*='password' i]").first),
+            ])
+        else:
+            candidates.extend([
+                ("generic-input", self.page.locator("form input:not([type='hidden']):not([disabled]), input[type='text']:not([disabled]), textarea:not([disabled])").first),
+            ])
+
+        last_error: Optional[Exception] = None
+        for label, elm in candidates:
+            try:
+                await elm.wait_for(state="visible", timeout=2500)
+                await elm.scroll_into_view_if_needed()
+                await self.highlight_element(elm)
+                await elm.click()
+                await elm.fill(str(text))
+                written = await elm.input_value()
+                if str(written) != str(text):
+                    await elm.fill("")
+                    await self.page.keyboard.type(str(text), delay=delay_ms)
+                    written = await elm.input_value()
+                if str(written) == str(text):
+                    print(f"✅ [WebExecutor] Yazıldı ({label}): {selector}")
+                    return
+            except Exception as e:
+                last_error = e
+                continue
+
+        raise last_error if last_error else Exception(f"type failed: {selector}")
 
     async def verify_element(self, selector: str, timeout: int = 3000) -> bool:
         """Elementin varlığını kontrol et"""

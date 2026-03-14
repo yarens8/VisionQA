@@ -1,128 +1,231 @@
 
 import os
-import httpx
-import json
-import base64
-import asyncio
+import time
 from typing import List, Dict, Any, Optional
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class DINOXClient:
     """
-    👁️ VisionQA — Grounding DINO (DINO-X) Semantik Tahminleyici
-    Hugging Face Inference API üzerinden çalışır.
-    
-    GELİŞTİRME: Model yüklenme (loading) hatalarını yönetir ve Türkçe desteği barındırır.
+    👁️ VisionQA — Grounding DINO (Lokal) Görsel Element Tespit Motoru
+
+    Sayfa screenshot'ını alır, üzerindeki UI elementlerini (buton, input, link vb.)
+    tespit eder ve etiketli bounding box'lar döndürür.
+
+    Mimari:
+      - Model ağırlıkları ilk çalışmada HuggingFace'den indirilir (~700MB)
+      - Sonraki çalışmalarda cache'den okunur (internet gerekmez)
+      - Model bellekte tutulur, her analiz ~1-2 saniye sürer
+      - Proje bittiğinde DINO-X Cloud API'ye geçiş tek satır değişikliğidir
+
+    Kullanım:
+        client = DINOXClient()
+        elements = await client.detect_elements("screenshot.png")
+        # [{"label": "button", "score": 0.85, "box": [100, 200, 300, 250]}, ...]
     """
 
-    # Global engel çözücü için kapsamlı prompt (EN + TR)
-    OBSTACLES_PROMPT = "accept cookies, reject cookies, close button, dismiss icon, newsletter popup, allow, kadın, erkek, woman, man, gender selection, kabul et, reddet, kapat, onaylıyorum, anladım"
-    DEFAULT_PROMPT = "button, input, link, icon, text block, dropdown, checkbox, radio button"
+    # UI element tespiti için varsayılan prompt
+    DEFAULT_PROMPT = "button. input field. text field. link. logo. icon. navigation menu. search bar. dropdown. checkbox. image. form. header. footer."
 
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("HF_API_TOKEN") 
-        # Daha stabil bir model seçiyoruz (OWL-ViT bazen HF'de daha stabil olabiliyor, 
-        # ama biz Grounding DINO'da ısrarcıysak retry eklemeliyiz)
-        self.model_id = os.getenv("DINO_MODEL_ID", "IDEA-Research/grounding-dino-base") 
-        self.api_url = f"https://api-inference.huggingface.co/models/{self.model_id}"
+    # Global engel tespiti için prompt (çerez banner'ları, popup'lar vb.)
+    OBSTACLES_PROMPT = "cookie banner. accept button. reject button. close button. popup. modal. overlay. newsletter popup."
+
+    _instance: Optional["DINOXClient"] = None
+    _model = None
+    _processor = None
+
+    def __init__(self):
+        self.model_id = os.getenv("DINO_MODEL_ID", "IDEA-Research/grounding-dino-base")
+        # torch sadece model kullanılırken import edilecek
+        self.device = "cpu"  # Lazy: torch yoksa default cpu
+
+        # Model'i sadece 1 kere yükle (Singleton pattern)
+        if DINOXClient._model is None:
+            self._load_model()
         
-        if not self.api_key:
-            print("👁️ [DINO-X] UYARI: API Key yok, MOCK modunda çalışacak.")
+        self.model = DINOXClient._model
+        self.processor = DINOXClient._processor
 
-    async def _query_api(self, payload: Dict[str, Any], retries: int = 3) -> Any:
-        """HF API'ye güvenli sorgu atar, model yükleniyorsa bekler."""
-        if not self.api_key:
-            return None
+    def _load_model(self):
+        """Model ağırlıklarını yükler (sadece ilk seferde)."""
+        try:
+            import torch
+            from PIL import Image as PILImage  # noqa: F401
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        except ImportError:
+            raise RuntimeError(
+                "DINO modeli için 'torch' ve 'pillow' kütüphaneleri gerekli. "
+                "Lütfen `pip install torch torchvision pillow` çalıştırın."
+            )
+        print(f"👁️ [Grounding DINO] Model yükleniyor: {self.model_id}")
+        print(f"   Cihaz: {self.device}")
+        start = time.time()
 
-        headers = {"Authorization": f"Bearer {self.api_key}"}
-        
-        async with httpx.AsyncClient() as client:
-            for i in range(retries):
-                try:
-                    response = await client.post(
-                        self.api_url, 
-                        headers=headers, 
-                        json=payload,
-                        timeout=45.0
-                    )
-                    
-                    res_json = response.json()
-                    
-                    # Model hala yükleniyorsa bekle (HF spesifik hata)
-                    if isinstance(res_json, dict) and "error" in res_json:
-                        err = res_json.get("error", "").lower()
-                        if "loading" in err:
-                            wait_time = res_json.get("estimated_time", 20)
-                            print(f"⏳ [DINO-X] Model yükleniyor, {wait_time:.1f}s bekleniyor... (Deneme {i+1}/{retries})")
-                            await asyncio.sleep(wait_time)
-                            continue
-                        else:
-                            print(f"❌ [DINO-X] API Hatası: {res_json.get('error')}")
-                            return None
-                    
-                    return res_json
-                except Exception as e:
-                    print(f"⚠️ [DINO-X] İstek Hatası: {e}")
-                    await asyncio.sleep(2)
-        return None
+        from transformers import AutoProcessor, AutoModelForZeroShotObjectDetection
 
-    async def detect_elements(self, screenshot_path: str, prompt: str = None) -> List[Dict[str, Any]]:
-        """Elementleri tespit eder."""
+        DINOXClient._processor = AutoProcessor.from_pretrained(self.model_id)
+        DINOXClient._model = AutoModelForZeroShotObjectDetection.from_pretrained(
+            self.model_id
+        ).to(self.device)
+
+        elapsed = time.time() - start
+        print(f"✅ [Grounding DINO] Model hazır! ({elapsed:.1f} saniye)")
+
+    async def detect_elements(
+        self,
+        screenshot_path: str,
+        prompt: str = None,
+        box_threshold: float = 0.25,
+        text_threshold: float = 0.20
+    ) -> List[Dict[str, Any]]:
+        """
+        Screenshot üzerindeki UI elementlerini tespit eder.
+
+        Args:
+            screenshot_path: Analiz edilecek görsel dosya yolu
+            prompt: Aranacak element türleri (nokta ile ayrılmış)
+            box_threshold: Minimum kutu güven skoru (0-1)
+            text_threshold: Minimum metin eşleşme skoru (0-1)
+
+        Returns:
+            [{"label": "button", "score": 0.85, "box": [x1, y1, x2, y2]}, ...]
+        """
         prompt = prompt or self.DEFAULT_PROMPT
-        if not self.api_key:
-            return self._get_mock_elements(prompt)
+        print(f"👁️ [Grounding DINO] Analiz ediliyor: {screenshot_path}")
 
         try:
-            with open(screenshot_path, "rb") as f:
-                image_data = f.read()
-            
-            # Grounding DINO formatı: inputs içinde 'image' (base64) ve 'text' (prompt)
-            payload = {
-                "inputs": {
-                    "image": base64.b64encode(image_data).decode("utf-8"),
-                    "text": prompt # Grounding DINO 'text' parametresiyle çalışır
-                }
-            }
+            import torch
+            from PIL import Image
+            # Görseli aç
+            image = Image.open(screenshot_path).convert("RGB")
+            w, h = image.size
 
-            results = await self._query_api(payload)
-            
-            formatted_results = []
-            if isinstance(results, list):
-                for item in results:
-                    formatted_results.append({
-                        "label": item.get("label", "unknown"),
-                        "box": item.get("box", {}),
-                        "score": item.get("score", 0)
-                    })
-            
-            return formatted_results
+            # Prompt'u küçük harfe çevir (Grounding DINO gereksinimi)
+            prompt_lower = prompt.lower()
+
+            # Model'e gönder
+            inputs = self.processor(
+                images=image,
+                text=prompt_lower,
+                return_tensors="pt"
+            ).to(self.device)
+
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+
+            # Sonuçları işle
+            elements = self._post_process(
+                outputs, inputs, image, prompt_lower,
+                box_threshold, text_threshold
+            )
+
+            print(f"✅ [Grounding DINO] {len(elements)} element bulundu!")
+            return elements
 
         except Exception as e:
-            print(f"❌ [DINO-X] Beklenmedik Hata: {str(e)}")
+            print(f"❌ [Grounding DINO] Hata: {str(e)}")
             return []
 
+    async def detect_obstacles(self, screenshot_path: str) -> List[Dict[str, Any]]:
+        """
+        Sayfadaki engelleri (çerez banner, popup vb.) tespit eder.
+        SelfHealingExecutor tarafından kullanılır.
+        """
+        return await self.detect_elements(
+            screenshot_path,
+            prompt=self.OBSTACLES_PROMPT,
+            box_threshold=0.30,
+            text_threshold=0.25
+        )
+
+    def _post_process(
+        self,
+        outputs,
+        inputs,
+        image: Any,
+        prompt: str,
+        box_threshold: float,
+        text_threshold: float
+    ) -> List[Dict[str, Any]]:
+        """
+        Model çıktısını etiketli element listesine dönüştürür.
+        """
+        w, h = image.size
+        logits = outputs.logits.sigmoid()[0]  # (num_queries, num_tokens)
+        boxes = outputs.pred_boxes[0]          # (num_queries, 4)
+
+        # Her kutu için en yüksek skoru bul
+        max_scores = logits.max(dim=-1)
+        mask = max_scores.values > box_threshold
+
+        filtered_boxes = boxes[mask]
+        filtered_logits = logits[mask]
+        filtered_scores = max_scores.values[mask]
+
+        # Prompt'taki label'ları çıkart
+        labels = [l.strip() for l in prompt.split('.') if l.strip()]
+
+        # Tokenizer ile her label'ın token pozisyonlarını hesapla
+        input_ids = inputs.input_ids[0].tolist()
+        tokenizer = self.processor.tokenizer
+        
+        label_token_map = {}
+        for label in labels:
+            label_tokens = tokenizer.encode(label, add_special_tokens=False)
+            for j in range(len(input_ids) - len(label_tokens) + 1):
+                if input_ids[j:j + len(label_tokens)] == label_tokens:
+                    label_token_map[label] = list(range(j, j + len(label_tokens)))
+                    break
+
+        # Sonuçları oluştur
+        elements = []
+        for i in range(len(filtered_boxes)):
+            score = filtered_scores[i].item()
+            box_raw = filtered_boxes[i].tolist()
+
+            # Normalize koordinatları piksel değerlerine çevir
+            cx, cy, bw, bh = box_raw
+            x1 = round((cx - bw / 2) * w, 1)
+            y1 = round((cy - bh / 2) * h, 1)
+            x2 = round((cx + bw / 2) * w, 1)
+            y2 = round((cy + bh / 2) * h, 1)
+
+            # En iyi eşleşen label'ı bul
+            token_scores = filtered_logits[i]
+            best_label = "unknown"
+            best_label_score = 0
+
+            for label, positions in label_token_map.items():
+                if positions:
+                    avg_score = token_scores[positions].mean().item()
+                    if avg_score > best_label_score and avg_score > text_threshold:
+                        best_label_score = avg_score
+                        best_label = label
+
+            elements.append({
+                "label": best_label,
+                "score": round(score, 3),
+                "box": [x1, y1, x2, y2]
+            })
+
+        # Skora göre sırala (en güvenli önce)
+        elements.sort(key=lambda x: -x["score"])
+
+        return elements
+
     async def get_world_view(self, screenshot_path: str) -> str:
-        """LLM için World View üretir."""
+        """LLM için World View metni üretir."""
         elements = await self.detect_elements(screenshot_path)
         if not elements:
-            return "No UI elements detected via DINO-X (API might be loading or no matches found)."
+            return "No UI elements detected via Grounding DINO."
 
-        world_view = "### SEUMANTIC WORLD VIEW (Detected via DINO-X)\n"
+        lines = ["### VISUAL WORLD VIEW (Detected via Grounding DINO)"]
         for i, elem in enumerate(elements, 1):
             label = elem.get("label", "element")
             box = elem.get("box", [])
             score = elem.get("score", 0)
-            world_view += f"{i}. [{label}] at {box} (confidence: {score:.2f})\n"
-        
-        return world_view
+            lines.append(f"{i}. [{label}] at {box} (confidence: {score:.2f})")
 
-    def _get_mock_elements(self, prompt: str) -> List[Dict[str, Any]]:
-        """API Key yoksa çalışan mock sistemi (geliştirildi)."""
-        mock_results = []
-        if "accept" in prompt or "kabul" in prompt:
-            # Tipik çerez banner butonu (Mock)
-            mock_results.append({"label": "kabul_et_button", "box": {"xmin": 600, "ymin": 800, "xmax": 800, "ymax": 850}, "score": 0.95})
-        
-        if "input" in prompt or "search" in prompt:
-            mock_results.append({"label": "search_box", "box": {"xmin": 300, "ymin": 150, "xmax": 700, "ymax": 200}, "score": 0.92})
-            
-        return mock_results
+        return "\n".join(lines)

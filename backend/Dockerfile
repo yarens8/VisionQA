@@ -8,6 +8,9 @@ WORKDIR /app/backend
 COPY backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
+# Playwright Chromium tarayıcısını ve sistem bağımlılıklarını kur
+RUN playwright install --with-deps chromium
+
 COPY backend /app/backend
 
 EXPOSE 8000

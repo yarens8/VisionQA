@@ -1,6 +1,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import shutil
+import subprocess
 from typing import Any, Dict, Optional
 
 import httpx
@@ -11,6 +14,10 @@ class MobileExecutor:
     VisionQA Mobile Executor (Appium HTTP Wrapper).
     Uses Appium's W3C WebDriver endpoints directly.
     """
+
+    # Retry configuration for flaky emulator boots
+    DEFAULT_MAX_RETRIES = 2
+    DEVICE_BOOT_TIMEOUT = 60.0  # seconds to wait for sys.boot_completed
 
     def __init__(
         self,
@@ -48,12 +55,77 @@ class MobileExecutor:
                 "Start Appium before running mobile tests."
             ) from exc
 
+    # ── Device health helpers ──────────────────────────────────────────
+
+    @staticmethod
+    def _has_adb() -> bool:
+        """Check whether *adb* is available on the PATH."""
+        return shutil.which("adb") is not None
+
+    async def _wait_for_device_boot(self) -> None:
+        """Block until the Android emulator reports ``sys.boot_completed=1``.
+
+        If *adb* is not on the PATH the check is silently skipped so that
+        environments without the full Android SDK still work (Appium may be
+        running on a remote host).
+        """
+        if not self._has_adb():
+            return
+
+        deadline = asyncio.get_event_loop().time() + self.DEVICE_BOOT_TIMEOUT
+        while asyncio.get_event_loop().time() < deadline:
+            try:
+                result = subprocess.run(
+                    ["adb", "shell", "getprop", "sys.boot_completed"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if result.stdout.strip() == "1":
+                    print("[MobileExecutor] Device boot confirmed.")
+                    return
+            except Exception:
+                pass
+            await asyncio.sleep(2)
+
+        print(
+            "[MobileExecutor] Warning: device boot check timed out after "
+            f"{self.DEVICE_BOOT_TIMEOUT}s — proceeding anyway."
+        )
+
+    async def _cleanup_uiautomator2(self) -> None:
+        """Force-stop stale UiAutomator2 processes on the device.
+
+        This is called between retries to give Appium a clean slate for the
+        next session attempt.
+        """
+        if not self._has_adb():
+            return
+
+        for pkg in (
+            "io.appium.uiautomator2.server",
+            "io.appium.uiautomator2.server.test",
+        ):
+            try:
+                subprocess.run(
+                    ["adb", "shell", "am", "force-stop", pkg],
+                    capture_output=True,
+                    timeout=5,
+                )
+            except Exception:
+                pass
+
+    # ── Capabilities ───────────────────────────────────────────────────
+
     def _build_capabilities(self) -> Dict[str, Any]:
         if self.platform == "android":
             capabilities: Dict[str, Any] = {
                 "platformName": "Android",
                 "appium:deviceName": self.device_name,
                 "appium:automationName": self.automation_name or "UiAutomator2",
+                "appium:uiautomator2ServerLaunchTimeout": 60000,
+                # Skip server reinstall when it already exists — speeds up retries
+                "appium:skipServerInstallation": False,
             }
             if self.app_package:
                 capabilities["appium:appPackage"] = self.app_package
@@ -73,11 +145,22 @@ class MobileExecutor:
 
         raise ValueError(f"Unsupported mobile platform: {self.platform}")
 
-    async def start(self) -> bool:
-        """Start Appium session."""
+    # ── Session lifecycle ──────────────────────────────────────────────
+
+    async def start(self, max_retries: int | None = None) -> bool:
+        """Start Appium session with automatic retry for flaky emulator boots.
+
+        On each failed attempt the executor cleans up stale UiAutomator2
+        processes and waits a short back-off period before retrying.
+        """
+        retries = max_retries if max_retries is not None else self.DEFAULT_MAX_RETRIES
         print(f"[MobileExecutor] Starting Appium session for {self.platform}...")
         self._ensure_client()
         await self._check_appium_status()
+
+        # Wait for device boot before the first attempt
+        if self.platform == "android":
+            await self._wait_for_device_boot()
 
         payload = {
             "capabilities": {
@@ -85,17 +168,44 @@ class MobileExecutor:
                 "firstMatch": [{}],
             }
         }
-        response = await self.client.post(f"{self.appium_server_url}/session", json=payload)
-        response.raise_for_status()
-        data = response.json()
 
-        session_id = data.get("sessionId") or data.get("value", {}).get("sessionId")
-        if not session_id:
-            raise RuntimeError(f"Appium session creation failed: {data}")
+        last_error: Exception | None = None
+        for attempt in range(retries + 1):
+            try:
+                response = await self.client.post(
+                    f"{self.appium_server_url}/session",
+                    json=payload,
+                    timeout=90.0,
+                )
+                response.raise_for_status()
+                data = response.json()
 
-        self.session_id = session_id
-        print(f"[MobileExecutor] Session ready: {self.session_id}")
-        return True
+                session_id = data.get("sessionId") or data.get("value", {}).get(
+                    "sessionId"
+                )
+                if not session_id:
+                    raise RuntimeError(f"Appium session creation failed: {data}")
+
+                self.session_id = session_id
+                print(f"[MobileExecutor] Session ready: {self.session_id}")
+                return True
+
+            except (httpx.HTTPStatusError, httpx.ReadTimeout) as exc:
+                last_error = exc
+                if attempt < retries:
+                    wait = 5 * (attempt + 1)
+                    print(
+                        f"[MobileExecutor] Attempt {attempt + 1}/{retries + 1} failed "
+                        f"({type(exc).__name__}). Retrying in {wait}s…"
+                    )
+                    await self._cleanup_uiautomator2()
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+
+        # Should never reach here, but satisfy type checker
+        assert last_error is not None
+        raise last_error
 
     async def initialize(self) -> bool:
         """Backward-compatible alias used by scenario steps/checklists."""
