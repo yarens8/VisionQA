@@ -38,6 +38,11 @@ def test_uiux_engine_returns_multiple_findings():
     assert "alignment" in categories
     assert "spacing" in categories
     assert "consistency" in categories
+    assert result["ux_score"] <= 100
+    assert "ai_critic_summary" in result
+    assert "attention_prediction" in result
+    assert result["findings"][0]["ai_critic"]
+    assert result["findings"][0]["why_this_matters"]
     assert result["artifacts"]["annotated_image_base64"]
 
 

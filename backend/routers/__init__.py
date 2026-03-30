@@ -9,3 +9,4 @@ from . import report_router
 from . import scenario_router
 from . import accessibility_router
 from . import uiux_router
+from . import security_router
