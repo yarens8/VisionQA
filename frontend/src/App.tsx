@@ -12,6 +12,7 @@ import TestLabPage from './pages/TestLabPage'
 import DatabasePage from './pages/DatabasePage'
 import SecurityPage from './pages/SecurityPage'
 import AccessibilityPage from './pages/AccessibilityPage'
+import UIUXPage from './pages/UIUXPage'
 import SettingsPage from './pages/SettingsPage'
 import ScenarioPage from './pages/ScenarioPage'
 
@@ -48,7 +49,7 @@ function App() {
                     <Route path="database" element={<DatabasePage />} />
                     <Route path="scenarios" element={<ScenarioPage />} />
                     <Route path="security" element={<SecurityPage />} />
-
+                    <Route path="uiux" element={<UIUXPage />} />
                     <Route path="accessibility" element={<AccessibilityPage />} />
 
                     {/* ⚙️ Ayarlar */}

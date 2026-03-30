@@ -71,6 +71,116 @@ class WebExecutor:
             print(f"📸 [WebExecutor] Screenshot kaydedildi: {path}")
         
         return screenshot_bytes
+
+    async def extract_accessibility_metadata(self):
+        """
+        Sayfadaki temel erişilebilirlik metadata'sını toplar.
+        Not: Bu v1 sadece web executor için metadata üretir.
+        """
+        if not self.page:
+            raise Exception("Sayfa yok!")
+
+        return await self.page.evaluate(
+            """
+            () => {
+                const selector = [
+                    'img',
+                    'button',
+                    'a[href]',
+                    'input',
+                    'textarea',
+                    'select',
+                    '[role="button"]',
+                    '[role="link"]',
+                    '[tabindex]',
+                    '[contenteditable="true"]'
+                ].join(',');
+
+                const inferType = (el) => {
+                    const tag = el.tagName.toLowerCase();
+                    const role = (el.getAttribute('role') || '').toLowerCase();
+                    const inputType = (el.getAttribute('type') || '').toLowerCase();
+
+                    if (tag === 'img') return 'image';
+                    if (tag === 'textarea') return 'textarea';
+                    if (tag === 'select') return 'select';
+                    if (tag === 'button' || role === 'button') return 'button';
+                    if (tag === 'a' || role === 'link') return 'link';
+                    if (tag === 'input') {
+                        if (['button', 'submit', 'reset'].includes(inputType)) return 'button';
+                        if (['checkbox', 'radio'].includes(inputType)) return inputType;
+                        return 'input';
+                    }
+                    if (el.getAttribute('contenteditable') === 'true') return 'editable';
+                    return role || tag || 'element';
+                };
+
+                const isKeyboardFocusable = (el) => {
+                    if (el.hasAttribute('disabled')) return false;
+                    if (el.getAttribute('aria-hidden') === 'true') return false;
+
+                    if (typeof el.tabIndex === 'number' && el.tabIndex >= 0) return true;
+
+                    const tag = el.tagName.toLowerCase();
+                    if (['button', 'input', 'select', 'textarea', 'summary'].includes(tag)) return true;
+                    if (tag === 'a' && el.hasAttribute('href')) return true;
+                    if (el.getAttribute('contenteditable') === 'true') return true;
+                    return false;
+                };
+
+                const hasVisibleFocusIndicator = (el, style) => {
+                    const outlineWidth = parseFloat(style.outlineWidth || '0') || 0;
+                    const borderWidth = parseFloat(style.borderWidth || '0') || 0;
+                    const boxShadow = style.boxShadow || '';
+                    const outlineVisible = outlineWidth > 0 && style.outlineStyle !== 'none' && style.outlineColor !== 'rgba(0, 0, 0, 0)';
+                    const shadowVisible = boxShadow && boxShadow !== 'none';
+                    const borderVisible = borderWidth >= 2 && style.borderStyle !== 'none';
+                    return Boolean(outlineVisible || shadowVisible || borderVisible);
+                };
+
+                return Array.from(document.querySelectorAll(selector))
+                    .map((el) => {
+                        const rect = el.getBoundingClientRect();
+                        if (rect.width <= 0 || rect.height <= 0) return null;
+
+                        const style = window.getComputedStyle(el);
+                        const tagName = el.tagName.toLowerCase();
+                        const isFocused = document.activeElement === el || el.matches(':focus') || el.matches(':focus-visible');
+                        const altText = tagName === 'img' ? (el.getAttribute('alt') || '') : null;
+                        const textContent = ((el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim()).slice(0, 120);
+                        const placeholder = el.getAttribute('placeholder');
+                        const title = el.getAttribute('title');
+                        const name = el.getAttribute('name');
+                        const inputType = el.getAttribute('type');
+                        const value = (() => {
+                            if (tagName !== 'input' && tagName !== 'textarea') return null;
+                            if ((inputType || '').toLowerCase() === 'password') return null;
+                            return String(el.value || '').trim().slice(0, 120) || null;
+                        })();
+
+                        return {
+                            element_type: inferType(el),
+                            x: Math.max(0, Math.round(rect.left + window.scrollX)),
+                            y: Math.max(0, Math.round(rect.top + window.scrollY)),
+                            width: Math.round(rect.width),
+                            height: Math.round(rect.height),
+                            alt_text: altText,
+                            aria_label: el.getAttribute('aria-label'),
+                            text_content: textContent || null,
+                            placeholder,
+                            title,
+                            value,
+                            name,
+                            input_type: inputType,
+                            keyboard_focusable: isKeyboardFocusable(el),
+                            focus_visible: isFocused ? hasVisibleFocusIndicator(el, style) : null,
+                            tab_index: el.hasAttribute('tabindex') ? Number(el.getAttribute('tabindex')) : null,
+                        };
+                    })
+                    .filter(Boolean);
+            }
+            """
+        )
     
     async def highlight_element(self, selector_or_locator):
         """

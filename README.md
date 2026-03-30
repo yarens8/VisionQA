@@ -52,7 +52,7 @@ VisionQA bu problemi, moduler ama tek orkestrasyon altinda calisan bir framework
 3. 🧾 **AI Dataset Validator** - Makine ogrenmesi projelerinde kullanilan veri setlerinin kalitesini kontrol eder. Eksik veri, hatali etiketleme ve veri dengesizligi gibi problemleri analiz eder.
 4. 🎥 **Universal Bug Analyzer** - Test sirasinda olusan hatalari log, video ve ekran goruntulerini analiz ederek otomatik tespit eder ve detayli bug raporlari olusturur.
 5. 🔒 **Multi-Platform Security Auditor** - Uygulamalarda olusabilecek guvenlik aciklarini analiz eder. Yetkilendirme hatalari, hassas veri kullanimi ve potansiyel guvenlik risklerini belirler.
-6. ♿ **Universal Accessibility Expert** - Uygulamalarin erisilebilirlik standartlarina (WCAG vb.) uygunlugunu analiz eder. Renk kontrasti, okunabilirlik ve erisilebilirlik uyumlulugunu degerlendirir.
+6. ♿ **Universal Accessibility Expert** - Screenshot veya URL girdileri uzerinden uygulamalarin erisilebilirlik standartlarina uygunlugunu visual-first yaklasimla analiz eder. Sayisal goruntu isleme kullanarak ekranin tamami uzerinde kontrast, okunabilirlik, renk ayrismasi ve gorunur erisilebilirlik sorunlarini tespit eder; OCR, DINO ve metadata destekli bilesen anlama ile buton, giris alani, yardimci metin ve benzeri UI parcalarini daha dogru yorumlayip sorunlu alanlari isaretler ve iyilestirme onerileri uretir.
 7. 🚀 **Cross-Platform Performance Analyzer** - Uygulamalarin performansini farkli platformlarda analiz eder. Yuklenme sureleri, kaynak kullanimi ve kullanici deneyimi performansi olculur.
 8. 📱 **Mobile-Specific Test Suite** - Mobil uygulamalara ozel testleri gerceklestirir. Dokunma hareketleri, cihaz uyumlulugu ve ag kosullarina bagli testler yapilir.
 9. 🔌 **API Test Suite** - Uygulamanin backend servislerini test eder. API endpoint dogrulama, veri formati kontrolu ve yuk testleri gerceklestirir.
@@ -108,6 +108,7 @@ VisionQA katmanli bir framework mimarisi kullanir:
 - Her modul tek bir kalite alanina odaklanir.
 - Test ciktilarini alan bazli analiz eder.
 - Standart bir cikti formatina donusturur.
+- Gerektiginde visual-first ve sayisal goruntu isleme tabanli analiz yaklasimlari kullanir.
 
 High-level flow:
 

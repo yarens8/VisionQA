@@ -10,7 +10,7 @@ export function AppLayout() {
             <Sidebar />
 
             {/* 🔵 Main Content Area */}
-            <div className="flex flex-col flex-1 pl-64"> {/* pl-64: Sidebar genişliği kadar boşluk */}
+            <div className="flex min-w-0 flex-1 flex-col pl-64"> {/* pl-64: Sidebar genişliği kadar boşluk */}
 
                 {/* Header (Basit versiyon) */}
                 <header className="h-16 flex items-center justify-between px-8 border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-10">
@@ -30,8 +30,8 @@ export function AppLayout() {
                 </header>
 
                 {/* 🔴 Page Content (Değişken Alan) */}
-                <main className="flex-1 overflow-y-auto p-8 scroll-smooth">
-                    <div className="mx-auto max-w-7xl">
+                <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-8 scroll-smooth">
+                    <div className="mx-auto w-full max-w-7xl min-w-0">
                         <Outlet />
                     </div>
                 </main>

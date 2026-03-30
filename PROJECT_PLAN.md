@@ -2,8 +2,7 @@
 ## Proje Yönetim Dokümanı
 
 **Proje Adı:** VisionQA Ultimate Platform  
-**Hazırlayan:** [Öğrenci Adı]  
-**Danışman:** [Hoca Adı]  
+**Hazırlayan:** [Yaren APAYDIN]  
 **Tarih:** 10 Şubat 2026  
 **Durum:** Planlama Fazı Tamamlandı
 
@@ -336,8 +335,8 @@ VisionQA bu araçlardan **açık kaynak**, **görsel-odaklı** ve **çok boyutlu
 **GitHub:** [github.com/username/visionqa]  
 
 **Danışman:** [Hoca Adı]  
-**Bölüm:** [Bilgisayar Mühendisliği]  
-**Üniversite:** [Üniversite Adı]  
+**Bölüm:** [Yazılım Mühendisliği]  
+**Üniversite:** [Fırat Üniversitesi]  
 
 ---
 

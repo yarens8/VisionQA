@@ -5,7 +5,7 @@ import asyncio
 import io
 import os
 import subprocess
-from typing import Optional
+from typing import Any, Dict, Optional
 
 
 class DesktopExecutor:
@@ -155,6 +155,84 @@ class DesktopExecutor:
             print(f"[DesktopExecutor] Screenshot saved: {path}")
 
         return png_bytes
+
+    @staticmethod
+    def _infer_desktop_element_type(control_type: str, class_name: str) -> str:
+        normalized_type = (control_type or "").strip().lower()
+        normalized_class = (class_name or "").strip().lower()
+
+        if "edit" in normalized_type or "edit" in normalized_class:
+            return "input"
+        if "button" in normalized_type or "button" in normalized_class:
+            return "button"
+        if "hyperlink" in normalized_type or "link" in normalized_type:
+            return "link"
+        if "image" in normalized_type or "image" in normalized_class:
+            return "image"
+        if "checkbox" in normalized_type:
+            return "checkbox"
+        if "radio" in normalized_type:
+            return "radio"
+        if "text" in normalized_type:
+            return "text"
+        return "element"
+
+    async def extract_accessibility_metadata(self) -> list[Dict[str, Any]]:
+        """Best-effort accessibility metadata extraction for Windows desktop apps."""
+        if self.platform != "windows":
+            return []
+
+        if self.process is None and self._hwnd is None:
+            return []
+
+        try:
+            from pywinauto import Application  # type: ignore
+        except Exception:
+            return []
+
+        hwnd = self._hwnd or (self._find_window_by_pid(self.process.pid) if self.process else None)
+        if hwnd is None:
+            return []
+
+        try:
+            app = Application(backend="uia").connect(handle=hwnd)
+            window = app.window(handle=hwnd)
+            descendants = [window] + list(window.descendants())
+        except Exception:
+            return []
+
+        metadata: list[Dict[str, Any]] = []
+        for element in descendants:
+            try:
+                rectangle = element.rectangle()
+                width = max(1, int(rectangle.width()))
+                height = max(1, int(rectangle.height()))
+                if width <= 0 or height <= 0:
+                    continue
+
+                element_info = getattr(element, "element_info", None)
+                control_type = getattr(element_info, "control_type", "") or ""
+                class_name = getattr(element_info, "class_name", "") or ""
+                name = getattr(element_info, "name", "") or ""
+                automation_id = getattr(element_info, "automation_id", "") or ""
+
+                metadata.append(
+                    {
+                        "element_type": self._infer_desktop_element_type(control_type, class_name),
+                        "x": int(rectangle.left),
+                        "y": int(rectangle.top),
+                        "width": width,
+                        "height": height,
+                        "text_content": str(name).strip() or None,
+                        "name": str(automation_id).strip() or None,
+                        "keyboard_focusable": None,
+                        "focus_visible": None,
+                    }
+                )
+            except Exception:
+                continue
+
+        return metadata
 
     async def stop(self) -> bool:
         """Terminate launched application process if present."""

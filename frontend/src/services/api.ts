@@ -138,6 +138,140 @@ export interface AlertsResponse {
     alerts: Alert[];
 }
 
+export interface AccessibilityBoundingBox {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+export interface AccessibilityFinding {
+    id: number;
+    title: string;
+    severity: 'high' | 'medium' | 'low' | 'pass' | string;
+    category: string;
+    description: string;
+    wcag_status: string;
+    contrast_ratio: number;
+    dominant_dark: string;
+    dominant_light: string;
+    bounding_box: AccessibilityBoundingBox;
+    crop_image_base64: string;
+    recommendation: string;
+}
+
+export interface AccessibilityHeatmapRegion {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    severity: 'high' | 'medium' | 'low' | 'pass' | string;
+    contrast_ratio: number;
+}
+
+export interface AccessibilityAnalysisResponse {
+    platform: string;
+    image: {
+        width: number;
+        height: number;
+    };
+    overall_score: number;
+    overview: string;
+    wcag_summary: {
+        aaa_pass: number;
+        aa_pass: number;
+        large_text_only: number;
+        fail: number;
+    };
+    color_consistency_score: number;
+    palette: {
+        color: string;
+        coverage: number;
+    }[];
+    components: {
+        id: number;
+        label: string;
+        severity: 'high' | 'medium' | 'low' | 'pass' | string;
+        average_contrast_ratio: number;
+        bounding_box: AccessibilityBoundingBox;
+    }[];
+    findings: AccessibilityFinding[];
+    heatmap: AccessibilityHeatmapRegion[];
+    artifacts: {
+        overlay_image_base64: string;
+        source_image_base64: string;
+    };
+    recommendations: string[];
+}
+
+export interface AccessibilityUrlAnalysisRequest {
+    url: string;
+    platform?: string;
+    headless?: boolean;
+    full_page?: boolean;
+}
+
+export interface AccessibilityHistoryItem {
+    id: number;
+    platform: string;
+    source_type: string;
+    source_label?: string;
+    source_url?: string;
+    is_favorite: boolean;
+    overall_score: number;
+    findings_count: number;
+    overview: string;
+    thumbnail_base64?: string;
+    created_at: string;
+}
+
+export interface AccessibilityHistoryDetail {
+    id: number;
+    platform: string;
+    source_type: string;
+    source_label?: string;
+    source_url?: string;
+    is_favorite: boolean;
+    created_at: string;
+    analysis: AccessibilityAnalysisResponse;
+}
+
+export interface AccessibilityHistoryUpdateRequest {
+    source_label?: string;
+    is_favorite?: boolean;
+}
+
+export interface UiuxFinding {
+    id: number;
+    title: string;
+    severity: 'high' | 'medium' | 'low' | 'pass' | string;
+    category: string;
+    affected_role: string;
+    description: string;
+    bounding_box: AccessibilityBoundingBox;
+    crop_image_base64: string;
+    recommendation: string;
+}
+
+export interface UiuxAnalysisResponse {
+    platform: string;
+    image: {
+        width: number;
+        height: number;
+    };
+    overall_score: number;
+    overview: string;
+    alignment_score: number;
+    spacing_consistency_score: number;
+    layout_balance_score: number;
+    findings: UiuxFinding[];
+    artifacts: {
+        annotated_image_base64: string;
+        source_image_base64: string;
+    };
+    recommendations: string[];
+}
+
 // 🛠️ API Servis Fonksiyonları
 export const api = {
     // --- Projects ---
@@ -249,5 +383,52 @@ export const api = {
             console.warn("Alerts endpoint not ready, returning empty data");
             return { total_alerts: 0, critical_count: 0, warning_count: 0, alerts: [] };
         }
-    }
+    },
+
+    analyzeAccessibilityImage: async (imageBase64: string, platform = 'web'): Promise<AccessibilityAnalysisResponse> => {
+        const response = await apiClient.post<AccessibilityAnalysisResponse>('/accessibility/analyze-image', {
+            platform,
+            image_base64: imageBase64,
+        });
+        return response.data;
+    },
+
+    analyzeAccessibilityUrl: async (data: AccessibilityUrlAnalysisRequest): Promise<AccessibilityAnalysisResponse> => {
+        const response = await apiClient.post<AccessibilityAnalysisResponse>('/accessibility/analyze-url', {
+            url: data.url,
+            platform: data.platform ?? 'web',
+            headless: data.headless ?? true,
+            full_page: data.full_page ?? true,
+        });
+        return response.data;
+    },
+
+    analyzeUiuxImage: async (imageBase64: string, platform = 'web'): Promise<UiuxAnalysisResponse> => {
+        const response = await apiClient.post<UiuxAnalysisResponse>('/uiux/analyze-image', {
+            platform,
+            image_base64: imageBase64,
+        });
+        return response.data;
+    },
+
+    getAccessibilityHistory: async (limit = 8): Promise<AccessibilityHistoryItem[]> => {
+        const response = await apiClient.get<AccessibilityHistoryItem[]>('/accessibility/history', {
+            params: { limit },
+        });
+        return response.data;
+    },
+
+    getAccessibilityHistoryDetail: async (recordId: number): Promise<AccessibilityHistoryDetail> => {
+        const response = await apiClient.get<AccessibilityHistoryDetail>(`/accessibility/history/${recordId}`);
+        return response.data;
+    },
+
+    updateAccessibilityHistory: async (recordId: number, data: AccessibilityHistoryUpdateRequest): Promise<AccessibilityHistoryItem> => {
+        const response = await apiClient.patch<AccessibilityHistoryItem>(`/accessibility/history/${recordId}`, data);
+        return response.data;
+    },
+
+    deleteAccessibilityHistory: async (recordId: number): Promise<void> => {
+        await apiClient.delete(`/accessibility/history/${recordId}`);
+    },
 };

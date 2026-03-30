@@ -61,6 +61,33 @@ async def test_mobile_swipe_posts_w3c_actions():
 
 
 @pytest.mark.asyncio
+async def test_mobile_extract_accessibility_metadata_from_android_source():
+    executor = MobileExecutor()
+    executor.session_id = "session-1"
+
+    response = MagicMock()
+    response.raise_for_status = MagicMock()
+    response.json.return_value = {
+        "value": """
+        <hierarchy>
+          <node class="android.widget.Button" text="Giris Yap" content-desc="Giris Yap" bounds="[10,20][110,64]" clickable="true" focusable="true" focused="false" />
+          <node class="android.widget.EditText" text="" content-desc="" resource-id="email" bounds="[10,80][210,128]" clickable="true" focusable="true" focused="true" />
+        </hierarchy>
+        """
+    }
+    executor.client.get = AsyncMock(return_value=response)
+
+    metadata = await executor.extract_accessibility_metadata()
+
+    assert len(metadata) == 2
+    assert metadata[0]["element_type"] == "button"
+    assert metadata[0]["text_content"] == "Giris Yap"
+    assert metadata[1]["element_type"] == "input"
+    assert metadata[1]["name"] == "email"
+    assert metadata[1]["focus_visible"] is True
+
+
+@pytest.mark.asyncio
 async def test_desktop_screenshot_returns_png_bytes(monkeypatch):
     image = MagicMock()
     image.save = MagicMock(side_effect=lambda buffer, format: buffer.write(b"png-bytes"))
@@ -72,3 +99,11 @@ async def test_desktop_screenshot_returns_png_bytes(monkeypatch):
     png_bytes = await executor.screenshot()
 
     assert png_bytes == b"png-bytes"
+
+
+def test_desktop_infers_basic_control_types():
+    executor = DesktopExecutor()
+
+    assert executor._infer_desktop_element_type("Button", "") == "button"
+    assert executor._infer_desktop_element_type("Edit", "") == "input"
+    assert executor._infer_desktop_element_type("Hyperlink", "") == "link"

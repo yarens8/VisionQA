@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import shutil
 import subprocess
+import xml.etree.ElementTree as ET
 from typing import Any, Dict, Optional
 
 import httpx
@@ -293,6 +295,94 @@ class MobileExecutor:
         if not isinstance(data, str):
             raise RuntimeError("Invalid screenshot response from Appium.")
         return data
+
+    @staticmethod
+    def _parse_android_bounds(raw_bounds: str) -> Optional[Dict[str, int]]:
+        match = re.match(r"^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$", str(raw_bounds or "").strip())
+        if not match:
+            return None
+
+        x1, y1, x2, y2 = [int(part) for part in match.groups()]
+        width = max(1, x2 - x1)
+        height = max(1, y2 - y1)
+        return {"x": x1, "y": y1, "width": width, "height": height}
+
+    @staticmethod
+    def _infer_mobile_element_type(attributes: Dict[str, str]) -> str:
+        class_name = (attributes.get("class") or "").lower()
+        content_desc = (attributes.get("content-desc") or "").strip()
+        text = (attributes.get("text") or "").strip()
+        clickable = (attributes.get("clickable") or "").lower() == "true"
+        checkable = (attributes.get("checkable") or "").lower() == "true"
+
+        if "edittext" in class_name:
+            return "input"
+        if "button" in class_name:
+            return "button"
+        if "imagebutton" in class_name:
+            return "button"
+        if "imageview" in class_name:
+            return "image"
+        if "checkbox" in class_name:
+            return "checkbox"
+        if "radiobutton" in class_name:
+            return "radio"
+        if "textview" in class_name and clickable:
+            return "link"
+        if checkable:
+            return "checkbox"
+        if clickable and (content_desc or text):
+            return "button"
+        return "element"
+
+    async def extract_accessibility_metadata(self) -> list[Dict[str, Any]]:
+        """Extract accessibility-oriented metadata from Appium page source when available."""
+        if not self.session_id:
+            raise RuntimeError("Mobile session is not started.")
+
+        try:
+            response = await self.client.get(f"{self.appium_server_url}/session/{self.session_id}/source")
+            response.raise_for_status()
+            source_xml = response.json().get("value") or ""
+        except Exception as exc:
+            print(f"[MobileExecutor] Accessibility metadata extraction skipped: {exc}")
+            return []
+
+        if not source_xml:
+            return []
+
+        try:
+            root = ET.fromstring(source_xml)
+        except ET.ParseError:
+            return []
+
+        metadata: list[Dict[str, Any]] = []
+        for node in root.iter():
+            attributes = {str(key): str(value) for key, value in node.attrib.items()}
+            bounds = self._parse_android_bounds(attributes.get("bounds", ""))
+            if not bounds:
+                continue
+
+            metadata.append(
+                {
+                    "element_type": self._infer_mobile_element_type(attributes),
+                    "x": bounds["x"],
+                    "y": bounds["y"],
+                    "width": bounds["width"],
+                    "height": bounds["height"],
+                    "text_content": (attributes.get("text") or "").strip() or None,
+                    "aria_label": (attributes.get("content-desc") or "").strip() or None,
+                    "name": (attributes.get("resource-id") or "").strip() or None,
+                    "keyboard_focusable": (attributes.get("focusable") or "").lower() == "true"
+                    if "focusable" in attributes
+                    else None,
+                    "focus_visible": (attributes.get("focused") or "").lower() == "true"
+                    if "focused" in attributes
+                    else None,
+                }
+            )
+
+        return metadata
 
     async def stop(self) -> bool:
         """Stop Appium session and close HTTP client."""

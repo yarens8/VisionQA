@@ -123,6 +123,25 @@ class Finding(Base):
         return f"<Finding(id={self.id}, severity='{self.severity}', title='{self.title}')>"
 
 
+class AccessibilityAnalysisRecord(Base):
+    """Accessibility analiz geçmişi - screenshot/URL tabanlı kayıtlar"""
+    __tablename__ = "accessibility_analysis_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String(50), nullable=False, default="web")
+    source_type = Column(String(50), nullable=False)  # upload | url
+    source_label = Column(String(255), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    overall_score = Column(Integer, nullable=False, default=0)
+    findings_count = Column(Integer, nullable=False, default=0)
+    overview = Column(Text, nullable=True)
+    analysis_payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<AccessibilityAnalysisRecord(id={self.id}, source_type='{self.source_type}', platform='{self.platform}')>"
+
+
 class TestCase(Base):
     """Test Case Modeli - Artık bir Sayfaya (URL) bağlı"""
     __tablename__ = "test_cases"

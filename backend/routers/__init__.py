@@ -7,3 +7,5 @@ from . import api_test_router
 from . import db_test_router
 from . import report_router
 from . import scenario_router
+from . import accessibility_router
+from . import uiux_router
