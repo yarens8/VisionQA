@@ -10,3 +10,6 @@ from . import scenario_router
 from . import accessibility_router
 from . import uiux_router
 from . import security_router
+from . import performance_router
+from . import dataset_router
+from . import mobile_router

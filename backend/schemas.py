@@ -701,3 +701,261 @@ class DbQualityResponse(BaseModel):
     schema_validation: Optional[Dict[str, Any]] = None
     detected_columns: List[str] = []
     sample_rows: List[Dict[str, Any]] = []
+
+
+class PerformanceAnalyzeRequest(BaseModel):
+    url: Optional[str] = None
+    api_url: Optional[str] = None
+    api_method: str = "GET"
+    db_connection_string: Optional[str] = None
+    db_query: Optional[str] = None
+    sample_api_runs: int = 5
+    platform: str = "web"
+
+
+class PerformanceFinding(BaseModel):
+    id: int
+    title: str
+    severity: str
+    category: str
+    description: str
+    evidence: str
+    recommendation: str
+
+
+class PerformanceScoreBreakdown(BaseModel):
+    web: int
+    api: int
+    db: int
+    technical: int
+    perceived: int
+
+
+class PerformanceWebMetrics(BaseModel):
+    page_load_ms: float = 0
+    dom_content_loaded_ms: float = 0
+    fcp_ms: float = 0
+    lcp_ms: float = 0
+    tti_ms: float = 0
+    cls: float = 0
+    transfer_kb: float = 0
+
+
+class PerformanceApiMetrics(BaseModel):
+    avg_ms: float = 0
+    p50_ms: float = 0
+    p95_ms: float = 0
+    p99_ms: float = 0
+    error_rate: float = 0
+    timeout_count: int = 0
+    sample_count: int = 0
+
+
+class PerformanceDbMetrics(BaseModel):
+    duration_ms: float = 0
+    row_count: int = 0
+    success: bool = False
+
+
+class PerformanceCorrelation(BaseModel):
+    source: str
+    summary: str
+    reason: str
+
+
+class PerformanceAnalysisResponse(BaseModel):
+    platform: str
+    overall_score: int
+    technical_score: int
+    perceived_score: int
+    performance_grade: str
+    bottleneck_confidence: int
+    overview: str
+    timeline_summary: List[str]
+    root_cause_summary: str
+    optimization_suggestions: List[str]
+    module_recommendations: Dict[str, List[str]]
+    score_breakdown: PerformanceScoreBreakdown
+    web_metrics: Optional[PerformanceWebMetrics] = None
+    api_metrics: Optional[PerformanceApiMetrics] = None
+    db_metrics: Optional[PerformanceDbMetrics] = None
+    findings: List[PerformanceFinding]
+    correlations: List[PerformanceCorrelation]
+
+
+class DatasetAnnotationRecord(BaseModel):
+    label: Optional[str] = None
+    bbox: Optional[List[float]] = None
+
+
+class DatasetRecord(BaseModel):
+    id: Optional[str] = None
+    split: Optional[str] = None
+    label: Optional[str] = None
+    text: Optional[str] = None
+    image_name: Optional[str] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    annotations: List[DatasetAnnotationRecord] = []
+    metadata: Dict[str, Any] = {}
+
+
+class DatasetAnalyzeRequest(BaseModel):
+    dataset_name: str = "Dataset v1"
+    records: List[DatasetRecord]
+
+
+class DatasetFinding(BaseModel):
+    id: int
+    title: str
+    severity: str
+    category: str
+    description: str
+    evidence: str
+    recommendation: str
+
+
+class DatasetScoreBreakdown(BaseModel):
+    completeness: int
+    balance: int
+    consistency: int
+    validity: int
+    annotation_health: int
+
+
+class DatasetClassDistributionItem(BaseModel):
+    label: str
+    count: int
+    ratio: float
+
+
+class DatasetDuplicateSignal(BaseModel):
+    id: int
+    reason: str
+    record_ids: List[str]
+
+
+class DatasetSuspiciousLabelSignal(BaseModel):
+    id: int
+    record_id: str
+    current_label: str
+    reason: str
+    suggested_review: str
+
+
+class DatasetTrainingRisk(BaseModel):
+    severity: str
+    summary: str
+    impacted_areas: List[str]
+
+
+class DatasetSplitHealthItem(BaseModel):
+    split: str
+    count: int
+    ratio: float
+
+
+class DatasetCoverageGap(BaseModel):
+    id: int
+    title: str
+    summary: str
+    impacted_labels: List[str]
+
+
+class DatasetCollectionTarget(BaseModel):
+    label: str
+    priority: int
+    reason: str
+
+
+class DatasetAnalysisResponse(BaseModel):
+    dataset_name: str
+    total_records: int
+    overall_score: int
+    quality_grade: str
+    overview: str
+    ai_interpretation: str
+    training_risk_summary: str
+    score_breakdown: DatasetScoreBreakdown
+    findings: List[DatasetFinding]
+    class_distribution: List[DatasetClassDistributionItem]
+    split_health: List[DatasetSplitHealthItem]
+    coverage_gaps: List[DatasetCoverageGap]
+    duplicate_signals: List[DatasetDuplicateSignal]
+    suspicious_label_signals: List[DatasetSuspiciousLabelSignal]
+    synthetic_data_suggestions: List[str]
+    collection_targets: List[DatasetCollectionTarget]
+    model_impact_summary: str
+    training_risks: List[DatasetTrainingRisk]
+
+
+class MobileElementMetadata(BaseModel):
+    element_type: str
+    x: Optional[int] = None
+    y: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    text_content: Optional[str] = None
+    aria_label: Optional[str] = None
+    name: Optional[str] = None
+    keyboard_focusable: Optional[bool] = None
+    focus_visible: Optional[bool] = None
+
+
+class MobileAnalysisRequest(BaseModel):
+    platform: str = "android"
+    screen_name: Optional[str] = None
+    image_base64: Optional[str] = None
+    element_metadata: List[MobileElementMetadata] = []
+
+
+class MobileFinding(BaseModel):
+    id: int
+    title: str
+    severity: str
+    category: str
+    description: str
+    evidence: str
+    recommendation: str
+
+
+class MobileCapabilityItem(BaseModel):
+    title: str
+    status: str
+    description: str
+
+
+class MobileContextProfile(BaseModel):
+    screen_type: str
+    detected_patterns: List[str]
+    cross_platform_consistency_signal: str
+
+
+class MobileScoreBreakdown(BaseModel):
+    mobile_ux: int
+    touch_target: int
+    readability: int
+    layout: int
+    interaction_readiness: int
+
+
+class MobileAnalysisResponse(BaseModel):
+    platform: str
+    overall_score: int
+    overview: str
+    ai_interpretation: str
+    ai_mobile_critic: str
+    root_cause_summary: str
+    task_completion_friction: int
+    thumb_zone_summary: str
+    keyboard_overlap_signal: str
+    safe_area_signal: str
+    gesture_friction_summary: str
+    context_playbook: List[str]
+    cross_platform_parity_summary: str
+    score_breakdown: MobileScoreBreakdown
+    context_profile: MobileContextProfile
+    findings: List[MobileFinding]
+    supported_now: List[MobileCapabilityItem]
+    next_phase: List[MobileCapabilityItem]
+    recommendations: List[str]

@@ -25,6 +25,9 @@ from routers import (
     accessibility_router,
     uiux_router,
     security_router,
+    performance_router,
+    dataset_router,
+    mobile_router,
 )
 
 # FastAPI uygulaması oluştur
@@ -79,3 +82,6 @@ app.include_router(scenario_router.router)
 app.include_router(accessibility_router.router)
 app.include_router(uiux_router.router)
 app.include_router(security_router.router)
+app.include_router(performance_router.router)
+app.include_router(dataset_router.router)
+app.include_router(mobile_router.router)

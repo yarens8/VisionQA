@@ -55,10 +55,10 @@ Bu gorev listesi referans dokuman ile hizalidir:
 - [ ] Mobil ekran uyumu
 
 ### 4.4 Veri Seti Dogrulama Modulu
-- [ ] Yanlis etiket tespiti
-- [ ] Eksik etiket kontrolu
-- [ ] Tutarsiz sinif analizi
-- [ ] Veri butunlugu raporu
+- [x] Yanlis etiket sinyali v1
+- [x] Eksik etiket kontrolu v1
+- [x] Tutarsiz sinif analizi v1
+- [x] Veri butunlugu raporu v1
 
 ### 4.5 Guvenlik Denetim Modulu
 - [x] Hassas veri ifsasi kontrolu
@@ -94,10 +94,10 @@ Bu gorev listesi referans dokuman ile hizalidir:
 - [x] 4.6.5 Desktop metadata adapter v1
 
 ### 4.7 Performans Analiz Modulu
-- [ ] Sayfa yuklenme suresi
-- [ ] API yanit suresi
+- [x] Sayfa yuklenme suresi v1
+- [x] API yanit suresi v1
 - [ ] Mobil acilis suresi
-- [ ] Veritabani sorgu sureleri
+- [x] Veritabani sorgu sureleri v1
 
 ### 4.8 API Test Modulu
 - [x] Endpoint cagri altyapisi
@@ -107,6 +107,10 @@ Bu gorev listesi referans dokuman ile hizalidir:
 
 ### 4.9 Mobil Test Modulu
 - [x] Temel mobil executor
+- [x] Mobil capability tanimi ve desteklenen akislari urunlestirme v1
+- [x] Screenshot + metadata tabanli AI Mobile UX Analyzer v1
+- [x] Context-aware mobile screen yorumlari v1
+- [x] Cross-platform consistency signal v1
 - [ ] Gesture test kapsami genisletme
 - [ ] Ekran boyutu uyum matrisi
 - [ ] Ag kosulu simulasyonu
@@ -277,3 +281,61 @@ Bu gorev listesi referans dokuman ile hizalidir:
   - tablo iliski analizi ve foreign key tutarliligi
   - explain plan / index coverage yorumlari
   - kalite audit history ve tekrar acma akisi
+
+## J. Performans Checkpoint
+
+- Mevcut adim: `4.7 AI yorumlu performans modulu guclu v1`
+- Tamamlananlar:
+  - web page load / FCP / LCP / TTI / CLS benzeri temel browser metrikleri v1
+  - API average / p50 / p95 / p99 / timeout ve error-rate sinyalleri
+  - DB query duration korelasyonu
+  - teknik skor ve user perceived performance score ayrimi
+  - AI root cause analyzer ve optimization suggestions
+  - performans bulgulari icin web / api / db bazli finding uretimi
+  - performans ile API / DB / UIUX arasinda cross-module correlation yorumlari
+  - frontend uzerinde score, metrics, finding, AI summary ve correlation gorunumu
+- Siradaki is:
+  - daha derin browser perf observer ve resource telemetry
+  - concurrency/load profilini genisletme
+  - mobil startup/FPS telemetry
+  - trend/history akisi
+
+## K. Dataset Checkpoint
+
+- Mevcut adim: `4.4 AI yorumlu dataset kalite modulu guclu v1`
+- Tamamlananlar:
+  - JSON tabanli dataset validation akisi
+  - eksik label, bozuk kayit ve annotation health finding'leri
+  - class distribution ve imbalance sinyalleri
+  - label consistency ve suspicious label signal v1
+  - duplicate signal / tekrar eden fingerprint tespiti v1
+  - completeness / balance / consistency / validity / annotation health score breakdown
+  - overall dataset quality score ve grade
+  - training risk summary ve impacted areas
+  - synthetic data suggestion katmani
+  - frontend uzerinde dataset input, score, findings, duplicate/suspicious signal ve AI interpretation gorunumu
+- Siradaki is:
+  - goruntu/etiket uyumu ile mislabeled detection derinlestirme
+  - near-duplicate clustering
+  - model ciktilari ile dataset korelasyonu
+  - dataset history ve tekrar acma akisi
+
+## L. Mobil Checkpoint
+
+- Mevcut adim: `4.9 mobil capability + AI Mobile UX Analyzer guclu v1`
+- Tamamlananlar:
+  - mobil executor kapasitesinin urun icinde net konumlandirilmasi
+  - screenshot + metadata tabanli mobil analiz endpoint'i
+  - touch target, readability, overflow, density ve auth friction finding'leri
+  - login / search / checkout / form / feed / detail baglamina gore context-aware yorum
+  - mobile UX / touch / readability / layout / interaction readiness score breakdown
+  - supported now ve next phase capability kartlari
+  - cross-platform consistency signal ve root cause summary
+  - frontend uzerinde mobil screenshot + metadata input ve AI yorum gorunumu
+  - thumb-zone, keyboard overlap, safe-area ve gesture friction sinyalleri
+  - AI Mobile UX Critic ve context playbook katmani
+  - cross-platform parity summary ve task completion friction skoru
+- Siradaki is:
+  - canli emulator/device farm akisi
+  - gesture replay ve mobile action telemetry
+  - FPS / battery / memory / network shaping katmanlari

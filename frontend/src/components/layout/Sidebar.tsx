@@ -11,6 +11,9 @@ import {
     ShieldCheck,
     Accessibility,
     ScanSearch,
+    Gauge,
+    Boxes,
+    Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +29,9 @@ const tools = [
     { name: "Database", href: "/database", icon: Database },
     { name: "Scenarios", href: "/scenarios", icon: Layers },
     { name: "Security", href: "/security", icon: ShieldCheck },
+    { name: "Performance", href: "/performance", icon: Gauge },
+    { name: "Dataset", href: "/dataset", icon: Boxes },
+    { name: "Mobile", href: "/mobile", icon: Smartphone },
     { name: "UI/UX", href: "/uiux", icon: ScanSearch },
     { name: "Accessibility", href: "/accessibility", icon: Accessibility },
 ]

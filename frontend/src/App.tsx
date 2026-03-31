@@ -15,6 +15,9 @@ import AccessibilityPage from './pages/AccessibilityPage'
 import UIUXPage from './pages/UIUXPage'
 import SettingsPage from './pages/SettingsPage'
 import ScenarioPage from './pages/ScenarioPage'
+import PerformancePage from './pages/PerformancePage'
+import DatasetPage from './pages/DatasetPage'
+import MobilePage from './pages/MobilePage'
 
 function App() {
     return (
@@ -49,6 +52,9 @@ function App() {
                     <Route path="database" element={<DatabasePage />} />
                     <Route path="scenarios" element={<ScenarioPage />} />
                     <Route path="security" element={<SecurityPage />} />
+                    <Route path="performance" element={<PerformancePage />} />
+                    <Route path="dataset" element={<DatasetPage />} />
+                    <Route path="mobile" element={<MobilePage />} />
                     <Route path="uiux" element={<UIUXPage />} />
                     <Route path="accessibility" element={<AccessibilityPage />} />
 

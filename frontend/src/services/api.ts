@@ -639,6 +639,264 @@ export interface DbQualityResponse {
     sample_rows: Record<string, any>[];
 }
 
+export interface PerformanceAnalyzeRequest {
+    url?: string;
+    api_url?: string;
+    api_method?: string;
+    db_connection_string?: string;
+    db_query?: string;
+    sample_api_runs?: number;
+    platform?: string;
+}
+
+export interface PerformanceFinding {
+    id: number;
+    title: string;
+    severity: 'high' | 'medium' | 'low' | string;
+    category: string;
+    description: string;
+    evidence: string;
+    recommendation: string;
+}
+
+export interface PerformanceScoreBreakdown {
+    web: number;
+    api: number;
+    db: number;
+    technical: number;
+    perceived: number;
+}
+
+export interface PerformanceWebMetrics {
+    page_load_ms: number;
+    dom_content_loaded_ms: number;
+    fcp_ms: number;
+    lcp_ms: number;
+    tti_ms: number;
+    cls: number;
+    transfer_kb: number;
+}
+
+export interface PerformanceApiMetrics {
+    avg_ms: number;
+    p50_ms: number;
+    p95_ms: number;
+    p99_ms: number;
+    error_rate: number;
+    timeout_count: number;
+    sample_count: number;
+}
+
+export interface PerformanceDbMetrics {
+    duration_ms: number;
+    row_count: number;
+    success: boolean;
+}
+
+export interface PerformanceCorrelation {
+    source: string;
+    summary: string;
+    reason: string;
+}
+
+export interface PerformanceAnalysisResponse {
+    platform: string;
+    overall_score: number;
+    technical_score: number;
+    perceived_score: number;
+    performance_grade: string;
+    bottleneck_confidence: number;
+    overview: string;
+    timeline_summary: string[];
+    root_cause_summary: string;
+    optimization_suggestions: string[];
+    module_recommendations: Record<string, string[]>;
+    score_breakdown: PerformanceScoreBreakdown;
+    web_metrics?: PerformanceWebMetrics | null;
+    api_metrics?: PerformanceApiMetrics | null;
+    db_metrics?: PerformanceDbMetrics | null;
+    findings: PerformanceFinding[];
+    correlations: PerformanceCorrelation[];
+}
+
+export interface DatasetAnnotationRecord {
+    label?: string;
+    bbox?: number[];
+}
+
+export interface DatasetRecord {
+    id?: string;
+    split?: string;
+    label?: string;
+    text?: string;
+    image_name?: string;
+    width?: number;
+    height?: number;
+    annotations?: DatasetAnnotationRecord[];
+    metadata?: Record<string, any>;
+}
+
+export interface DatasetAnalyzeRequest {
+    dataset_name?: string;
+    records: DatasetRecord[];
+}
+
+export interface DatasetFinding {
+    id: number;
+    title: string;
+    severity: 'high' | 'medium' | 'low' | string;
+    category: string;
+    description: string;
+    evidence: string;
+    recommendation: string;
+}
+
+export interface DatasetScoreBreakdown {
+    completeness: number;
+    balance: number;
+    consistency: number;
+    validity: number;
+    annotation_health: number;
+}
+
+export interface DatasetClassDistributionItem {
+    label: string;
+    count: number;
+    ratio: number;
+}
+
+export interface DatasetDuplicateSignal {
+    id: number;
+    reason: string;
+    record_ids: string[];
+}
+
+export interface DatasetSuspiciousLabelSignal {
+    id: number;
+    record_id: string;
+    current_label: string;
+    reason: string;
+    suggested_review: string;
+}
+
+export interface DatasetTrainingRisk {
+    severity: 'high' | 'medium' | 'low' | string;
+    summary: string;
+    impacted_areas: string[];
+}
+
+export interface DatasetSplitHealthItem {
+    split: string;
+    count: number;
+    ratio: number;
+}
+
+export interface DatasetCoverageGap {
+    id: number;
+    title: string;
+    summary: string;
+    impacted_labels: string[];
+}
+
+export interface DatasetCollectionTarget {
+    label: string;
+    priority: number;
+    reason: string;
+}
+
+export interface DatasetAnalysisResponse {
+    dataset_name: string;
+    total_records: number;
+    overall_score: number;
+    quality_grade: string;
+    overview: string;
+    ai_interpretation: string;
+    training_risk_summary: string;
+    score_breakdown: DatasetScoreBreakdown;
+    findings: DatasetFinding[];
+    class_distribution: DatasetClassDistributionItem[];
+    split_health: DatasetSplitHealthItem[];
+    coverage_gaps: DatasetCoverageGap[];
+    duplicate_signals: DatasetDuplicateSignal[];
+    suspicious_label_signals: DatasetSuspiciousLabelSignal[];
+    synthetic_data_suggestions: string[];
+    collection_targets: DatasetCollectionTarget[];
+    model_impact_summary: string;
+    training_risks: DatasetTrainingRisk[];
+}
+
+export interface MobileElementMetadata {
+    element_type: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    text_content?: string;
+    aria_label?: string;
+    name?: string;
+    keyboard_focusable?: boolean;
+    focus_visible?: boolean;
+}
+
+export interface MobileAnalyzeRequest {
+    platform?: string;
+    screen_name?: string;
+    image_base64?: string;
+    element_metadata?: MobileElementMetadata[];
+}
+
+export interface MobileFinding {
+    id: number;
+    title: string;
+    severity: 'high' | 'medium' | 'low' | string;
+    category: string;
+    description: string;
+    evidence: string;
+    recommendation: string;
+}
+
+export interface MobileCapabilityItem {
+    title: string;
+    status: string;
+    description: string;
+}
+
+export interface MobileContextProfile {
+    screen_type: string;
+    detected_patterns: string[];
+    cross_platform_consistency_signal: string;
+}
+
+export interface MobileScoreBreakdown {
+    mobile_ux: number;
+    touch_target: number;
+    readability: number;
+    layout: number;
+    interaction_readiness: number;
+}
+
+export interface MobileAnalysisResponse {
+    platform: string;
+    overall_score: number;
+    overview: string;
+    ai_interpretation: string;
+    ai_mobile_critic: string;
+    root_cause_summary: string;
+    task_completion_friction: number;
+    thumb_zone_summary: string;
+    keyboard_overlap_signal: string;
+    safe_area_signal: string;
+    gesture_friction_summary: string;
+    context_playbook: string[];
+    cross_platform_parity_summary: string;
+    score_breakdown: MobileScoreBreakdown;
+    context_profile: MobileContextProfile;
+    findings: MobileFinding[];
+    supported_now: MobileCapabilityItem[];
+    next_phase: MobileCapabilityItem[];
+    recommendations: string[];
+}
+
 // 🛠️ API Servis Fonksiyonları
 export const api = {
     // --- Projects ---
@@ -891,6 +1149,37 @@ export const api = {
             expected_columns: data.expected_columns ?? [],
             api_expected_fields: data.api_expected_fields ?? [],
             sample_limit: data.sample_limit ?? 50,
+        });
+        return response.data;
+    },
+
+    analyzePerformance: async (data: PerformanceAnalyzeRequest): Promise<PerformanceAnalysisResponse> => {
+        const response = await apiClient.post<PerformanceAnalysisResponse>('/performance/analyze', {
+            url: data.url,
+            api_url: data.api_url,
+            api_method: data.api_method ?? 'GET',
+            db_connection_string: data.db_connection_string,
+            db_query: data.db_query,
+            sample_api_runs: data.sample_api_runs ?? 5,
+            platform: data.platform ?? 'web',
+        });
+        return response.data;
+    },
+
+    analyzeDataset: async (data: DatasetAnalyzeRequest): Promise<DatasetAnalysisResponse> => {
+        const response = await apiClient.post<DatasetAnalysisResponse>('/dataset/analyze', {
+            dataset_name: data.dataset_name ?? 'Dataset v1',
+            records: data.records,
+        });
+        return response.data;
+    },
+
+    analyzeMobile: async (data: MobileAnalyzeRequest): Promise<MobileAnalysisResponse> => {
+        const response = await apiClient.post<MobileAnalysisResponse>('/mobile/analyze', {
+            platform: data.platform ?? 'android',
+            screen_name: data.screen_name,
+            image_base64: data.image_base64,
+            element_metadata: data.element_metadata ?? [],
         });
         return response.data;
     },
