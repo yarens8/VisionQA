@@ -1,0 +1,250 @@
+{
+  "status": "completed",
+  "url": "https://www.saucedemo.com/",
+  "duration_sec": 11.93,
+  "identity_report": {
+    "page_type": "login",
+    "page_archetype": "Authentication Gateway",
+    "domain": "e-commerce",
+    "confidence": 0.95,
+    "business_rules": [
+      {
+        "rule": "Email field must contain a valid email format",
+        "type": "validation",
+        "risk_level": "high",
+        "testable": true
+      },
+      {
+        "rule": "Password field must be at least 8 characters long",
+        "type": "validation",
+        "risk_level": "high",
+        "testable": true
+      },
+      {
+        "rule": "Login button should be disabled until both fields have values",
+        "type": "state",
+        "risk_level": "medium",
+        "testable": true
+      },
+      {
+        "rule": "After 5 failed attempts, account should be temporarily locked",
+        "type": "constraint",
+        "risk_level": "critical",
+        "testable": true
+      },
+      {
+        "rule": "Password should be masked by default with toggle to reveal",
+        "type": "state",
+        "risk_level": "low",
+        "testable": true
+      },
+      {
+        "rule": "Email and password fields should be cleared after a failed login attempt",
+        "type": "state",
+        "risk_level": "low",
+        "testable": true
+      },
+      {
+        "rule": "Login form should handle special characters and non-ASCII characters correctly",
+        "type": "validation",
+        "risk_level": "medium",
+        "testable": true
+      },
+      {
+        "rule": "Forgot password link should be visible and functional",
+        "type": "dependency",
+        "risk_level": "medium",
+        "testable": true
+      },
+      {
+        "rule": "Login form should be accessible via keyboard navigation",
+        "type": "state",
+        "risk_level": "low",
+        "testable": true
+      },
+      {
+        "rule": "Error messages should be displayed for invalid login attempts",
+        "type": "state",
+        "risk_level": "medium",
+        "testable": true
+      }
+    ],
+    "element_relationships": [
+      {
+        "parent": "Login Form",
+        "children": [
+          "Email Input",
+          "Password Input",
+          "Login Button"
+        ]
+      },
+      {
+        "parent": "Header",
+        "children": [
+          "Logo",
+          "Navigation Links"
+        ]
+      },
+      {
+        "parent": "Footer",
+        "children": [
+          "Copyright Information",
+          "Social Media Links"
+        ]
+      }
+    ],
+    "critical_flows": [
+      "Enter email → Enter password → Click login → Redirect to dashboard",
+      "Click forgot password → Enter email → Receive reset link",
+      "Enter invalid email → Enter invalid password → Click login → Display error message"
+    ],
+    "risk_areas": [
+      "Brute force protection",
+      "SQL injection in login fields",
+      "Session management after login",
+      "Password storage and encryption"
+    ],
+    "interaction_patterns": [
+      "form_fill",
+      "link_navigation",
+      "error_message_display"
+    ]
+  },
+  "generated_cases_summary": {
+    "total_generated": 4,
+    "happy_path_count": 1,
+    "negative_path_count": 1,
+    "edge_cases_count": 1
+  },
+  "execution_summary": {
+    "status": "success",
+    "executed_test": "Verify https://www.saucedemo.com/ loads successfully"
+  },
+  "vad_report": {
+    "overall_score": 91,
+    "total_anomalies": 3,
+    "anomalies": [
+      {
+        "id": 1,
+        "anomaly_type": "broken_image",
+        "severity": "medium",
+        "title": "Olasi kirik gorsel veya bos placeholder alani",
+        "description": "580x390px boyutunda tamamen tek renkli bir alan tespit edildi. Bu, yuklenmeyen bir gorsel veya bos bir container olabilir.",
+        "recommendation": "Bu alandaki gorsel kaynagin dogru yuklendigini kontrol et.",
+        "related_elements": [
+          "placeholder"
+        ],
+        "evidence": {
+          "area_px": "580x390",
+          "area_ratio": 0.2454,
+          "color_std": 5.73
+        },
+        "bounding_box": {
+          "x": 0,
+          "y": 0,
+          "width": 580,
+          "height": 390
+        },
+        "crop_image_base64": "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"
+      },
+      {
+        "id": 2,
+        "anomaly_type": "broken_image",
+        "severity": "medium",
+        "title": "Olasi kirik gorsel veya bos placeholder alani",
+        "description": "560x390px boyutunda tamamen tek renkli bir alan tespit edildi. Bu, yuklenmeyen bir gorsel veya bos bir container olabilir.",
+        "recommendation": "Bu alandaki gorsel kaynagin dogru yuklendigini kontrol et.",
+        "related_elements": [
+          "placeholder"
+        ],
+        "evidence": {
+          "area_px": "560x390",
+          "area_ratio": 0.237,
+          "color_std": 5.73
+        },
+        "bounding_box": {
+          "x": 720,
+          "y": 0,
+          "width": 560,
+          "height": 390
+        },
+        "crop_image_base64": "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"
+      },
+      {
+        "id": 3,
+        "anomaly_type": "broken_image",
+        "severity": "medium",
+        "title": "Olasi kirik gorsel veya bos placeholder alani",
+        "description": "160x480px boyutunda tamamen tek renkli bir alan tespit edildi. Bu, yuklenmeyen bir gorsel veya bos bir container olabilir.",
+        "recommendation": "Bu alandaki gorsel kaynagin dogru yuklendigini kontrol et.",
+        "related_elements": [
+          "placeholder"
+        ],
+        "evidence": {
+          "area_px": "160x480",
+          "area_ratio": 0.0833,
+          "color_std": 5.73
+        },
+        "bounding_box": {
+          "x": 1120,
+          "y": 240,
+          "width": 160,
+          "height": 480
+        },
+        "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAKoAAAHqCAIAAAAbO0INAAAEb0lEQVR4nO3RMQ0AIADAMMC/Vk4uDmRwrFWwZHPfM6havwP4yf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7M/zf40+9PsT7N/lD38Wga0yhDbuQAAAABJRU5ErkJggg=="
+      }
+    ],
+    "summary": "Gorsel anomali taramasi 3 sorun tespit etti: 3 medium. Genel gorsel kalite skoru: 91/100.",
+    "image_dimensions": {
+      "width": 1280,
+      "height": 720
+    },
+    "element_count": 3,
+    "analysis_duration_ms": 98.8,
+    "scores": {
+      "overlap": 100,
+      "overflow": 100,
+      "alignment": 100,
+      "spacing": 100,
+      "completeness": 64
+    }
+  },
+  "root_cause_analysis": {
+    "overall_assessment": "The webpage is experiencing issues with broken images, likely due to missing or incorrect src attributes, incorrect image dimensions, or failed network requests.",
+    "root_cause_analysis": [
+      {
+        "anomaly_id": 1,
+        "anomaly_type": "broken_image",
+        "likely_css_html_cause": "The image is not loading due to a missing or incorrect src attribute, or the image file is not found on the server, resulting in a blank or single-colored area.",
+        "properties_to_check": [
+          "src",
+          "width",
+          "height"
+        ],
+        "fix_recommendation": "Verify the src attribute of the img tag and ensure the image file exists on the server. Use the correct file path and check for any typos in the file name."
+      },
+      {
+        "anomaly_id": 2,
+        "anomaly_type": "broken_image",
+        "likely_css_html_cause": "Similar to anomaly 1, the issue is likely caused by a missing or incorrect src attribute, or the image file is not found on the server.",
+        "properties_to_check": [
+          "src",
+          "width",
+          "height"
+        ],
+        "fix_recommendation": "Check the img tag's src attribute and ensure the image file is correctly linked and exists on the server. Consider using a fallback image or a loading indicator to handle failed image loads."
+      },
+      {
+        "anomaly_id": 3,
+        "anomaly_type": "broken_image",
+        "likely_css_html_cause": "The image is not loading due to a missing or incorrect src attribute, or the image file is not found on the server, resulting in a blank or single-colored area.",
+        "properties_to_check": [
+          "src",
+          "width",
+          "height"
+        ],
+        "fix_recommendation": "Verify the src attribute of the img tag and ensure the image file exists on the server. Consider adding error handling for img tags to display a default image or a message when the image fails to load."
+      }
+    ]
+  }
+}

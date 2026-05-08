@@ -1,0 +1,462 @@
+{
+  "generated_at": "2026-05-07 16:40:12",
+  "base_url": "http://127.0.0.1:8000",
+  "summary": {
+    "total_cases": 10,
+    "tp": 0,
+    "fp": 2,
+    "fn": 5,
+    "tn": 3,
+    "precision": 0.0,
+    "recall": 0.0,
+    "accuracy": 0.3,
+    "category_recall": 0.0,
+    "exact_match_rate": 0.3,
+    "avg_time_ms": 1100.13
+  },
+  "results": [
+    {
+      "id": "dataset-01",
+      "name": "rice-clean-balanced",
+      "dataset_name": "Rice Clean Balanced",
+      "source_datasets": [
+        "rice"
+      ],
+      "record_count": 50,
+      "expected_has_issue": false,
+      "predicted_has_issue": true,
+      "expected_categories": [],
+      "detected_categories": [
+        "broken-record",
+        "class-imbalance",
+        "missing-label",
+        "split-balance"
+      ],
+      "missing_expected_categories": [],
+      "unexpected_detected_categories": [
+        "broken-record",
+        "class-imbalance",
+        "missing-label",
+        "split-balance"
+      ],
+      "category_match": false,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 2204.02,
+      "overall_score": 68,
+      "quality_grade": "D",
+      "findings_count": 4,
+      "overview": "LLM Analizi 4 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-02",
+      "name": "rice-imbalance-missing-duplicate",
+      "dataset_name": "Rice Imbalance Duplicate",
+      "source_datasets": [
+        "rice"
+      ],
+      "record_count": 45,
+      "expected_has_issue": true,
+      "predicted_has_issue": false,
+      "expected_categories": [
+        "class-imbalance",
+        "duplicate-signal",
+        "missing-label",
+        "rare-class",
+        "split-balance"
+      ],
+      "detected_categories": [],
+      "missing_expected_categories": [
+        "class-imbalance",
+        "duplicate-signal",
+        "missing-label",
+        "rare-class",
+        "split-balance"
+      ],
+      "unexpected_detected_categories": [],
+      "category_match": false,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 1025.86,
+      "overall_score": 80,
+      "quality_grade": "B",
+      "findings_count": 0,
+      "overview": "LLM Analizi 0 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-03",
+      "name": "car-license-clean",
+      "dataset_name": "Car License Clean",
+      "source_datasets": [
+        "car_license"
+      ],
+      "record_count": 36,
+      "expected_has_issue": false,
+      "predicted_has_issue": false,
+      "expected_categories": [],
+      "detected_categories": [],
+      "missing_expected_categories": [],
+      "unexpected_detected_categories": [],
+      "category_match": true,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 799.99,
+      "overall_score": 80,
+      "quality_grade": "B",
+      "findings_count": 0,
+      "overview": "LLM Analizi 0 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-04",
+      "name": "car-license-broken-annotations",
+      "dataset_name": "Car License Broken Annotation",
+      "source_datasets": [
+        "car_license"
+      ],
+      "record_count": 24,
+      "expected_has_issue": true,
+      "predicted_has_issue": false,
+      "expected_categories": [
+        "annotation-health",
+        "broken-record"
+      ],
+      "detected_categories": [],
+      "missing_expected_categories": [
+        "annotation-health",
+        "broken-record"
+      ],
+      "unexpected_detected_categories": [],
+      "category_match": false,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 646.66,
+      "overall_score": 80,
+      "quality_grade": "B",
+      "findings_count": 0,
+      "overview": "LLM Analizi 0 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-05",
+      "name": "road-sign-clean",
+      "dataset_name": "Road Sign Clean",
+      "source_datasets": [
+        "road_sign"
+      ],
+      "record_count": 24,
+      "expected_has_issue": false,
+      "predicted_has_issue": false,
+      "expected_categories": [],
+      "detected_categories": [],
+      "missing_expected_categories": [],
+      "unexpected_detected_categories": [],
+      "category_match": true,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 767.72,
+      "overall_score": 80,
+      "quality_grade": "B",
+      "findings_count": 0,
+      "overview": "LLM Analizi 0 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-06",
+      "name": "road-sign-imbalance-duplicate",
+      "dataset_name": "Road Sign Imbalance Duplicate",
+      "source_datasets": [
+        "road_sign"
+      ],
+      "record_count": 47,
+      "expected_has_issue": true,
+      "predicted_has_issue": false,
+      "expected_categories": [
+        "class-imbalance",
+        "duplicate-signal",
+        "rare-class",
+        "split-balance"
+      ],
+      "detected_categories": [],
+      "missing_expected_categories": [
+        "class-imbalance",
+        "duplicate-signal",
+        "rare-class",
+        "split-balance"
+      ],
+      "unexpected_detected_categories": [],
+      "category_match": false,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 887.17,
+      "overall_score": 80,
+      "quality_grade": "B",
+      "findings_count": 0,
+      "overview": "LLM Analizi 0 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-07",
+      "name": "ocr-receipts-clean",
+      "dataset_name": "OCR Receipts Clean",
+      "source_datasets": [
+        "ocr_receipts"
+      ],
+      "record_count": 20,
+      "expected_has_issue": false,
+      "predicted_has_issue": true,
+      "expected_categories": [],
+      "detected_categories": [
+        "annotation-health",
+        "class-imbalance",
+        "missing-label",
+        "split-balance"
+      ],
+      "missing_expected_categories": [],
+      "unexpected_detected_categories": [
+        "annotation-health",
+        "class-imbalance",
+        "missing-label",
+        "split-balance"
+      ],
+      "category_match": false,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 1933.69,
+      "overall_score": 24,
+      "quality_grade": "E",
+      "findings_count": 4,
+      "overview": "LLM Analizi 4 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-08",
+      "name": "ocr-receipts-consistency-break",
+      "dataset_name": "OCR Receipts Consistency Break",
+      "source_datasets": [
+        "ocr_receipts"
+      ],
+      "record_count": 20,
+      "expected_has_issue": true,
+      "predicted_has_issue": false,
+      "expected_categories": [
+        "broken-record",
+        "class-imbalance",
+        "label-consistency",
+        "missing-label",
+        "rare-class",
+        "split-balance"
+      ],
+      "detected_categories": [],
+      "missing_expected_categories": [
+        "broken-record",
+        "class-imbalance",
+        "label-consistency",
+        "missing-label",
+        "rare-class",
+        "split-balance"
+      ],
+      "unexpected_detected_categories": [],
+      "category_match": false,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 846.25,
+      "overall_score": 80,
+      "quality_grade": "B",
+      "findings_count": 0,
+      "overview": "LLM Analizi 0 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-09",
+      "name": "recyclable-clean",
+      "dataset_name": "Recyclable Clean",
+      "source_datasets": [
+        "recyclable_images"
+      ],
+      "record_count": 32,
+      "expected_has_issue": false,
+      "predicted_has_issue": false,
+      "expected_categories": [],
+      "detected_categories": [],
+      "missing_expected_categories": [],
+      "unexpected_detected_categories": [],
+      "category_match": true,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 882.06,
+      "overall_score": 80,
+      "quality_grade": "B",
+      "findings_count": 0,
+      "overview": "LLM Analizi 0 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    },
+    {
+      "id": "dataset-10",
+      "name": "recyclable-broken-duplicate",
+      "dataset_name": "Recyclable Broken Duplicate",
+      "source_datasets": [
+        "recyclable_images"
+      ],
+      "record_count": 31,
+      "expected_has_issue": true,
+      "predicted_has_issue": false,
+      "expected_categories": [
+        "annotation-health",
+        "class-imbalance",
+        "duplicate-signal",
+        "rare-class",
+        "split-balance"
+      ],
+      "detected_categories": [],
+      "missing_expected_categories": [
+        "annotation-health",
+        "class-imbalance",
+        "duplicate-signal",
+        "rare-class",
+        "split-balance"
+      ],
+      "unexpected_detected_categories": [],
+      "category_match": false,
+      "matched_expected_categories": 0,
+      "elapsed_ms": 1007.93,
+      "overall_score": 80,
+      "quality_grade": "B",
+      "findings_count": 0,
+      "overview": "LLM Analizi 0 kalite sorunu tespit etti.",
+      "execution_mode": "direct"
+    }
+  ],
+  "case_manifest": [
+    {
+      "id": "dataset-01",
+      "name": "rice-clean-balanced",
+      "dataset_name": "Rice Clean Balanced",
+      "source_datasets": [
+        "rice"
+      ],
+      "record_count": 50,
+      "expected_has_issue": false,
+      "expected_categories": []
+    },
+    {
+      "id": "dataset-02",
+      "name": "rice-imbalance-missing-duplicate",
+      "dataset_name": "Rice Imbalance Duplicate",
+      "source_datasets": [
+        "rice"
+      ],
+      "record_count": 45,
+      "expected_has_issue": true,
+      "expected_categories": [
+        "missing-label",
+        "class-imbalance",
+        "rare-class",
+        "split-balance",
+        "duplicate-signal"
+      ]
+    },
+    {
+      "id": "dataset-03",
+      "name": "car-license-clean",
+      "dataset_name": "Car License Clean",
+      "source_datasets": [
+        "car_license"
+      ],
+      "record_count": 36,
+      "expected_has_issue": false,
+      "expected_categories": []
+    },
+    {
+      "id": "dataset-04",
+      "name": "car-license-broken-annotations",
+      "dataset_name": "Car License Broken Annotation",
+      "source_datasets": [
+        "car_license"
+      ],
+      "record_count": 24,
+      "expected_has_issue": true,
+      "expected_categories": [
+        "annotation-health",
+        "broken-record"
+      ]
+    },
+    {
+      "id": "dataset-05",
+      "name": "road-sign-clean",
+      "dataset_name": "Road Sign Clean",
+      "source_datasets": [
+        "road_sign"
+      ],
+      "record_count": 24,
+      "expected_has_issue": false,
+      "expected_categories": []
+    },
+    {
+      "id": "dataset-06",
+      "name": "road-sign-imbalance-duplicate",
+      "dataset_name": "Road Sign Imbalance Duplicate",
+      "source_datasets": [
+        "road_sign"
+      ],
+      "record_count": 47,
+      "expected_has_issue": true,
+      "expected_categories": [
+        "class-imbalance",
+        "rare-class",
+        "split-balance",
+        "duplicate-signal"
+      ]
+    },
+    {
+      "id": "dataset-07",
+      "name": "ocr-receipts-clean",
+      "dataset_name": "OCR Receipts Clean",
+      "source_datasets": [
+        "ocr_receipts"
+      ],
+      "record_count": 20,
+      "expected_has_issue": false,
+      "expected_categories": []
+    },
+    {
+      "id": "dataset-08",
+      "name": "ocr-receipts-consistency-break",
+      "dataset_name": "OCR Receipts Consistency Break",
+      "source_datasets": [
+        "ocr_receipts"
+      ],
+      "record_count": 20,
+      "expected_has_issue": true,
+      "expected_categories": [
+        "label-consistency",
+        "missing-label",
+        "broken-record",
+        "split-balance",
+        "class-imbalance",
+        "rare-class"
+      ]
+    },
+    {
+      "id": "dataset-09",
+      "name": "recyclable-clean",
+      "dataset_name": "Recyclable Clean",
+      "source_datasets": [
+        "recyclable_images"
+      ],
+      "record_count": 32,
+      "expected_has_issue": false,
+      "expected_categories": []
+    },
+    {
+      "id": "dataset-10",
+      "name": "recyclable-broken-duplicate",
+      "dataset_name": "Recyclable Broken Duplicate",
+      "source_datasets": [
+        "recyclable_images"
+      ],
+      "record_count": 31,
+      "expected_has_issue": true,
+      "expected_categories": [
+        "annotation-health",
+        "duplicate-signal",
+        "split-balance",
+        "class-imbalance",
+        "rare-class"
+      ]
+    }
+  ]
+}

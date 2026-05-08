@@ -59,8 +59,8 @@ Bu plan, VisionQA'yı sadece butonlara basan bir araçtan, siteyi anlayan ve ken
 3.  ✅ `new_selector` destekli akıllı onarım (Healing) entegre edildi.
 4.  ✅ `execution_router.py` yeni sisteme geçirildi.
 
-### ⬜ Faz 4: Denetleyiciyi Ata (Visual Anomaly Detection & Auditor)
-1.  ⬜ V.A.D. (Visual Anomaly Detection) entegrasyonu
-2.  ⬜ Post-test görsel analiz
-3.  ⬜ Gelişmiş hata raporlama (Video/Screenshot karşılaştırma)
-4.  ⬜ Kök neden analizi (LLM + DINO-X birlikte)
+### ✅ Faz 4: Denetleyiciyi Ata (Visual Anomaly Detection & Auditor)
+1.  ✅ V.A.D. (Visual Anomaly Detection) entegrasyonu — `core/vad/engine.py` + 5 dedektör
+2.  ✅ Post-test görsel analiz — `VADEngine.analyze_after_test()` metodu
+3.  ✅ Gelişmiş hata raporlama (Screenshot karşılaştırma & Diff) — `core/vad/image_diff.py`
+4.  ✅ Kök neden analizi (LLM ile CSS/HTML analizi) — `LLMClient.analyze_visual_anomalies()` metodu

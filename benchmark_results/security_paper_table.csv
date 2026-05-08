@@ -1,0 +1,7 @@
+Metric,Result
+Number of analyzed URLs,19
+Precision,94.74%
+Recall,100.00%
+Accuracy,94.74%
+Category-level agreement,100.00%
+Average processing time per URL,6.75 s

@@ -28,6 +28,8 @@ from routers import (
     performance_router,
     dataset_router,
     mobile_router,
+    vad_router,
+    audit_router,
 )
 
 # FastAPI uygulaması oluştur
@@ -85,3 +87,5 @@ app.include_router(security_router.router)
 app.include_router(performance_router.router)
 app.include_router(dataset_router.router)
 app.include_router(mobile_router.router)
+app.include_router(vad_router.router)
+app.include_router(audit_router.router)

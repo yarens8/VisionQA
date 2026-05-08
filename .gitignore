@@ -83,3 +83,7 @@ datasets/
 *.pem
 secrets.json
 credentials.json
+.kaggle/
+
+# Local benchmark data
+benchmark_dataset/

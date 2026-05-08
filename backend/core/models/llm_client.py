@@ -648,6 +648,71 @@ Return ONLY this JSON:
             "raw_response": response_text
         }
 
+    VAD_ANALYSIS_SYSTEM_PROMPT = """You are an elite Frontend Developer and UI/UX Debugging Expert.
+Your job is to look at a list of visual anomalies detected by a computer vision system and determine the ROOT CAUSE in the CSS/HTML code.
+
+Your approach:
+- If elements overlap: Think about `z-index`, missing `position: relative/absolute`, negative margins, or flexbox/grid layout constraints breaking.
+- If elements overflow: Think about missing `overflow: hidden`, fixed widths (`width: 300px` instead of `max-width`), or missing `word-wrap: break-word`.
+- If alignment is broken: Think about missing `align-items: center`, inconsistent `padding`/`margin`, or floating elements.
+- If spacing is inconsistent: Think about mixed usage of `margin` and `gap`, or missing flexbox `justify-content`.
+- If images are broken or placeholders are empty: Think about missing `src` attributes, 404 network requests, or lazy-loading failures.
+
+You output precise, actionable frontend debugging advice in JSON format."""
+
+    async def analyze_visual_anomalies(self, url: str, anomalies: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        👁️ VAD Raporu Kök Neden Analizi.
+        Görsel bozuklukların CSS/HTML/DOM seviyesindeki muhtemel nedenlerini bulur.
+        """
+        if not anomalies:
+            return {"status": "no_anomalies", "root_cause_analysis": []}
+
+        print("🔍 [LLM] VAD Kök Neden Analizi Başlıyor...")
+
+        anomalies_text = json.dumps(anomalies, indent=2, ensure_ascii=False)
+
+        prompt = f"""## MISSION
+Analyze the following visual anomalies detected on a webpage and identify the probable root cause in the CSS/HTML structure.
+
+## CONTEXT
+- **URL:** {url}
+- **Detected Anomalies:**
+{anomalies_text}
+
+## ANALYSIS INSTRUCTIONS
+For each anomaly, determine:
+1. The most likely CSS/HTML mistake causing it.
+2. The specific CSS property or HTML attribute to check.
+3. A code-level recommendation to fix it.
+
+## OUTPUT FORMAT
+Return ONLY this JSON structure:
+{{
+    "overall_assessment": "1-2 sentence summary of the UI health",
+    "root_cause_analysis": [
+        {{
+            "anomaly_id": "ID of the anomaly from the input",
+            "anomaly_type": "type of anomaly",
+            "likely_css_html_cause": "Detailed explanation of what went wrong in the code",
+            "properties_to_check": ["z-index", "position", "flex-wrap", "overflow", "margin", "padding", "gap", "align-items", "justify-content", "src", "width", "height"],
+            "fix_recommendation": "Actionable instruction for the developer"
+        }}
+    ]
+}}"""
+
+        response_text = await self._query(prompt, system_prompt=self.VAD_ANALYSIS_SYSTEM_PROMPT)
+        parsed = self._parse_json_response(response_text)
+
+        if parsed and "root_cause_analysis" in parsed:
+            print(f"✅ [VAD Analiz] {len(parsed['root_cause_analysis'])} anomali için kök neden bulundu.")
+            return parsed
+
+        return {
+            "overall_assessment": "Could not parse LLM response.",
+            "root_cause_analysis": []
+        }
+
     SUMMARY_SYSTEM_PROMPT = """You are a QA Lead summarizing a recently completed automated test execution.
 Your goal is to provide a brief, professional, and insight-driven summary for a developer or product owner.
 Focus on:
@@ -745,3 +810,91 @@ Please summarize the following test execution logs for a human reader.
                 }
             ]
         }
+
+    # ═══════════════════════════════════════════════════════════════
+    #  KATMAN 6: VERİ SETİ KALİTE ANALİZİ
+    #  (Dataset Quality Assessment)
+    # ═══════════════════════════════════════════════════════════════
+
+    async def evaluate_dataset_quality(self, dataset_stats: str, sample_records: str) -> Dict[str, Any]:
+        """
+        📊 Veri setinin kalitesini, dengesini ve model eğitimine uygunluğunu analiz eder.
+        
+        Returns:
+            {
+                "findings": [
+                    {
+                        "category": "missing-label|broken-record|annotation-health|class-imbalance|rare-class|split-balance|label-consistency|duplicate-signal",
+                        "severity": "high|medium|low",
+                        "title": "...",
+                        "description": "...",
+                        "evidence": "...",
+                        "recommendation": "..."
+                    }
+                ],
+                "score_breakdown": {
+                    "completeness": 90,
+                    "balance": 85,
+                    "consistency": 95,
+                    "validity": 100,
+                    "annotation_health": 100
+                },
+                "training_risk_summary": "...",
+                "model_impact_summary": "..."
+            }
+        """
+        # Kotaya takılmamak için sadece bu testte daha hafif ve limiti yüksek olan modele geçiyoruz
+        original_model = self.groq_model
+        self.groq_model = "llama3-8b-8192"
+
+        prompt = f"""## MISSION
+Analyze the provided dataset statistics and sample records to identify quality issues.
+Your goal is to evaluate if this dataset is healthy for training an AI model.
+
+## INPUT DATA
+**Dataset Statistics:**
+{dataset_stats}
+
+**Sample Records (JSON):**
+{sample_records}
+
+## INSTRUCTIONS
+1. Analyze the statistics for class imbalance, split balance, and missing labels.
+2. Review the sample records for broken formatting, missing/invalid annotations, or inconsistent labeling.
+3. Determine findings based on these strict categories:
+   - "missing-label": Empty or missing labels.
+   - "broken-record": Invalid dimensions (e.g., width 0) or unreadable data.
+   - "annotation-health": Bounding boxes with negative coordinates or out of bounds.
+   - "class-imbalance": Large discrepancy between majority and minority classes.
+   - "rare-class": Classes with very few examples (e.g., <8% ratio).
+   - "split-balance": Heavy skew in train/val/test splits (e.g., >85% train).
+   - "label-consistency": Same text/image assigned different labels.
+   - "duplicate-signal": Exact identical records appearing multiple times.
+
+Return ONLY a valid JSON object matching this structure:
+{{
+    "findings": [
+        {{
+            "category": "one of the strict categories above",
+            "severity": "high|medium|low",
+            "title": "Short descriptive title",
+            "description": "Detailed explanation",
+            "evidence": "Proof from the data",
+            "recommendation": "Actionable advice"
+        }}
+    ],
+    "score_breakdown": {{
+        "completeness": 0-100,
+        "balance": 0-100,
+        "consistency": 0-100,
+        "validity": 0-100,
+        "annotation_health": 0-100
+    }},
+    "training_risk_summary": "1-2 sentences summarizing risks.",
+    "model_impact_summary": "1-2 sentences on how this affects model performance."
+}}
+"""
+        response_text = await self._query(prompt, system_prompt="You are an elite AI Dataset Quality Assurance Engineer.")
+        self.groq_model = original_model
+        parsed = self._parse_json_response(response_text)
+        return parsed if parsed else {}

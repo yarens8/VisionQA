@@ -9,7 +9,7 @@ from PIL import Image
 from sqlalchemy.orm import Session
 
 import schemas
-from core.security.engine import SecurityEngine
+from core.security.engine_v2 import SecurityEngineV2 as SecurityEngine
 from database import get_db
 from database.models import SecurityAnalysisRecord
 from executors.web.web_executor import WebExecutor

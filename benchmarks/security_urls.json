@@ -1,0 +1,162 @@
+[
+  {
+    "id": "sec-url-01",
+    "name": "juice-login",
+    "url": "https://demo.owasp-juice.shop/#/login",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public auth page; surface hardening baseline"
+  },
+  {
+    "id": "sec-url-02",
+    "name": "juice-search",
+    "url": "https://demo.owasp-juice.shop/#/search?q=test",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public search page; surface hardening baseline"
+  },
+  {
+    "id": "sec-url-03",
+    "name": "juice-contact",
+    "url": "https://demo.owasp-juice.shop/#/contact",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public contact page; surface hardening baseline"
+  },
+  {
+    "id": "sec-url-04",
+    "name": "juice-register",
+    "url": "https://demo.owasp-juice.shop/#/register",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public registration page; surface hardening baseline"
+  },
+  {
+    "id": "sec-url-05",
+    "name": "juice-forgot-password",
+    "url": "https://demo.owasp-juice.shop/#/forgot-password",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public recovery page; surface hardening baseline"
+  },
+  {
+    "id": "sec-url-06",
+    "name": "httpbin-form-post",
+    "url": "https://httpbin.org/forms/post",
+    "expected_has_issue": true,
+    "expected_primary_signal": "cors-hardening",
+    "notes": "public form page with observable surface hardening gaps"
+  },
+  {
+    "id": "sec-url-07",
+    "name": "httpbin-html",
+    "url": "https://httpbin.org/html",
+    "expected_has_issue": true,
+    "expected_primary_signal": "cors-hardening",
+    "notes": "simple html page but still surface hardening issues are observable"
+  },
+  {
+    "id": "sec-url-08",
+    "name": "httpbin-cors-star",
+    "url": "https://httpbin.org/response-headers?Access-Control-Allow-Origin=*",
+    "expected_has_issue": true,
+    "expected_primary_signal": "cors-hardening",
+    "notes": "surface audit CORS test"
+  },
+  {
+    "id": "sec-url-09",
+    "name": "httpbin-cookie-flags-missing",
+    "url": "https://httpbin.org/response-headers?Set-Cookie=sessionid=abc123",
+    "expected_has_issue": true,
+    "expected_primary_signal": "cookie-hardening",
+    "notes": "surface audit cookie flags"
+  },
+  {
+    "id": "sec-url-10",
+    "name": "httpbin-cors-cookie-mixed",
+    "url": "https://httpbin.org/response-headers?Access-Control-Allow-Origin=*&Set-Cookie=sessionid=abc123",
+    "expected_has_issue": true,
+    "expected_primary_signal": "cors-hardening",
+    "notes": "mixed surface risk"
+  },
+  {
+    "id": "sec-url-11",
+    "name": "badssl-extended-validation",
+    "url": "https://extended-validation.badssl.com/",
+    "expected_has_issue": false,
+    "expected_primary_signal": "none",
+    "notes": "clean tls control case"
+  },
+  {
+    "id": "sec-url-12",
+    "name": "badssl-preloaded-hsts",
+    "url": "https://preloaded-hsts.badssl.com/",
+    "expected_has_issue": false,
+    "expected_primary_signal": "none",
+    "notes": "clean hsts control case"
+  },
+  {
+    "id": "sec-url-13",
+    "name": "badssl-upgrade",
+    "url": "https://upgrade.badssl.com/",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "upgrade path but still useful as surface hardening baseline"
+  },
+  {
+    "id": "sec-url-14",
+    "name": "badssl-http",
+    "url": "https://http.badssl.com/",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public insecure-context themed page; measured signal is surface hardening"
+  },
+  {
+    "id": "sec-url-15",
+    "name": "badssl-http-login",
+    "url": "https://http-login.badssl.com/",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public login-themed page; measured signal is surface hardening"
+  },
+  {
+    "id": "sec-url-16",
+    "name": "badssl-http-dynamic-login",
+    "url": "https://http-dynamic-login.badssl.com/",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public dynamic login-themed page; measured signal is surface hardening"
+  },
+  {
+    "id": "sec-url-17",
+    "name": "badssl-http-password",
+    "url": "https://http-password.badssl.com/",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public password-themed page; measured signal is surface hardening"
+  },
+  {
+    "id": "sec-url-18",
+    "name": "badssl-http-credit-card",
+    "url": "https://http-credit-card.badssl.com/",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "public payment-themed page; measured signal is surface hardening"
+  },
+  {
+    "id": "sec-url-19",
+    "name": "badssl-mixed",
+    "url": "https://mixed.badssl.com/",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "mixed content style security context"
+  },
+  {
+    "id": "sec-url-20",
+    "name": "badssl-mixed-script",
+    "url": "https://mixed-script.badssl.com/",
+    "expected_has_issue": true,
+    "expected_primary_signal": "header-hardening",
+    "notes": "mixed script security context"
+  }
+]
