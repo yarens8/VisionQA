@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, DatabaseZap, Loader2, Sparkles } from 'lucide-react';
+import { AlertCircle, BarChart3, CheckCircle2, Code2, DatabaseZap, FileArchive, Loader2, Sparkles, UploadCloud, X } from 'lucide-react';
 
 import { api, DatasetAnalysisResponse } from '../services/api';
 
@@ -25,19 +25,59 @@ const sampleDataset = JSON.stringify(
     2,
 );
 
+const getErrorMessage = (error: any) => {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+        return detail
+            .map((item) => {
+                const path = Array.isArray(item.loc) ? item.loc.join('.') : item.loc;
+                return path ? `${path}: ${item.msg}` : item.msg;
+            })
+            .filter(Boolean)
+            .join(' | ');
+    }
+    if (detail && typeof detail === 'object') return JSON.stringify(detail);
+    return error.message;
+};
+
 export function DatasetPage() {
     const [payload, setPayload] = useState(sampleDataset);
     const [loading, setLoading] = useState(false);
+    const [zipFile, setZipFile] = useState<File | null>(null);
+    const [inputMode, setInputMode] = useState<'zip' | 'json'>('zip');
+    const [notice, setNotice] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
     const [result, setResult] = useState<DatasetAnalysisResponse | null>(null);
 
     const handleAnalyze = async () => {
         setLoading(true);
+        setNotice(null);
         try {
             const parsed = JSON.parse(payload);
             const analysis = await api.analyzeDataset(parsed);
             setResult(analysis);
+            setNotice({ type: 'success', message: 'JSON dataset analizi tamamlandi.' });
         } catch (error: any) {
-            alert(error.response?.data?.detail || error.message);
+            setNotice({ type: 'error', message: getErrorMessage(error) });
+            setResult(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleZipAnalyze = async () => {
+        if (!zipFile) {
+            setNotice({ type: 'error', message: 'Lutfen once bir ZIP dataset dosyasi sec.' });
+            return;
+        }
+        setLoading(true);
+        setNotice(null);
+        try {
+            const analysis = await api.analyzeDatasetZip(zipFile);
+            setResult(analysis);
+            setNotice({ type: 'success', message: 'ZIP dataset analizi tamamlandi.' });
+        } catch (error: any) {
+            setNotice({ type: 'error', message: getErrorMessage(error) });
             setResult(null);
         } finally {
             setLoading(false);
@@ -57,18 +97,87 @@ export function DatasetPage() {
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr] items-start">
-                <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 space-y-4">
-                    <p className="text-sm font-semibold text-white">Dataset JSON Input</p>
-                    <textarea
-                        value={payload}
-                        onChange={(e) => setPayload(e.target.value)}
-                        rows={18}
-                        className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 font-mono text-sm text-cyan-300 outline-none"
-                    />
-                    <button onClick={handleAnalyze} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-50">
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                        Dataset Analizini Baslat
-                    </button>
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-2xl shadow-slate-950/20">
+                    {notice && (
+                        <div className={`mb-4 flex items-start gap-3 rounded-xl border px-4 py-3 ${notice.type === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-100' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'}`}>
+                            {notice.type === 'error' ? (
+                                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            ) : (
+                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                            )}
+                            <p className="min-w-0 flex-1 text-sm leading-5">{notice.message}</p>
+                            <button type="button" onClick={() => setNotice(null)} className="rounded-md p-1 text-current/70 transition hover:bg-white/10 hover:text-current">
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                    )}
+                    <div className="flex flex-col gap-4 border-b border-slate-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-white">Dataset Source</p>
+                            <p className="mt-1 text-xs text-slate-500">Annotation paketi veya ham JSON ile kalite analizi.</p>
+                        </div>
+                        <div className="grid grid-cols-2 rounded-lg border border-slate-800 bg-slate-950 p-1">
+                            <button
+                                type="button"
+                                onClick={() => setInputMode('zip')}
+                                className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition ${inputMode === 'zip' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                <FileArchive className="h-4 w-4" />
+                                ZIP
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setInputMode('json')}
+                                className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition ${inputMode === 'json' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                <Code2 className="h-4 w-4" />
+                                JSON
+                            </button>
+                        </div>
+                    </div>
+
+                    {inputMode === 'zip' ? (
+                        <div className="space-y-4 pt-5">
+                            <label className="flex min-h-[220px] cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-950/70 px-6 py-8 text-center transition hover:border-amber-400/70 hover:bg-slate-950">
+                                <span className="flex h-12 w-12 items-center justify-center rounded-lg border border-slate-700 bg-slate-900">
+                                    <UploadCloud className="h-6 w-6 text-amber-300" />
+                                </span>
+                                <span className="mt-4 text-sm font-semibold text-white">
+                                    {zipFile ? zipFile.name : 'ZIP dataset dosyasi sec'}
+                                </span>
+                                <span className="mt-2 max-w-md text-xs leading-5 text-slate-500">
+                                    JSON/COCO, CSV, Pascal VOC XML veya YOLO label yapisi desteklenir.
+                                </span>
+                                <input
+                                    type="file"
+                                    accept=".zip,application/zip,application/x-zip-compressed"
+                                    className="hidden"
+                                    onChange={(event) => setZipFile(event.target.files?.[0] ?? null)}
+                                />
+                            </label>
+                            <button onClick={handleZipAnalyze} disabled={loading || !zipFile} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-50 sm:w-auto">
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                ZIP Analiz Et
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 pt-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-semibold text-white">Dataset JSON</p>
+                                <p className="text-xs text-slate-500">records[]</p>
+                            </div>
+                            <textarea
+                                value={payload}
+                                onChange={(e) => setPayload(e.target.value)}
+                                rows={18}
+                                className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 font-mono text-sm text-cyan-300 outline-none transition focus:border-cyan-400/60"
+                            />
+                            <button onClick={handleAnalyze} disabled={loading} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:opacity-50 sm:w-auto">
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                JSON Analiz Et
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {result && (
@@ -179,6 +288,30 @@ export function DatasetPage() {
                         </div>
 
                         <div className="space-y-6">
+                            <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
+                                <p className="text-white font-semibold">Detailed Validator Errors</p>
+                                <div className="mt-4 space-y-3">
+                                    {result.detail_errors.length === 0 ? (
+                                        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+                                            Lokalize validator hatasi cikmadi.
+                                        </div>
+                                    ) : result.detail_errors.map((item) => (
+                                        <div key={item.error_id} className={`rounded-2xl border p-4 ${severityClasses[item.severity] ?? 'border-slate-700 bg-slate-950 text-slate-200'}`}>
+                                            <div className="flex items-center justify-between gap-3">
+                                                <p className="font-semibold">{item.error_type}</p>
+                                                <span className="rounded-full border border-current/30 px-2.5 py-1 text-[11px] uppercase tracking-[0.24em]">{item.severity}</span>
+                                            </div>
+                                            <p className="mt-2 text-sm">{item.message}</p>
+                                            <div className="mt-3 grid gap-2 text-xs text-current/80 sm:grid-cols-2">
+                                                <p>Image ID: {item.image_id ?? '-'}</p>
+                                                <p>Annotation ID: {item.annotation_id ?? '-'}</p>
+                                                <p>Field: {item.field}</p>
+                                                <p>File: {item.file_name ?? '-'}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                             <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
                                 <p className="text-white font-semibold">Coverage Gaps</p>
                                 <div className="mt-4 space-y-3">

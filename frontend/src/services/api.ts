@@ -2,11 +2,13 @@ import axios from 'axios';
 
 // 🌐 Axios Instance (Base Config)
 const apiClient = axios.create({
-    baseURL: '/api', // Vite proxy sayesinde backend'e gider
+    baseURL: '/api',
     headers: {
         'Content-Type': 'application/json',
     },
 });
+
+const backendBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 // Interceptor (Hata yakalama, Token ekleme vb. için)
 apiClient.interceptors.response.use(
@@ -720,8 +722,10 @@ export interface PerformanceAnalysisResponse {
 }
 
 export interface DatasetAnnotationRecord {
+    id?: string;
     label?: string;
     bbox?: number[];
+    category_id?: any;
 }
 
 export interface DatasetRecord {
@@ -741,6 +745,8 @@ export interface DatasetAnalyzeRequest {
     records: DatasetRecord[];
 }
 
+export type DatasetAnalyzePayload = DatasetAnalyzeRequest | DatasetRecord[] | Record<string, any>;
+
 export interface DatasetFinding {
     id: number;
     title: string;
@@ -749,6 +755,24 @@ export interface DatasetFinding {
     description: string;
     evidence: string;
     recommendation: string;
+    error_type?: string;
+    image_id?: string;
+    annotation_id?: string;
+    file_name?: string;
+    field?: string;
+}
+
+export interface DatasetDetailError {
+    error_id: string;
+    error_type: string;
+    image_id?: string | null;
+    annotation_id?: string | null;
+    file_name?: string | null;
+    field: string;
+    severity: 'high' | 'medium' | 'low' | string;
+    message: string;
+    source: string;
+    metadata: Record<string, any>;
 }
 
 export interface DatasetScoreBreakdown {
@@ -814,6 +838,7 @@ export interface DatasetAnalysisResponse {
     training_risk_summary: string;
     score_breakdown: DatasetScoreBreakdown;
     findings: DatasetFinding[];
+    detail_errors: DatasetDetailError[];
     class_distribution: DatasetClassDistributionItem[];
     split_health: DatasetSplitHealthItem[];
     coverage_gaps: DatasetCoverageGap[];
@@ -823,6 +848,28 @@ export interface DatasetAnalysisResponse {
     collection_targets: DatasetCollectionTarget[];
     model_impact_summary: string;
     training_risks: DatasetTrainingRisk[];
+}
+
+export interface DatasetHistoryItem {
+    id: number;
+    dataset_name: string;
+    source_type: string;
+    source_label?: string;
+    overall_score: number;
+    quality_grade: string;
+    findings_count: number;
+    detail_errors_count: number;
+    total_records: number;
+    created_at: string;
+}
+
+export interface DatasetHistoryDetail {
+    id: number;
+    dataset_name: string;
+    source_type: string;
+    source_label?: string;
+    created_at: string;
+    analysis: DatasetAnalysisResponse;
 }
 
 export interface MobileElementMetadata {
@@ -1166,11 +1213,32 @@ export const api = {
         return response.data;
     },
 
-    analyzeDataset: async (data: DatasetAnalyzeRequest): Promise<DatasetAnalysisResponse> => {
-        const response = await apiClient.post<DatasetAnalysisResponse>('/dataset/analyze', {
-            dataset_name: data.dataset_name ?? 'Dataset v1',
-            records: data.records,
+    analyzeDataset: async (data: DatasetAnalyzePayload): Promise<DatasetAnalysisResponse> => {
+        const response = await apiClient.post<DatasetAnalysisResponse>('/dataset/analyze', data);
+        return response.data;
+    },
+
+    analyzeDatasetZip: async (file: File): Promise<DatasetAnalysisResponse> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await axios.post<DatasetAnalysisResponse>(`${backendBaseUrl}/dataset/upload-analyze`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            timeout: 180000,
         });
+        return response.data;
+    },
+
+    getDatasetHistory: async (limit = 20): Promise<DatasetHistoryItem[]> => {
+        const response = await apiClient.get<DatasetHistoryItem[]>('/dataset/history', {
+            params: { limit },
+        });
+        return response.data;
+    },
+
+    getDatasetHistoryDetail: async (recordId: number): Promise<DatasetHistoryDetail> => {
+        const response = await apiClient.get<DatasetHistoryDetail>(`/dataset/history/${recordId}`);
         return response.data;
     },
 

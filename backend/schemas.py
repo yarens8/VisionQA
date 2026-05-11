@@ -784,8 +784,10 @@ class PerformanceAnalysisResponse(BaseModel):
 
 
 class DatasetAnnotationRecord(BaseModel):
+    id: Optional[str] = None
     label: Optional[str] = None
     bbox: Optional[List[float]] = None
+    category_id: Optional[Any] = None
 
 
 class DatasetRecord(BaseModel):
@@ -813,6 +815,24 @@ class DatasetFinding(BaseModel):
     description: str
     evidence: str
     recommendation: str
+    error_type: Optional[str] = None
+    image_id: Optional[str] = None
+    annotation_id: Optional[str] = None
+    file_name: Optional[str] = None
+    field: Optional[str] = None
+
+
+class DatasetDetailError(BaseModel):
+    error_id: str
+    error_type: str
+    image_id: Optional[str] = None
+    annotation_id: Optional[str] = None
+    file_name: Optional[str] = None
+    field: str
+    severity: str
+    message: str
+    source: str = "dataset_validator"
+    metadata: Dict[str, Any] = {}
 
 
 class DatasetScoreBreakdown(BaseModel):
@@ -878,6 +898,7 @@ class DatasetAnalysisResponse(BaseModel):
     training_risk_summary: str
     score_breakdown: DatasetScoreBreakdown
     findings: List[DatasetFinding]
+    detail_errors: List[DatasetDetailError] = []
     class_distribution: List[DatasetClassDistributionItem]
     split_health: List[DatasetSplitHealthItem]
     coverage_gaps: List[DatasetCoverageGap]
@@ -887,6 +908,28 @@ class DatasetAnalysisResponse(BaseModel):
     collection_targets: List[DatasetCollectionTarget]
     model_impact_summary: str
     training_risks: List[DatasetTrainingRisk]
+
+
+class DatasetHistoryItem(BaseModel):
+    id: int
+    dataset_name: str
+    source_type: str
+    source_label: Optional[str] = None
+    overall_score: int
+    quality_grade: str
+    findings_count: int
+    detail_errors_count: int
+    total_records: int
+    created_at: datetime
+
+
+class DatasetHistoryDetail(BaseModel):
+    id: int
+    dataset_name: str
+    source_type: str
+    source_label: Optional[str] = None
+    created_at: datetime
+    analysis: DatasetAnalysisResponse
 
 
 class MobileElementMetadata(BaseModel):

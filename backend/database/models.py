@@ -179,6 +179,26 @@ class SecurityAnalysisRecord(Base):
         return f"<SecurityAnalysisRecord(id={self.id}, source_type='{self.source_type}', platform='{self.platform}')>"
 
 
+class DatasetAnalysisRecord(Base):
+    """Dataset analiz geçmişi - JSON/ZIP annotation analiz kayıtları"""
+    __tablename__ = "dataset_analysis_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    dataset_name = Column(String(255), nullable=False, default="Dataset v1")
+    source_type = Column(String(50), nullable=False, default="json")
+    source_label = Column(String(255), nullable=True)
+    overall_score = Column(Integer, nullable=False, default=0)
+    quality_grade = Column(String(10), nullable=False, default="E")
+    findings_count = Column(Integer, nullable=False, default=0)
+    detail_errors_count = Column(Integer, nullable=False, default=0)
+    total_records = Column(Integer, nullable=False, default=0)
+    analysis_payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<DatasetAnalysisRecord(id={self.id}, dataset_name='{self.dataset_name}')>"
+
+
 class TestCase(Base):
     """Test Case Modeli - Artık bir Sayfaya (URL) bağlı"""
     __tablename__ = "test_cases"
