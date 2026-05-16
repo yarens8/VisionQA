@@ -88,10 +88,15 @@ def _history_item_schema(record: SecurityAnalysisRecord) -> schemas.SecurityHist
 @router.post("/analyze-image", response_model=schemas.SecurityAnalysisResponse)
 async def analyze_security_image(request: schemas.SecurityAnalysisRequest, db: Session = Depends(get_db)):
     try:
-        result = engine.analyze_image(
+        result = await engine.analyze_image(
             image_base64=request.image_base64,
             platform=request.platform,
         )
+        result["scan_evidence"] = {
+            **(result.get("scan_evidence") or {}),
+            "source": "image",
+            "collection_errors": [],
+        }
         _save_security_record(db, result, source_type="upload", source_label="Manuel security screenshot analizi")
         return result
     except Exception as exc:
@@ -106,28 +111,48 @@ async def analyze_security_url(request: schemas.SecurityUrlAnalysisRequest, db: 
     executor = WebExecutor(headless=request.headless)
     response_headers: dict[str, str] = {}
     response_text = ""
+    http_meta: dict[str, object] = {
+        "source": "url",
+        "url": request.url,
+        "final_url": request.url,
+        "status_code": None,
+        "content_type": None,
+        "collection_errors": [],
+    }
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as client:
             response = await client.get(request.url)
             response_headers = dict(response.headers)
             content_type = response.headers.get("content-type", "")
             response_text = response.text[:5000] if "text" in content_type or "json" in content_type or "html" in content_type else ""
-    except Exception:
+            http_meta.update(
+                {
+                    "final_url": str(response.url),
+                    "status_code": response.status_code,
+                    "content_type": content_type,
+                }
+            )
+    except Exception as exc:
         response_headers = {}
         response_text = ""
+        http_meta["collection_errors"] = [f"http_fetch: {exc}"]
 
     try:
         await executor.start()
         await executor.navigate(request.url)
         screenshot_bytes = await executor.screenshot(full_page=request.full_page)
         image_base64 = base64.b64encode(screenshot_bytes).decode("utf-8")
-        result = engine.analyze_image(
+        result = await engine.analyze_image(
             image_base64=image_base64,
             platform="web",
             response_text=response_text,
             response_headers=response_headers,
             url=request.url,
         )
+        result["scan_evidence"] = {
+            **(result.get("scan_evidence") or {}),
+            **http_meta,
+        }
         _save_security_record(db, result, source_type="url", source_label="Canli security URL analizi", source_url=request.url)
         return result
     except Exception as exc:

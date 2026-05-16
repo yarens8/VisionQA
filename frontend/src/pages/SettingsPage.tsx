@@ -61,10 +61,10 @@ export function SettingsPage() {
                         </div>
                         <div className="flex items-center justify-between p-4 bg-slate-900 rounded-lg border border-slate-800">
                             <div>
-                                <h3 className="text-white font-medium">Slack Integration</h3>
-                                <p className="text-sm text-slate-500">Post failed tests to #visionqa-alerts</p>
+                                <h3 className="text-white font-medium">Jira Issue Integration</h3>
+                                <p className="text-sm text-slate-500">Create issues from validated QA findings</p>
                             </div>
-                            <button className="text-blue-400 text-sm hover:underline">Connect Slack</button>
+                            <button className="text-blue-400 text-sm hover:underline">Connect Jira</button>
                         </div>
                     </div>
                 );

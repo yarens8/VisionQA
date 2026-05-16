@@ -41,14 +41,9 @@ class VADEngine:
     """
 
     def __init__(self):
-        self._dinox = None
+        from core.models.vision_provider import VisionProviderManager
 
-    def _get_dinox(self):
-        """Lazy-load DINO-X client."""
-        if self._dinox is None:
-            from core.models.dinox_client import DINOXClient
-            self._dinox = DINOXClient()
-        return self._dinox
+        self._vision = VisionProviderManager()
 
     async def analyze(
         self,
@@ -90,8 +85,9 @@ class VADEngine:
         w, h = image.size
         print(f"🔍 [VAD] Analiz basliyor: {w}x{h} gorsel, URL={url or 'N/A'}")
 
-        # ── Step 2: Detect elements with DINO-X ──
+        # ── Step 2: Detect elements with optional vision provider ──
         elements: List[DetectedElement] = []
+        vision_provider = "none"
 
         dino_path = None
         try:
@@ -105,7 +101,7 @@ class VADEngine:
                 tmp.close()
                 image.save(dino_path)
 
-            raw_elements = await self._get_dinox().detect_elements(dino_path)
+            raw_elements, vision_provider = await self._vision.detect_elements(dino_path)
             for elem in raw_elements:
                 box = elem.get("box", [])
                 if isinstance(box, list) and len(box) == 4:
@@ -128,10 +124,10 @@ class VADEngine:
                     label=elem.get("label", "unknown"),
                     bbox=bbox,
                     confidence=elem.get("score", 0.0),
-                    source="dino",
+                    source=vision_provider.lower().replace(" ", "_"),
                 ))
-        except Exception as dino_err:
-            print(f"⚠️ [VAD] DINO-X kullanilamiyor ({type(dino_err).__name__}), DOM + piksel analizi ile devam ediliyor.")
+        except Exception as vision_err:
+            print(f"⚠️ [VAD] Vision provider kullanilamiyor ({type(vision_err).__name__}), DOM + piksel analizi ile devam ediliyor.")
         finally:
             if dino_path and dino_path != screenshot_path:
                 try:
@@ -161,7 +157,7 @@ class VADEngine:
                     extra=meta,
                 ))
 
-        print(f"🧩 [VAD] {len(elements)} element tespit edildi (DINO + DOM)")
+        print(f"🧩 [VAD] {len(elements)} element tespit edildi ({vision_provider} + DOM)")
 
         # ── Step 3: Run all detectors ──
         all_anomalies: List[VisualAnomaly] = []

@@ -21,8 +21,8 @@ class GenerateCasesRequest(BaseModel):
     project_id: Optional[int] = None
     page_id: Optional[int] = None
     use_screenshot: bool = True   # True → Playwright ile gerçek analiz (yavaş ama doğru)
-    strict_visual: bool = True    # True → Görsel analiz başarısızsa fallback'e düşme
-    require_live_show: bool = True  # True → Desktop Bridge çalışmazsa hata ver
+    strict_visual: bool = False    # True → Görsel analiz başarısızsa fallback'e düşme
+    require_live_show: bool = False  # True → Desktop Bridge canlı overlay dene
 
 class TestStepResponse(BaseModel):
     order: int
@@ -47,6 +47,7 @@ class GenerateCasesResponse(BaseModel):
     summary: Dict[str, int]
     cases: List[TestCaseResponse]
     saved_to_db: bool
+    visual_analysis: Dict[str, Any] = {}
 
 
 # ─────────────────────────────────────────────
@@ -59,7 +60,7 @@ async def generate_test_cases(
     db: Session = Depends(get_db)
 ):
     """
-    🤖 AI (Groq + Llama 3.3 70B + Grounding DINO) ile test senaryoları üretir.
+    LLM + opsiyonel SAM3/Grounding DINO görsel analizi ile test senaryoları üretir.
 
     - **url**: Test edilecek sayfa URL'si (örn: https://saucedemo.com)
     - **platform**: web | mobile | api
@@ -67,7 +68,7 @@ async def generate_test_cases(
     - **page_id**: Üretilen case'leri hangi sayfaya bağlayacağı (opsiyonel)
     - **use_screenshot**: True = Gerçek browser screenshot analizi (yavaş), False = URL'den hızlı tahmin
     - **strict_visual**: True = Görsel analiz/algılama başarısızsa fallback yapma, hata dön
-    - **require_live_show**: True = Desktop Bridge canlı şovu zorunlu kıl
+    - **require_live_show**: True = Desktop Bridge canlı overlay dene
     """
     try:
         print(
@@ -173,7 +174,8 @@ async def generate_test_cases(
                     steps=c.get("steps", [])
                 ) for c in cases_data
             ],
-            saved_to_db=saved_to_db
+            saved_to_db=saved_to_db,
+            visual_analysis=generator.last_analysis_metadata
         )
 
     except HTTPException:

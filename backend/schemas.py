@@ -5,7 +5,7 @@ Data validation and serialization
 
 from typing import List, Optional, Any, Dict
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from database.models import PlatformType, TestStatus
 
 
@@ -412,6 +412,42 @@ class SecurityLayerSummary(BaseModel):
     overview: str
 
 
+class SecurityScanEvidence(BaseModel):
+    source: str = "image"
+    url: Optional[str] = None
+    final_url: Optional[str] = None
+    status_code: Optional[int] = None
+    content_type: Optional[str] = None
+    ocr_regions: int = 0
+    ocr_text_chars: int = 0
+    response_text_chars: int = 0
+    headers_observed: int = 0
+    security_headers_checked: int = 0
+    security_headers_missing: int = 0
+    cookie_header_present: bool = False
+    checks_executed: List[str] = Field(default_factory=list)
+    collection_errors: List[str] = Field(default_factory=list)
+
+
+class SecurityPriorityAction(BaseModel):
+    title: str
+    severity: str
+    category: str
+    source: str
+    evidence: str = ""
+    recommendation: str
+
+
+class SecurityRiskSummary(BaseModel):
+    critical: int = 0
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+    total: int = 0
+    highest_severity: str = "none"
+    priority_actions: List[SecurityPriorityAction] = Field(default_factory=list)
+
+
 class SecurityAttackHypothesis(BaseModel):
     id: int
     title: str
@@ -527,6 +563,8 @@ class SecurityAnalysisResponse(BaseModel):
     header_summary: SecurityHeaderSummary
     layer_summary: dict[str, SecurityLayerSummary]
     context_profile: SecurityContextProfile
+    scan_evidence: SecurityScanEvidence = Field(default_factory=SecurityScanEvidence)
+    risk_summary: SecurityRiskSummary = Field(default_factory=SecurityRiskSummary)
     cross_module_hints: List[SecurityCrossModuleHint]
     recommendations: List[str]
 
@@ -568,6 +606,7 @@ class SecurityHistoryDeleteResponse(BaseModel):
 class ApiTestAnalyzeRequest(BaseModel):
     method: str
     url: str
+    project_id: Optional[int] = None
     headers: Optional[Dict[str, str]] = None
     body: Optional[Any] = None
     params: Optional[Dict[str, Any]] = None
@@ -613,6 +652,17 @@ class ApiScoreBreakdown(BaseModel):
     contract: int
 
 
+class ApiEvidenceSummary(BaseModel):
+    contract_signals: int
+    security_signals: int
+    performance_signals: int
+    validation_signals: int
+    availability_signals: int
+    negative_probe_signals: int
+    primary_categories: List[str]
+    recommended_modules: List[str]
+
+
 class ApiCrossModuleCorrelation(BaseModel):
     module: str
     summary: str
@@ -623,6 +673,7 @@ class ApiCrossModuleCorrelation(BaseModel):
 class ApiTestAnalyzeResponse(BaseModel):
     method: str
     url: str
+    project_id: Optional[int] = None
     success: bool
     status_code: Optional[int] = None
     duration_ms: float
@@ -636,6 +687,7 @@ class ApiTestAnalyzeResponse(BaseModel):
     response_type: str
     response_size: int
     score_breakdown: ApiScoreBreakdown
+    evidence_summary: ApiEvidenceSummary
     findings: List[ApiTestFinding]
     negative_checks: List[ApiNegativeCheck]
     generated_tests: List[ApiGeneratedTest]
@@ -706,6 +758,7 @@ class DbQualityResponse(BaseModel):
 class PerformanceAnalyzeRequest(BaseModel):
     url: Optional[str] = None
     api_url: Optional[str] = None
+    project_id: Optional[int] = None
     api_method: str = "GET"
     db_connection_string: Optional[str] = None
     db_query: Optional[str] = None
@@ -888,6 +941,15 @@ class DatasetCollectionTarget(BaseModel):
     reason: str
 
 
+class DatasetSourceArtifact(BaseModel):
+    type: str
+    label: Optional[str] = None
+    path: str
+    sha256: str
+    size_bytes: int
+    saved_at: datetime
+
+
 class DatasetAnalysisResponse(BaseModel):
     dataset_name: str
     total_records: int
@@ -908,6 +970,7 @@ class DatasetAnalysisResponse(BaseModel):
     collection_targets: List[DatasetCollectionTarget]
     model_impact_summary: str
     training_risks: List[DatasetTrainingRisk]
+    source_artifact: Optional[DatasetSourceArtifact] = None
 
 
 class DatasetHistoryItem(BaseModel):

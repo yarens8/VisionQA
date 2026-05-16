@@ -2,12 +2,12 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, TestCase } from '../services/api';
+import { api, GenerateCasesResponse, TestCase } from '../services/api';
 import {
     Trash2, Play, Sparkles, X, Shield,
     AlertCircle, CheckCircle, Zap, ChevronDown,
     ChevronUp, Loader2, ArrowLeft,
-    Layers, Command
+    Layers, Command, FileText
 } from 'lucide-react';
 
 // ─── TYPES ──────────────────────────────────────────────────────────
@@ -21,16 +21,42 @@ interface StepResult {
     reason: string;
     error?: string;
     screenshot?: string;
+    screenshot_error?: string;
     duration_ms?: number;
     selector_used?: string;
     attempts?: { selector: string; error: string }[];
 }
 
 interface ExecutionResult {
+    run_id?: number;
+    case_id?: number;
     status: 'completed' | 'failed' | 'crashed';
     steps: StepResult[];
     summary?: string;
     error?: string;
+    bug_analysis?: Array<{
+        title: string;
+        category: string;
+        severity: string;
+        failed_step_order?: number;
+        failed_action?: string;
+        target: string;
+        probable_cause: string;
+        recommendation: string;
+        evidence?: { reason?: string };
+    }>;
+}
+
+interface SavedRun {
+    id: number;
+    project_id: number;
+    page_id?: number;
+    test_case_id?: number;
+    status: string;
+    target: string;
+    logs?: string;
+    completed_at?: string | null;
+    started_at?: string | null;
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; bg: string; text: string; icon: any }> = {
@@ -40,12 +66,40 @@ const CATEGORY_CONFIG: Record<string, { label: string; bg: string; text: string;
     security: { label: 'Security', bg: 'bg-violet-500/10', text: 'text-violet-400', icon: Shield },
 };
 
+function getCaseExecutionHints(testCase: TestCase) {
+    const actions = new Set(testCase.steps.map(step => String(step.action || '').toLowerCase()));
+    const requiresInput = actions.has('type') || actions.has('select');
+    const usesClick = actions.has('click');
+    if (requiresInput) {
+        return {
+            label: 'Input required',
+            className: 'bg-amber-500/10 text-amber-300 border-amber-500/25',
+        };
+    }
+    if (usesClick) {
+        return {
+            label: 'Click action',
+            className: 'bg-blue-500/10 text-blue-300 border-blue-500/25',
+        };
+    }
+    return {
+        label: 'No input needed',
+        className: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25',
+    };
+}
+
 // ─── COMPONENTS ─────────────────────────────────────────────────────
 
 const TestResultModal: React.FC<{ result: ExecutionResult; onClose: () => void }> = ({ result, onClose }) => {
     const [activeStep, setActiveStep] = useState(0);
     const passed = result.steps.filter(s => s.status === 'passed').length;
     const total = result.steps.length;
+    const activeBugReports = (result.bug_analysis || []).filter((bug) => {
+        const bugOrder = Number(bug.failed_step_order);
+        const activeOrder = Number(result.steps[activeStep]?.order);
+        return bugOrder === activeOrder;
+    });
+    const visibleBugReports = activeBugReports.length > 0 ? activeBugReports : (result.bug_analysis || []);
 
     return (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
@@ -55,7 +109,17 @@ const TestResultModal: React.FC<{ result: ExecutionResult; onClose: () => void }
                         <h2 className="text-lg font-bold text-white tracking-tight">Intelligence Report</h2>
                         <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mt-0.5">{passed}/{total} Steps Secured</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-800 text-slate-400 rounded-xl transition-all active:scale-95"><X className="h-5 w-5" /></button>
+                    <div className="flex items-center gap-2">
+                        {result.run_id && (
+                            <Link
+                                to={`/test-runs?run=${result.run_id}`}
+                                className="h-10 px-4 rounded-xl bg-slate-800 hover:bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest flex items-center transition-all"
+                            >
+                                Saved Report
+                            </Link>
+                        )}
+                        <button onClick={onClose} className="p-2 hover:bg-slate-800 text-slate-400 rounded-xl transition-all active:scale-95"><X className="h-5 w-5" /></button>
+                    </div>
                 </div>
 
                 <div className="flex flex-1 overflow-hidden">
@@ -116,6 +180,36 @@ const TestResultModal: React.FC<{ result: ExecutionResult; onClose: () => void }
                                         <img src={result.steps[activeStep].screenshot} className="w-full h-auto" />
                                     </div>
                                 )}
+                                {!result.steps[activeStep].screenshot && (
+                                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-200">
+                                        Screenshot bu kayıtta yok.
+                                        {result.steps[activeStep].screenshot_error
+                                            ? ` Sebep: ${result.steps[activeStep].screenshot_error}`
+                                            : ' Bu run eski olabilir; yeni Deploy koşularında ekran görüntüsü kaydedilir.'}
+                                    </div>
+                                )}
+                                {visibleBugReports.length > 0 && (
+                                    <div className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-5">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-300">Bug Analysis</p>
+                                        <div className="mt-3 space-y-3">
+                                            {visibleBugReports.map((bug, index) => (
+                                                <div key={`${bug.category}-${index}`} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <h3 className="text-sm font-bold text-white">{bug.title}</h3>
+                                                            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-blue-200">
+                                                                step #{bug.failed_step_order ?? '--'} / {bug.failed_action || 'step'}
+                                                            </p>
+                                                        </div>
+                                                        <span className="rounded-full border border-blue-400/25 bg-blue-500/10 px-2.5 py-1 text-[10px] text-blue-100">{bug.category}</span>
+                                                    </div>
+                                                    <p className="mt-3 text-sm leading-6 text-slate-300">{bug.probable_cause}</p>
+                                                    <p className="mt-2 text-sm leading-6 text-blue-100">{bug.recommendation}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -129,14 +223,21 @@ const TestCaseCard: React.FC<{
     testCase: TestCase;
     onRun: (id: number) => void;
     onDelete: (id: number) => void;
-    running: boolean
-}> = ({ testCase, onRun, onDelete, running }) => {
+    onOpenReport: (run: SavedRun) => void;
+    running: boolean;
+    latestRun?: SavedRun;
+}> = ({ testCase, onRun, onDelete, onOpenReport, running, latestRun }) => {
     const [expanded, setExpanded] = useState(false);
     const cat = CATEGORY_CONFIG[testCase.category || 'happy_path'] || CATEGORY_CONFIG.happy_path;
     const Icon = cat.icon;
+    const hasSavedReport = Boolean(latestRun?.logs);
+    const executionHint = getCaseExecutionHints(testCase);
 
     return (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-3 hover:border-indigo-500/30 transition-all group relative overflow-hidden">
+        <div
+            onClick={() => hasSavedReport && latestRun ? onOpenReport(latestRun) : undefined}
+            className={`bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-3 hover:border-indigo-500/30 transition-all group relative overflow-hidden ${hasSavedReport ? 'cursor-pointer' : ''}`}
+        >
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
@@ -145,20 +246,65 @@ const TestCaseCard: React.FC<{
                             {cat.label}
                         </span>
                         <span className="text-[9px] font-bold text-slate-600 uppercase tracking-tight">#{testCase.id}</span>
+                        {hasSavedReport && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 text-[9px] font-black uppercase border border-blue-500/20">
+                                <FileText className="h-2.5 w-2.5" />
+                                Report Saved
+                            </span>
+                        )}
+                        <span className={`flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${executionHint.className}`}>
+                            {executionHint.label}
+                        </span>
                     </div>
                     <h3 className="text-base font-bold text-white group-hover:text-indigo-400 transition-colors tracking-tight">{testCase.title}</h3>
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-1 truncate">{testCase.description}</p>
-                    <button onClick={() => setExpanded(!expanded)} className="mt-3 flex items-center gap-2 text-[10px] font-black text-slate-600 hover:text-indigo-500 transition-colors uppercase tracking-widest">
+                    {hasSavedReport && (
+                        <p className="mt-2 text-[10px] font-bold text-blue-300/80 uppercase tracking-widest">
+                            Click card to open saved run #{latestRun!.id}
+                        </p>
+                    )}
+                    <button
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            setExpanded(!expanded);
+                        }}
+                        className="mt-3 flex items-center gap-2 text-[10px] font-black text-slate-600 hover:text-indigo-500 transition-colors uppercase tracking-widest"
+                    >
                         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         {testCase.steps.length} Protocol Steps
                     </button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={() => onRun(testCase.id)} disabled={running} className={`h-10 px-6 rounded-xl flex items-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 ${running ? 'bg-slate-800 text-amber-500 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-950/20'}`}>
+                    {hasSavedReport && (
+                        <button
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onOpenReport(latestRun!);
+                            }}
+                            className="h-10 px-4 rounded-xl flex items-center gap-2 font-black text-[10px] uppercase tracking-widest transition-all bg-slate-800 hover:bg-blue-600 text-white"
+                        >
+                            <FileText className="h-3.5 w-3.5" />
+                            Report
+                        </button>
+                    )}
+                    <button
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onRun(testCase.id);
+                        }}
+                        disabled={running}
+                        className={`h-10 px-6 rounded-xl flex items-center gap-2 font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 ${running ? 'bg-slate-800 text-amber-500 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-950/20'}`}
+                    >
                         {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-3.5 w-3.5 fill-current" />}
                         {running ? 'Running' : 'Deploy'}
                     </button>
-                    <button onClick={() => onDelete(testCase.id)} className="h-10 w-10 bg-slate-950 hover:bg-rose-500/10 text-slate-800 hover:text-rose-500 rounded-xl border border-slate-800 hover:border-rose-500/30 transition-all flex items-center justify-center">
+                    <button
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onDelete(testCase.id);
+                        }}
+                        className="h-10 w-10 bg-slate-950 hover:bg-rose-500/10 text-slate-800 hover:text-rose-500 rounded-xl border border-slate-800 hover:border-rose-500/30 transition-all flex items-center justify-center"
+                    >
                         <Trash2 className="h-4 w-4" />
                     </button>
                 </div>
@@ -190,6 +336,8 @@ export function TestLibraryPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [runProgressText, setRunProgressText] = useState('');
     const [liveMode, setLiveMode] = useState(true);
+    const [visionOverlay, setVisionOverlay] = useState(false);
+    const [generationResult, setGenerationResult] = useState<GenerateCasesResponse | null>(null);
 
     const { data: cases, isLoading: isLoadingCases } = useQuery({
         queryKey: ['cases', projectId, pageId],
@@ -203,8 +351,48 @@ export function TestLibraryPage() {
         enabled: !!projectId
     });
 
+    const { data: savedRuns } = useQuery({
+        queryKey: ['test-runs', projectId],
+        queryFn: async (): Promise<SavedRun[]> => {
+            const response = await fetch(`/api/execution/runs?project_id=${Number(projectId)}`);
+            if (!response.ok) throw new Error('Saved reports could not be loaded.');
+            return response.json();
+        },
+        enabled: !!projectId,
+        refetchInterval: 5000,
+    });
+
     const currentPage = pages?.find(p => p.id === Number(pageId));
     const hasValidPageUrl = !!(currentPage?.url && currentPage.url.trim().length > 0);
+    const latestRunByCaseId = new Map<number, SavedRun>();
+    (savedRuns || [])
+        .filter(run => run.logs && (!run.page_id || run.page_id === Number(pageId)))
+        .forEach(run => {
+            const caseId = Number(run.test_case_id);
+            if (!caseId) return;
+            const current = latestRunByCaseId.get(caseId);
+            const runTime = new Date(run.completed_at || run.started_at || 0).getTime();
+            const currentTime = current ? new Date(current.completed_at || current.started_at || 0).getTime() : -1;
+            if (!current || runTime >= currentTime) {
+                latestRunByCaseId.set(caseId, run);
+            }
+        });
+
+    const openSavedReport = (run: SavedRun) => {
+        try {
+            const parsed = JSON.parse(run.logs || '{}');
+            setExecutionResult({
+                run_id: run.id,
+                case_id: run.test_case_id,
+                status: run.status as ExecutionResult['status'],
+                steps: parsed.steps || [],
+                summary: parsed.summary || '',
+                bug_analysis: parsed.bug_analysis || [],
+            });
+        } catch {
+            alert('Kaydedilmiş rapor okunamadı.');
+        }
+    };
 
     const generateMutation = useMutation({
         mutationFn: () => {
@@ -238,14 +426,15 @@ export function TestLibraryPage() {
                 project_id: Number(projectId),
                 page_id: Number(pageId),
                 use_screenshot: true,
-                strict_visual: true,
-                require_live_show: true,
+                strict_visual: false,
+                require_live_show: visionOverlay,
             });
         },
         onMutate: () => setIsGenerating(true),
         onSuccess: (res) => {
             queryClient.invalidateQueries({ queryKey: ['cases', projectId, pageId] });
             setIsGenerating(false);
+            setGenerationResult(res);
             const generated = Number(res?.total_cases ?? 0);
             const saved = Number(res?.saved_cases ?? generated);
             if (generated > 0 && saved >= 0 && saved !== generated) {
@@ -279,9 +468,12 @@ const runMutation = useMutation({
 
                 if (status.status !== 'running') {
                     return {
+                        run_id: status.run_id,
+                        case_id: status.case_id,
                         status: status.status,
                         steps: steps,
                         summary: status.summary || '',
+                        bug_analysis: status.bug_analysis || [],
                     } as ExecutionResult;
                 }
                 await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -294,6 +486,7 @@ const runMutation = useMutation({
         },
         onSuccess: (res) => {
             setExecutionResult(res as ExecutionResult);
+            queryClient.invalidateQueries({ queryKey: ['test-runs', projectId] });
         },
         onError: (error: any) => {
             const msg =
@@ -330,14 +523,26 @@ const runMutation = useMutation({
                     </div>
                 </div>
 
-                <button
-                    onClick={() => generateMutation.mutate()}
-                    disabled={isGenerating || !hasValidPageUrl}
-                    className={`h-12 px-8 rounded-xl flex items-center gap-3 transition-all active:scale-95 disabled:opacity-30 bg-indigo-600 text-white shadow-xl shadow-indigo-900/20 font-black text-xs uppercase tracking-widest hover:bg-indigo-500`}
-                >
-                    {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Command className="h-4 w-4" />}
-                    {isGenerating ? 'AI Syncing...' : 'Generate Protocols'}
-                </button>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <button
+                        onClick={() => setVisionOverlay(v => !v)}
+                        className={`h-12 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                            visionOverlay
+                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                                : 'bg-slate-900 text-slate-400 border-slate-700'
+                        }`}
+                    >
+                        Vision Overlay {visionOverlay ? 'On' : 'Off'}
+                    </button>
+                    <button
+                        onClick={() => generateMutation.mutate()}
+                        disabled={isGenerating || !hasValidPageUrl}
+                        className={`h-12 px-8 rounded-xl flex items-center gap-3 transition-all active:scale-95 disabled:opacity-30 bg-indigo-600 text-white shadow-xl shadow-indigo-900/20 font-black text-xs uppercase tracking-widest hover:bg-indigo-500`}
+                    >
+                        {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Command className="h-4 w-4" />}
+                        {isGenerating ? 'AI Syncing...' : 'Generate Protocols'}
+                    </button>
+                </div>
             </div>
             <div className="flex items-center gap-3">
                 <label className="text-xs font-black uppercase tracking-wider text-slate-500">Live Mode</label>
@@ -352,6 +557,56 @@ const runMutation = useMutation({
                     {liveMode ? 'On (Visible Browser)' : 'Off (Headless Fast)'}
                 </button>
             </div>
+
+            {generationResult?.visual_analysis && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-1">Visual Analysis</p>
+                            <h2 className="text-lg font-black text-white">
+                                {generationResult.visual_analysis.vision_provider || 'none'} provider used
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-1">
+                                {generationResult.visual_analysis.detected_element_count ?? 0} UI element detected
+                                {generationResult.visual_analysis.visual_fallback_used ? ' • fallback path used' : ''}
+                            </p>
+                            {generationResult.visual_analysis.live_overlay_requested && (
+                                <p className={`text-xs mt-2 font-mono ${
+                                    generationResult.visual_analysis.live_overlay_status === 'shown'
+                                        ? 'text-emerald-300'
+                                        : 'text-amber-300'
+                                }`}>
+                                    Vision Overlay: {generationResult.visual_analysis.live_overlay_status}
+                                    {generationResult.visual_analysis.live_overlay_error
+                                        ? ` • ${generationResult.visual_analysis.live_overlay_error}`
+                                        : ''}
+                                </p>
+                            )}
+                            {generationResult.visual_analysis.fallback_reason && (
+                                <p className="text-xs text-amber-300 mt-2 font-mono">
+                                    {generationResult.visual_analysis.fallback_reason}
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {(generationResult.visual_analysis.detected_elements || []).slice(0, 8).map((element, index) => (
+                                <span key={index} className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-700 text-[10px] text-slate-300 font-bold">
+                                    {element.label || 'element'} {typeof element.score === 'number' ? `${Math.round(element.score * 100)}%` : ''}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                    {generationResult.visual_analysis.annotated_screenshot_base64 && (
+                        <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-950">
+                            <img
+                                src={generationResult.visual_analysis.annotated_screenshot_base64}
+                                className="w-full max-h-[420px] object-contain"
+                                alt="Detected UI elements"
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* List */}
             <div className="relative">
@@ -370,7 +625,9 @@ const runMutation = useMutation({
                                 testCase={c}
                                 onRun={(id) => runMutation.mutate(id)}
                                 onDelete={(id) => api.deleteTestCase(id).then(() => queryClient.invalidateQueries({ queryKey: ['cases'] }))}
+                                onOpenReport={openSavedReport}
                                 running={runningCaseId === c.id}
+                                latestRun={latestRunByCaseId.get(c.id)}
                             />
                         ))}
                     </div>

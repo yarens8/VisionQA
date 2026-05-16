@@ -199,6 +199,63 @@ class DatasetAnalysisRecord(Base):
         return f"<DatasetAnalysisRecord(id={self.id}, dataset_name='{self.dataset_name}')>"
 
 
+class ApiAnalysisRecord(Base):
+    """API analiz geçmişi - endpoint kalite ve negatif kontrol kayıtları"""
+    __tablename__ = "api_analysis_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String(50), nullable=False, default="api")
+    source_type = Column(String(50), nullable=False, default="endpoint")
+    source_label = Column(String(255), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    overall_score = Column(Integer, nullable=False, default=0)
+    findings_count = Column(Integer, nullable=False, default=0)
+    overview = Column(Text, nullable=True)
+    analysis_payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ApiAnalysisRecord(id={self.id}, source_url='{self.source_url}')>"
+
+
+class DbAnalysisRecord(Base):
+    """Database kalite analiz geçmişi - query/table audit kayıtları"""
+    __tablename__ = "db_analysis_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String(50), nullable=False, default="database")
+    source_type = Column(String(50), nullable=False, default="quality-audit")
+    source_label = Column(String(255), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    overall_score = Column(Integer, nullable=False, default=0)
+    findings_count = Column(Integer, nullable=False, default=0)
+    overview = Column(Text, nullable=True)
+    analysis_payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<DbAnalysisRecord(id={self.id}, source_label='{self.source_label}')>"
+
+
+class PerformanceAnalysisRecord(Base):
+    """Performance analiz geçmişi - web/API/DB performans kayıtları"""
+    __tablename__ = "performance_analysis_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String(50), nullable=False, default="web")
+    source_type = Column(String(50), nullable=False, default="mixed")
+    source_label = Column(String(255), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    overall_score = Column(Integer, nullable=False, default=0)
+    findings_count = Column(Integer, nullable=False, default=0)
+    overview = Column(Text, nullable=True)
+    analysis_payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<PerformanceAnalysisRecord(id={self.id}, source_url='{self.source_url}')>"
+
+
 class TestCase(Base):
     """Test Case Modeli - Artık bir Sayfaya (URL) bağlı"""
     __tablename__ = "test_cases"

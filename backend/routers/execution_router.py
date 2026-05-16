@@ -11,7 +11,8 @@ import os
 import time
 
 from database import get_db, SessionLocal
-from database.models import TestCase, TestStep, TestRun, TestStatus, Project
+from database.models import TestCase, TestStep, TestRun, TestStatus, Project, Page
+from core.bug_analysis import build_bug_analysis
 from executors.web.web_executor import WebExecutor
 
 router = APIRouter(prefix="/execution", tags=["execution"])
@@ -30,6 +31,28 @@ def _default_policy(action: str) -> Dict[str, Any]:
     if action == "wait":
         return {"required": True, "timeout_ms": 20000, "retry": 0, "fallback_allowed": False}
     return {"required": True, "timeout_ms": 8000, "retry": 1, "fallback_allowed": True}
+
+
+OPTIONAL_BANNER_KEYWORDS = [
+    "cookie",
+    "cookies",
+    "consent",
+    "accept",
+    "reject",
+    "allow",
+    "cerez",
+    "çerez",
+    "kvkk",
+    "tanimlama",
+    "tanımlama",
+]
+
+
+def _is_optional_banner_click(action: str, target: str) -> bool:
+    if str(action or "").strip().lower() != "click":
+        return False
+    target_lower = str(target or "").lower()
+    return any(keyword in target_lower for keyword in OPTIONAL_BANNER_KEYWORDS)
 
 
 def _semantic_locators(action: str, target: str) -> List[str]:
@@ -71,19 +94,29 @@ def _semantic_locators(action: str, target: str) -> List[str]:
     if action == "click":
         if any(k in t for k in ["submit", "continue", "devam", "login", "giriş", "giris"]):
             selectors.extend([
+                "#login-button",
+                "input[type='submit']",
+                "input[value*='Login' i]",
+                "input[name*='login' i]",
                 "button[type='submit']",
                 "button:has-text('Devam Et')",
                 "button:has-text('Giriş Yap')",
                 "button:has-text('Login')",
                 "button:has-text('Continue')",
             ])
-        if any(k in t for k in ["cookie", "consent", "accept", "reject", "cerez", "kvkk"]):
+        if _is_optional_banner_click(action, target):
             selectors.extend([
                 "button:has-text('Accept')",
+                "button:has-text('Accept Cookies')",
+                "button:has-text('Allow all')",
                 "button:has-text('Kabul')",
+                "button:has-text('Tümünü Kabul Et')",
                 "button:has-text('Reddet')",
                 "button:has-text('Reject')",
                 "[id*='cookie' i] button",
+                "[class*='cookie' i] button",
+                "[id*='consent' i] button",
+                "[class*='consent' i] button",
             ])
 
     if action == "verify":
@@ -124,10 +157,12 @@ def _compile_step_dsl(raw_step: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(raw_step.get("policy"), dict):
         policy.update(raw_step["policy"])
 
-    # Yaygın opsiyonel banner tıklamalarını zorunlu olmayan adım olarak işaretle
-    target_lower = target.lower()
-    if action == "click" and any(k in target_lower for k in ["cookie", "consent", "accept", "reject", "cerez", "kvkk"]):
+    # Yaygın cookie/KVKK/consent banner tıklamalarını hızlı ve opsiyonel çalıştır.
+    if _is_optional_banner_click(action, target):
         policy["required"] = False
+        policy["timeout_ms"] = min(int(policy.get("timeout_ms", 2500)), 2500)
+        policy["retry"] = 0
+        policy["fallback_allowed"] = False
 
     expected = raw_step.get("expected")
     expected_dsl = {"type": "none", "matchers": []}
@@ -159,6 +194,29 @@ def _compile_steps_dsl(steps_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     return [_compile_step_dsl(s) for s in steps_data]
 
 
+def _ensure_navigation_step(steps_data: List[Dict[str, Any]], page_url: str = "") -> List[Dict[str, Any]]:
+    normalized = [dict(step) for step in steps_data]
+    if not page_url:
+        return normalized
+
+    has_initial_navigation = (
+        bool(normalized)
+        and str(normalized[0].get("action", "")).strip().lower() == "navigate"
+        and str(normalized[0].get("target", "")).strip()
+    )
+    if not has_initial_navigation:
+        normalized.insert(0, {
+            "order": 1,
+            "action": "navigate",
+            "target": page_url,
+            "value": "",
+        })
+
+    for index, step in enumerate(normalized, start=1):
+        step["order"] = index
+    return normalized
+
+
 def _serialize_steps_for_log(steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [
         {
@@ -175,6 +233,8 @@ def _serialize_steps_for_log(steps: List[Dict[str, Any]]) -> List[Dict[str, Any]
             "error":        s.get("error"),
             "healing":      s.get("healing"),
             "duration_ms":  s.get("duration_ms", 0),
+            "screenshot":   s.get("screenshot", ""),
+            "screenshot_error": s.get("screenshot_error", ""),
         }
         for s in steps
     ]
@@ -267,6 +327,13 @@ async def _background_run_case(
             "error": str(run_err),
         }
 
+    run_target = normalized_steps[0].get("target", "") if normalized_steps else ""
+    execution_report["bug_analysis"] = build_bug_analysis(
+        execution_report,
+        run_target=run_target,
+        case_title=test_title,
+    )
+
     # DB status enum: pending|running|completed|failed (crashed → failed)
     db_status = execution_report["status"]
     if db_status == "crashed":
@@ -282,6 +349,7 @@ async def _background_run_case(
                 {
                     "summary": execution_report.get("summary", "Özet yok."),
                     "steps": _serialize_steps_for_log(execution_report.get("steps", [])),
+                    "bug_analysis": execution_report.get("bug_analysis", []),
                 },
                 ensure_ascii=False
             )
@@ -298,6 +366,7 @@ async def _background_run_case(
         "status": execution_report.get("status", "failed"),
         "steps": execution_report.get("steps", []),
         "summary": execution_report.get("summary", "Özet yok."),
+        "bug_analysis": execution_report.get("bug_analysis", []),
     }
 
 
@@ -334,13 +403,15 @@ async def start_test_case_live(
         }
         for s in steps_to_run
     ]
+    page_url = test_case.page.url if getattr(test_case, "page", None) else ""
+    steps_data = _ensure_navigation_step(steps_data, page_url)
 
     test_run = TestRun(
         project_id=test_case.project_id,
         test_case_id=test_case.id,
         platform="web",
         module_name="live_execution",
-        target=steps_data[0]["target"] if steps_data else "unknown",
+        target=page_url or (steps_data[0]["target"] if steps_data else "unknown"),
         status="running",
         started_at=datetime.utcnow()
     )
@@ -391,6 +462,7 @@ def get_run_status(run_id: int, db: Session = Depends(get_db)):
         "status": str(test_run.status.value if hasattr(test_run.status, "value") else test_run.status),
         "summary": parsed_logs.get("summary", ""),
         "steps": parsed_logs.get("steps", []),
+        "bug_analysis": parsed_logs.get("bug_analysis", []),
     }
 
 @router.post("/run-case/{case_id}")
@@ -424,6 +496,8 @@ async def run_test_case_live(case_id: int, db: Session = Depends(get_db)):
         }
         for s in steps_to_run
     ]
+    page_url = test_case.page.url if getattr(test_case, "page", None) else ""
+    steps_data = _ensure_navigation_step(steps_data, page_url)
 
     # 2. TestRun Kaydı Oluştur
     try:
@@ -432,7 +506,7 @@ async def run_test_case_live(case_id: int, db: Session = Depends(get_db)):
             test_case_id=test_case.id,
             platform="web",
             module_name="live_execution",
-            target=steps_data[0]["target"] if steps_data else "unknown",
+            target=page_url or (steps_data[0]["target"] if steps_data else "unknown"),
             status="running",
             started_at=datetime.utcnow()
         )
@@ -480,6 +554,12 @@ async def run_test_case_live(case_id: int, db: Session = Depends(get_db)):
 
     execution_report["case_id"] = case_id
     execution_report["run_id"] = run_id
+    run_target = steps_data[0].get("target", "") if steps_data else ""
+    execution_report["bug_analysis"] = build_bug_analysis(
+        execution_report,
+        run_target=run_target,
+        case_title=test_case.title,
+    )
 
     # 4. TestRun Kaydını Güncelle
     if run_id:
@@ -489,22 +569,7 @@ async def run_test_case_live(case_id: int, db: Session = Depends(get_db)):
             if db_status == "crashed":
                 db_status = "failed"
 
-            # Screenshot'ları çıkar (dev base64 veriler DB'ye yazılmaz)
-            steps_for_log = [
-                {
-                    "order":        s.get("order"),
-                    "action":       s.get("action"),
-                    "action_label": s.get("action_label", ""),
-                    "target":       s.get("target", ""),
-                    "value":        s.get("value", ""),
-                    "status":       s.get("status"),
-                    "reason":       s.get("reason", ""),
-                    "error":        s.get("error"),
-                    "healing":      s.get("healing"), # AI Onarım detaylarını ekleyelim
-                    "duration_ms":  s.get("duration_ms", 0),
-                }
-                for s in execution_report.get("steps", [])
-            ]
+            steps_for_log = _serialize_steps_for_log(execution_report.get("steps", []))
 
             test_run.status = db_status
             test_run.completed_at = datetime.utcnow()
@@ -512,7 +577,8 @@ async def run_test_case_live(case_id: int, db: Session = Depends(get_db)):
             # Tüm rapor verisini tek bir JSON'da toplayalım
             final_report = {
                 "summary": execution_report.get("summary", "Özet yok."),
-                "steps": steps_for_log
+                "steps": steps_for_log,
+                "bug_analysis": execution_report.get("bug_analysis", []),
             }
             test_run.logs = json.dumps(final_report, ensure_ascii=False)
             db.commit()
@@ -534,7 +600,6 @@ async def _execute_steps(
     from core.agents.self_healing_executor import SelfHealingExecutor
     import asyncio
     import base64
-    import tempfile
     import os
 
     run_options = run_options or {}
@@ -550,19 +615,15 @@ async def _execute_steps(
     
     report = {"status": "running", "steps": []}
 
-    async def take_screenshot_base64() -> str:
+    async def take_screenshot_base64() -> tuple[str, str]:
         """Anlık ekran görüntüsünü base64 olarak döner."""
         try:
-            tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-            tmp_path = tmp.name
-            tmp.close()
-            await web_executor.screenshot(tmp_path)
-            with open(tmp_path, "rb") as f:
-                data = base64.b64encode(f.read()).decode("utf-8")
-            os.unlink(tmp_path)
-            return f"data:image/png;base64,{data}"
-        except Exception:
-            return ""
+            screenshot_bytes = await web_executor.screenshot(full_page=False)
+            data = base64.b64encode(screenshot_bytes).decode("utf-8")
+            return f"data:image/png;base64,{data}", ""
+        except Exception as exc:
+            print(f"⚠️ [Execution] Screenshot alınamadı: {exc}")
+            return "", str(exc)
 
     ACTION_LABELS = {
         "navigate": "Sayfaya git",
@@ -582,6 +643,9 @@ async def _execute_steps(
             policy = step.get("policy", {}) or {}
             required = bool(policy.get("required", True))
             retry_count = int(policy.get("retry", 1))
+            if _is_optional_banner_click(action, step.get("target_hint", step.get("target", ""))):
+                required = False
+                retry_count = 0
 
             step_result = {
                 "order":        step["order"],
@@ -596,12 +660,27 @@ async def _execute_steps(
                 "reason":       "",
                 "error":        None,
                 "screenshot":   "",
+                "screenshot_error": "",
                 "healing":      None, # AI iyileştirme raporu buraya gelecek
                 "duration_ms":  0
             }
             step_start = time.perf_counter()
             try:
                 print(f"▶️ Adım {step['order']}: {action} -> {step.get('target_hint', '')}")
+
+                async def _try_optional_banner_click(selectors_to_try: List[str]) -> str:
+                    for sel in [s for s in selectors_to_try if s]:
+                        try:
+                            locator = web_executor.page.locator(sel).first
+                            if await locator.count() == 0:
+                                continue
+                            if not await locator.is_visible(timeout=700):
+                                continue
+                            await locator.click(timeout=1000)
+                            return sel
+                        except Exception as e:
+                            step_result["attempts"].append({"selector": sel, "error": str(e), "optional": True})
+                    return ""
 
                 async def _run_with_locators(fn_name: str, value: str = ""):
                     target_text = str(step.get("target_hint", step.get("target", ""))).lower()
@@ -648,6 +727,10 @@ async def _execute_steps(
                     if not selectors and fn_name == "click":
                         if any(k in target_text for k in ["submit", "continue", "devam", "login", "giriş", "giris", "sign in"]):
                             selectors.extend([
+                                "#login-button",
+                                "input[type='submit']",
+                                "input[value*='Login' i]",
+                                "input[name*='login' i]",
                                 "button[type='submit']",
                                 "input[type='submit']",
                                 "button:has-text('Devam Et')",
@@ -717,19 +800,28 @@ async def _execute_steps(
 
                 elif action == "click":
                     clicked = False
-                    try:
-                        clicked = await _run_with_locators("click")
-                    except Exception as click_err:
-                        target_lower = str(step.get("target_hint", "")).lower()
-                        optional_keywords = ["cookie", "consent", "accept", "reject", "kvkk", "cerez", "tanimlama", "allow"]
-                        if any(k in target_lower for k in optional_keywords):
-                            await executor.handle_global_obstacles()
-                            clicked = not required
-                            step_result["reason"] = f"Opsiyonel banner adımı atlandı/temizlendi: `{step.get('target_hint','')}` ({click_err})"
+                    target_hint = str(step.get("target_hint", step.get("target", "")))
+                    if _is_optional_banner_click(action, target_hint):
+                        selectors = locator_chain or [target_hint]
+                        selector_used = await _try_optional_banner_click(selectors)
+                        if selector_used:
+                            clicked = True
+                            step_result["selector_used"] = selector_used
+                            step_result["reason"] = f"Opsiyonel banner kapatıldı: `{selector_used}`"
                         else:
+                            clicked = not required
+                            step_result["reason"] = f"Opsiyonel banner bulunamadı; adım atlandı: `{target_hint}`"
+                    else:
+                        try:
+                            clicked = await _run_with_locators("click")
+                        except Exception:
+                            target_lower = target_hint.lower()
                             submit_like = ["submit", "continue", "devam", "login", "giriş"]
                             if any(k in target_lower for k in submit_like):
                                 step["locator_chain"] = list(dict.fromkeys(locator_chain + [
+                                    "#login-button",
+                                    "input[type='submit']",
+                                    "input[value*='Login' i]",
                                     "button:has-text('Devam Et')",
                                     "button:has-text('Giriş Yap')",
                                     "button[type='submit']",
@@ -807,8 +899,8 @@ async def _execute_steps(
                     executor.last_healing_report = None
 
             step_result["duration_ms"] = int((time.perf_counter() - step_start) * 1000)
-            # Her adım sonrası screenshot al (Şimdilik devre dışı)
-            # step_result["screenshot"] = await take_screenshot_base64()
+            # Her adım sonrası screenshot al; frontend modalında kanıt olarak gösterilir.
+            step_result["screenshot"], step_result["screenshot_error"] = await take_screenshot_base64()
             report["steps"].append(step_result)
             if on_step_update:
                 on_step_update(report["steps"], "running")
@@ -891,6 +983,8 @@ def get_test_runs(
         result.append({
             "id":           run.id,
             "project_id":   run.project_id,
+            "page_id":      run.page_id,
+            "test_case_id": run.test_case_id,
             "project_name": project_name, # Yeni alan
             "platform":     run.platform.value if hasattr(run.platform, 'value') else str(run.platform),
             "status":       run.status.value if hasattr(run.status, 'value') else str(run.status),

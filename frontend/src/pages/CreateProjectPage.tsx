@@ -28,10 +28,10 @@ export function CreateProjectPage() {
     // 🔄 Mutation (Veri Değiştirme - Create Project)
     const mutation = useMutation({
         mutationFn: api.createProject,
-        onSuccess: () => {
+        onSuccess: async (createdProject) => {
             // Projeler listesini (cache) geçersiz kıl ve güncelle
-            queryClient.invalidateQueries({ queryKey: ['projects'] })
-            navigate("/projects") // İşlem bitince listeye dön
+            await queryClient.invalidateQueries({ queryKey: ['projects'] })
+            navigate(`/projects/${createdProject.id}/pages`) // Oluşan projeyi direkt aç
         },
         onError: (error) => {
             alert("Failed to create project: " + error)

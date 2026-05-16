@@ -14,7 +14,9 @@ import {
     Loader2,
     CheckCircle2,
     Activity,
-    Target
+    ShieldAlert,
+    Target,
+    FileText
 } from 'lucide-react';
 
 export function ProjectPagesList() {
@@ -33,6 +35,12 @@ export function ProjectPagesList() {
         queryKey: ['projectStats', projectId],
         queryFn: () => api.getProjectStats(Number(projectId)),
         refetchInterval: 10000 // 10 saniyede bir güncelle
+    });
+
+    const { data: projectReport } = useQuery({
+        queryKey: ['projectSummaryReport', projectId],
+        queryFn: () => api.getProjectSummaryReport(Number(projectId)),
+        refetchInterval: 15000
     });
 
     // ─── Yeni Sayfa Ekleme ──────────────────────────────────────
@@ -60,7 +68,7 @@ export function ProjectPagesList() {
     if (isLoading) return (
         <div className="flex flex-col items-center justify-center min-h-[400px]">
             <Loader2 className="h-12 w-12 animate-spin text-blue-500 mb-4" />
-            <p className="text-slate-500 font-medium animate-pulse text-lg">Analyzing Project Architecture...</p>
+            <p className="text-slate-500 font-medium animate-pulse text-lg">Loading project modules...</p>
         </div>
     );
 
@@ -90,12 +98,20 @@ export function ProjectPagesList() {
                     </div>
                 </div>
 
-                <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl flex items-center shadow-[0_10px_30px_rgba(37,99,235,0.4)] font-black transition-all active:scale-95 group"
-                >
-                    <Plus className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform" /> Add New Module
-                </button>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                    <Link
+                        to={`/projects/${projectId}/report`}
+                        className="flex items-center justify-center rounded-2xl border border-blue-400/25 bg-blue-500/10 px-6 py-4 font-black text-blue-100 transition-all hover:bg-blue-500/20 active:scale-95"
+                    >
+                        <FileText className="mr-2 h-5 w-5" /> View Full Report
+                    </Link>
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl flex items-center shadow-[0_10px_30px_rgba(37,99,235,0.4)] font-black transition-all active:scale-95 group"
+                    >
+                        <Plus className="mr-2 h-5 w-5 group-hover:rotate-90 transition-transform" /> Add New Module
+                    </button>
+                </div>
             </div>
 
             {/* Quick Stats Grid */}
@@ -136,6 +152,93 @@ export function ProjectPagesList() {
                 </div>
             </div>
 
+            <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-950 p-5">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+                            <ShieldAlert className="h-4 w-4 text-blue-300" />
+                            Final Report
+                        </div>
+                        <h2 className="mt-2 text-xl font-bold text-white">Project Quality Summary</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+                            Test run ve security analizleri proje seviyesinde tek ozet altinda birlesir.
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 lg:min-w-[640px]">
+                        <div className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Overall</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">{projectReport?.overall_score ?? '--'}</div>
+                        </div>
+                        <div className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Runs</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">{projectReport?.summary.total_runs ?? '--'}</div>
+                        </div>
+                        <div className="rounded-xl border border-red-400/20 bg-red-500/10 px-4 py-3">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-red-200">High Security</div>
+                            <div className="mt-2 text-2xl font-semibold text-red-100">{projectReport?.summary.high_security_risks ?? '--'}</div>
+                        </div>
+                        <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-3">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-amber-200">Medium</div>
+                            <div className="mt-2 text-2xl font-semibold text-amber-100">{projectReport?.summary.medium_security_risks ?? '--'}</div>
+                        </div>
+                        <div className="rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-3">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-violet-200">Correlation</div>
+                            <div className="mt-2 text-2xl font-semibold text-violet-100">{projectReport?.summary.correlations ?? '--'}</div>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                    {(projectReport?.security.priority_actions ?? []).length ? projectReport?.security.priority_actions.slice(0, 2).map((action, index) => (
+                        <div key={`${action.title}-${index}`} className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold text-white">{action.title}</div>
+                                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-500">{action.source} / {action.category}</div>
+                                </div>
+                                <span className="rounded-full border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] text-red-100">{action.severity}</span>
+                            </div>
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-300">{action.recommendation}</p>
+                        </div>
+                    )) : (
+                        <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-4 py-5 text-sm text-slate-500">
+                            Security analizi proje sayfalarindan biriyle eslesince oncelikli aksiyonlar burada gorunecek.
+                        </div>
+                    )}
+                    {(projectReport?.tests.priority_actions ?? []).length ? projectReport?.tests.priority_actions.slice(0, 2).map((action, index) => (
+                        <div key={`${action.run_id}-${index}`} className="rounded-xl border border-blue-400/20 bg-blue-500/10 px-4 py-3">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold text-white">{action.title}</div>
+                                    <div className="mt-1 text-xs uppercase tracking-[0.14em] text-blue-200">{action.module} / run #{action.run_id}</div>
+                                </div>
+                                <span className="rounded-full border border-blue-400/30 bg-blue-500/10 px-2.5 py-1 text-[11px] text-blue-100">test</span>
+                            </div>
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-300">{action.recommendation}</p>
+                        </div>
+                    )) : (
+                        <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-4 py-5 text-sm text-slate-500">
+                            Failed run veya failed step olusursa test aksiyonlari burada gorunecek.
+                        </div>
+                    )}
+                    {(projectReport?.correlation.items ?? []).length ? projectReport?.correlation.items.slice(0, 2).map((item, index) => (
+                        <div key={`${item.target}-${index}`} className="rounded-xl border border-violet-400/20 bg-violet-500/10 px-4 py-3">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <div className="truncate text-sm font-semibold text-white">{item.title}</div>
+                                    <div className="mt-1 truncate text-xs uppercase tracking-[0.14em] text-violet-200">{item.related_modules.join(' + ')}</div>
+                                </div>
+                                <span className="rounded-full border border-violet-400/30 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-100">{item.severity}</span>
+                            </div>
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-300">{item.recommendation}</p>
+                        </div>
+                    )) : (
+                        <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-4 py-5 text-sm text-slate-500">
+                            Ayni hedefte security riski ve failed test birlesirse correlation kartlari burada gorunecek.
+                        </div>
+                    )}
+                </div>
+            </section>
+
             {/* Modules Section */}
             <div>
                 <div className="flex items-center gap-3 mb-6">
@@ -172,7 +275,7 @@ export function ProjectPagesList() {
                                             </span>
                                         </div>
                                         <p className="text-slate-500 text-sm mt-4 leading-relaxed line-clamp-2">
-                                            {page.description || "Otonom AI tarafından analiz edilecek ve test senaryoları türetilecek hedef modül."}
+                                            {page.description || "Analiz edilecek ve test senaryosu taslaklari uretilecek hedef modul."}
                                         </p>
                                     </div>
                                 </div>
@@ -188,7 +291,7 @@ export function ProjectPagesList() {
                                         to={`/projects/${projectId}/pages/${page.id}/tests?generate=true`}
                                         className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:scale-[1.02] text-white px-5 py-4 rounded-2xl flex items-center justify-center font-black text-xs shadow-lg shadow-blue-900/40 transition-all active:scale-95"
                                     >
-                                        <Zap className="mr-2 h-4 w-4 fill-current text-yellow-300" /> AI Generation
+                                        <Zap className="mr-2 h-4 w-4 fill-current text-yellow-300" /> Generate Cases
                                     </Link>
                                 </div>
                             </div>
@@ -222,7 +325,7 @@ export function ProjectPagesList() {
                             <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Architectural Input</span>
                         </div>
                         <h2 className="text-4xl font-black text-white mb-2">New Module</h2>
-                        <p className="text-slate-500 mb-10 font-medium">Add a path to your web application for AI scanning.</p>
+                        <p className="text-slate-500 mb-10 font-medium">Add a path to your web application for analysis.</p>
 
                         <div className="space-y-6">
                             <div className="space-y-2">
@@ -248,7 +351,7 @@ export function ProjectPagesList() {
                             <div className="space-y-2">
                                 <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">Objective</label>
                                 <textarea
-                                    placeholder="What should AI focus on testing?"
+                                    placeholder="What should the test generation focus on?"
                                     value={newPage.description}
                                     onChange={(e) => setNewPage({ ...newPage, description: e.target.value })}
                                     className="w-full bg-slate-950 border border-slate-800/50 rounded-2xl px-6 py-5 text-white focus:border-blue-500 outline-none transition-all h-32 placeholder:text-slate-700 font-bold resize-none"

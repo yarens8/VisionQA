@@ -22,13 +22,17 @@ class BridgeHandler(http.server.SimpleHTTPRequestHandler):
     def _launch_script(self, script_name, json_path, wait_for_completion=False):
         """Bir Python scriptini başlatır. İstenirse tamamlanana kadar bekler."""
         script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_name)
-        cmd = ["python", script_path, json_path] if sys.platform == "win32" else ["python3", script_path, json_path]
+        cmd = [sys.executable, script_path, json_path]
         
         if wait_for_completion:
             if sys.platform == "win32":
                 result = subprocess.run(cmd, creationflags=CREATE_NO_WINDOW, capture_output=True, text=True)
             else:
                 result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.stdout.strip():
+                print(result.stdout.strip())
+            if result.stderr.strip():
+                print(result.stderr.strip())
             if result.returncode != 0:
                 raise RuntimeError(result.stderr.strip() or f"{script_name} failed with code {result.returncode}")
             return

@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { AlertTriangle, Clock, Download, FlaskConical, List as ListIcon, Loader2, Send, ShieldAlert, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, Clock, Download, FlaskConical, List as ListIcon, Loader2, RefreshCw, Send, ShieldAlert, Zap } from 'lucide-react';
 
-import { api, ApiTestAnalyzeResponse } from '../services/api';
+import { api, ApiHistoryItem, ApiTestAnalyzeResponse, Project } from '../services/api';
 
 const severityClasses: Record<string, string> = {
     high: 'border-red-500/40 bg-red-500/10 text-red-200',
@@ -22,10 +22,48 @@ export function TestLabPage() {
     const [expectedStatus, setExpectedStatus] = useState('200');
     const [expectedFields, setExpectedFields] = useState('');
     const [expectedResponseType, setExpectedResponseType] = useState('application/json');
+    const [history, setHistory] = useState<ApiHistoryItem[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState('');
+
+    const normalizeUrl = (value: string) => {
+        const trimmed = value.trim();
+        if (trimmed.startsWith('https//')) {
+            return trimmed.replace('https//', 'https://');
+        }
+        if (trimmed.startsWith('http//')) {
+            return trimmed.replace('http//', 'http://');
+        }
+        return trimmed;
+    };
+
+    const loadHistory = async () => {
+        setHistoryLoading(true);
+        try {
+            const items = await api.getApiHistory(12);
+            setHistory(items);
+        } catch (error) {
+            console.warn('API history could not be loaded', error);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadHistory();
+        api.getProjects()
+            .then(setProjects)
+            .catch((error) => console.warn('Projects could not be loaded for API lab', error));
+    }, []);
 
     const handleRunTest = async () => {
         setLoading(true);
         setResult(null);
+        const requestUrl = normalizeUrl(url);
+        if (requestUrl !== url) {
+            setUrl(requestUrl);
+        }
         try {
             if (isLoadTest) {
                 const response = await fetch(`/api/api-test/load-test?count=${loadTestCount}`, {
@@ -33,14 +71,15 @@ export function TestLabPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         method,
-                        url,
+                        url: requestUrl,
                         body: body ? JSON.parse(body) : null,
                     }),
                 });
                 const data = await response.json();
                 setResult({
                     method,
-                    url,
+                    url: requestUrl,
+                    project_id: selectedProjectId ? Number(selectedProjectId) : null,
                     success: true,
                     status_code: 200,
                     duration_ms: Number(data.avg_duration_ms || data.total_time_ms || 0),
@@ -63,6 +102,16 @@ export function TestLabPage() {
                         security: 88,
                         performance: data.p95_duration_ms > 1200 ? 58 : 86,
                         contract: 100,
+                    },
+                    evidence_summary: {
+                        contract_signals: 0,
+                        security_signals: 0,
+                        performance_signals: data.p95_duration_ms > 1200 ? 1 : 0,
+                        validation_signals: 0,
+                        availability_signals: 0,
+                        negative_probe_signals: 0,
+                        primary_categories: data.p95_duration_ms > 1200 ? ['load-test'] : [],
+                        recommended_modules: ['4.7 Performance'],
                     },
                     findings: data.p95_duration_ms > 1200 ? [{
                         id: 1,
@@ -89,7 +138,8 @@ export function TestLabPage() {
                 const parsedBody = body ? JSON.parse(body) : null;
                 const analysis = await api.analyzeApiRequest({
                     method,
-                    url,
+                    url: requestUrl,
+                    project_id: selectedProjectId ? Number(selectedProjectId) : undefined,
                     body: parsedBody,
                     expected_status: expectedStatus ? Number(expectedStatus) : undefined,
                     expected_fields: expectedFields.split(',').map((item) => item.trim()).filter(Boolean),
@@ -97,11 +147,12 @@ export function TestLabPage() {
                     run_negative_checks: true,
                 });
                 setResult(analysis);
+                loadHistory();
             }
         } catch (error: any) {
             setResult({
                 method,
-                url,
+                url: requestUrl,
                 success: false,
                 status_code: undefined,
                 duration_ms: 0,
@@ -115,6 +166,16 @@ export function TestLabPage() {
                 response_type: 'error',
                 response_size: 0,
                 score_breakdown: { health: 0, validation: 0, security: 0, performance: 0, contract: 0 },
+                evidence_summary: {
+                    contract_signals: 0,
+                    security_signals: 0,
+                    performance_signals: 0,
+                    validation_signals: 0,
+                    availability_signals: 1,
+                    negative_probe_signals: 0,
+                    primary_categories: ['request-error'],
+                    recommended_modules: [],
+                },
                 findings: [],
                 negative_checks: [],
                 generated_tests: [],
@@ -123,6 +184,22 @@ export function TestLabPage() {
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const openHistoryItem = async (recordId: number) => {
+        try {
+            const detail = await api.getApiHistoryDetail(recordId);
+            if (detail.analysis_payload) {
+                setResult(detail.analysis_payload);
+                setMethod(detail.analysis_payload.method || method);
+                setUrl(detail.analysis_payload.url || url);
+                if (detail.analysis_payload.project_id) {
+                    setSelectedProjectId(String(detail.analysis_payload.project_id));
+                }
+            }
+        } catch {
+            alert('API history kaydi acilamadi.');
         }
     };
 
@@ -156,6 +233,31 @@ export function TestLabPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                        <div className="mb-4 grid gap-4 md:grid-cols-[1fr_220px]">
+                            <div>
+                                <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-500">Project Binding</label>
+                                <select
+                                    value={selectedProjectId}
+                                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-purple-400"
+                                >
+                                    <option value="">Global API analysis</option>
+                                    {projects.map((project) => (
+                                        <option key={project.id} value={project.id}>
+                                            {project.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Report Link</p>
+                                <p className="mt-2 text-xs text-slate-300">
+                                    {selectedProjectId
+                                        ? 'Bu analiz secilen projenin Full Report API kartina baglanir.'
+                                        : 'Proje secilmezse kayit sadece API History icinde kalir.'}
+                                </p>
+                            </div>
+                        </div>
                         <div className="flex gap-4 mb-4">
                             <select
                                 value={method}
@@ -294,6 +396,24 @@ export function TestLabPage() {
                                     <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 p-4">
                                         <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Endpoint Context</p>
                                         <p className="mt-2 text-sm text-cyan-300">{result.endpoint_context}</p>
+                                    </div>
+                                    <div className="mt-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                                        <p className="text-xs uppercase tracking-[0.24em] text-cyan-300">Evidence Matrix</p>
+                                        <div className="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
+                                            <span>Contract: {result.evidence_summary.contract_signals}</span>
+                                            <span>Security: {result.evidence_summary.security_signals}</span>
+                                            <span>Performance: {result.evidence_summary.performance_signals}</span>
+                                            <span>Availability: {result.evidence_summary.availability_signals}</span>
+                                        </div>
+                                        {result.evidence_summary.primary_categories.length > 0 && (
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {result.evidence_summary.primary_categories.map((category) => (
+                                                    <span key={category} className="rounded-full border border-cyan-400/20 bg-slate-950 px-2.5 py-1 text-[11px] text-cyan-100">
+                                                        {category}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -446,6 +566,59 @@ export function TestLabPage() {
                             <li>OPTIONS ve reflection temelli basit negatif kontroller</li>
                             <li>Swagger import ile hizli endpoint secimi</li>
                         </ul>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 text-white font-semibold">
+                                <Clock className="h-4 w-4 text-cyan-400" />
+                                API History
+                            </div>
+                            <button
+                                type="button"
+                                onClick={loadHistory}
+                                disabled={historyLoading}
+                                className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800 disabled:opacity-60"
+                            >
+                                <RefreshCw className={`inline h-3.5 w-3.5 ${historyLoading ? 'animate-spin' : ''}`} />
+                            </button>
+                        </div>
+                        <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto pr-2">
+                            {history.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/60 p-4 text-sm text-slate-400">
+                                    Kayitli API analizi yok. Bir endpoint analiz edince burada gorunecek.
+                                </div>
+                            ) : history.map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => openHistoryItem(item.id)}
+                                    className="w-full rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-left transition hover:border-cyan-500/40 hover:bg-slate-950"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-white">
+                                                {item.source_label || item.source_url || 'API analysis'}
+                                            </p>
+                                            <p className="mt-1 truncate text-xs text-slate-500">
+                                                {item.created_at ? new Date(item.created_at).toLocaleString('tr-TR') : 'unknown time'}
+                                            </p>
+                                        </div>
+                                        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${item.success === false ? 'border-red-500/40 bg-red-500/10 text-red-200' : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'}`}>
+                                            {item.overall_score}
+                                        </span>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                                        <span className="rounded-full border border-slate-700 px-2 py-1">{item.status_code ?? 'n/a'}</span>
+                                        <span className="rounded-full border border-slate-700 px-2 py-1">{Math.round(Number(item.duration_ms || 0))} ms</span>
+                                        <span className="rounded-full border border-slate-700 px-2 py-1">{item.findings_count} finding</span>
+                                    </div>
+                                    {item.overview && (
+                                        <p className="mt-3 line-clamp-2 text-xs text-slate-400">{item.overview}</p>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

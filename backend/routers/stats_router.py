@@ -18,7 +18,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> Dict[str, Any]:
     - Toplam test case sayısı
     - Son 7 gündeki test run sayısı
     - Başarı oranı
-    - Platform bazlı dağılım (Ultimate Platform için)
+    - Platform bazlı dağılım
     - Son test run'lar (platform bilgisiyle)
     - Haftalık trend
     """
@@ -47,7 +47,7 @@ def get_dashboard_stats(db: Session = Depends(get_db)) -> Dict[str, Any]:
     completed_runs = run_stats.completed or 0
     success_rate = round((completed_runs / total_runs) * 100, 1) if total_runs > 0 else 0.0
 
-    # 5. Platform Bazlı Dağılım (Ultimate Platform için kritik)
+    # 5. Platform Bazlı Dağılım
     platform_stats_raw = db.query(
         TestRun.platform,
         func.count(TestRun.id).label("total"),
@@ -288,7 +288,7 @@ def get_project_stats(project_id: int, db: Session = Depends(get_db)) -> Dict[st
 def get_platform_stats(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     Platform bazlı detaylı istatistikler döner.
-    Ultimate Platform vizyonu için: Web, Android, Windows, API, DB
+    Platform kapsamı için: Web, Android, Windows, API, DB
     """
     platform_data = db.query(
         TestRun.platform,

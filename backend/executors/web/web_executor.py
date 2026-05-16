@@ -3,6 +3,7 @@ from playwright.async_api import async_playwright, Browser, Page
 from typing import Optional
 import asyncio
 import re
+import os
 
 class WebExecutor:
     """
@@ -21,6 +22,7 @@ class WebExecutor:
         self.nav_retries = max(0, nav_retries)
         self.nav_retry_delay_sec = max(0.0, nav_retry_delay_sec)
         self.highlight_enabled = highlight_enabled
+        self.ai_self_healing_enabled = os.getenv("EXECUTION_AI_HEALING_ENABLED", "false").lower() == "true"
         self.playwright = None
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
@@ -273,6 +275,8 @@ class WebExecutor:
             print(f"✅ [WebExecutor] Tıklandı: {selector}")
             
         except Exception as e:
+            if not self.ai_self_healing_enabled:
+                raise e
             print(f"⚠️ [Self-Healing] {selector} bulunamadı, AI moduna geçiliyor...")
             
             try:
@@ -392,7 +396,17 @@ class WebExecutor:
     async def stop(self):
         """Tarayıcıyı kapat"""
         if self.browser:
-            await self.browser.close()
+            try:
+                await self.browser.close()
+            except BaseException as exc:
+                print(f"⚠️ [WebExecutor] Browser kapatma atlandı: {exc}")
+            finally:
+                self.browser = None
         if self.playwright:
-            await self.playwright.stop()
+            try:
+                await self.playwright.stop()
+            except BaseException as exc:
+                print(f"⚠️ [WebExecutor] Playwright kapatma atlandı: {exc}")
+            finally:
+                self.playwright = None
         print("🛑 [WebExecutor] Tarayıcı kapatıldı.")

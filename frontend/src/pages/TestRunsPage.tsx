@@ -1,5 +1,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Activity, CheckCircle2, XCircle, Clock, AlertTriangle, ChevronRight, Search, Filter, Trash2, Calendar, Globe, Sparkles, Zap } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -16,6 +17,10 @@ interface StepLog {
     status: 'passed' | 'failed';
     reason?: string;
     error?: string;
+    screenshot?: string;
+    screenshot_error?: string;
+    duration_ms?: number;
+    selector_used?: string;
 }
 
 interface TestRun {
@@ -30,24 +35,113 @@ interface TestRun {
     logs?: string;
 }
 
+interface IntegrationLog {
+    provider: 'jira' | string;
+    ticket_key: string;
+    title: string;
+    description?: string;
+    priority?: string;
+    status: string;
+    target?: string;
+    module?: string;
+    run_status?: string;
+    work_items?: string[];
+    acceptance_criteria?: string[];
+    created_at?: string;
+}
+
+interface BugAnalysisLog {
+    title: string;
+    category: string;
+    severity: string;
+    affected_case?: string;
+    run_target?: string;
+    failed_step_order?: number;
+    failed_action?: string;
+    target: string;
+    selector_used?: string;
+    probable_cause: string;
+    recommendation: string;
+    evidence?: {
+        reason?: string;
+        duration_ms?: number;
+        screenshot?: string;
+        screenshot_error?: string;
+        attempts?: Array<{ selector: string; error: string }>;
+    };
+}
+
 // ─── Logs Detail Modal ───────────────────────────────────────────────
 function LogsModal({ run, onClose }: { run: TestRun; onClose: () => void }) {
-    let steps: StepLog[] = [];
-    let summary: string | null = null;
+    const [actionStatus, setActionStatus] = useState<{ type: 'success' | 'error' | 'loading'; message: string } | null>(null);
+    const [ticketLoading, setTicketLoading] = useState(false);
+    const [selectedTicket, setSelectedTicket] = useState<IntegrationLog | null>(null);
+    const parsedLogs = useMemo(() => {
+        let steps: StepLog[] = [];
+        let summary: string | null = null;
+        let integrations: IntegrationLog[] = [];
+        let bugAnalysis: BugAnalysisLog[] = [];
 
-    try {
-        const parsed = JSON.parse(run.logs || '[]');
-        if (Array.isArray(parsed)) {
-            steps = parsed;
-        } else if (typeof parsed === 'object' && parsed !== null) {
-            steps = parsed.steps || [];
-            summary = parsed.summary || null;
+        try {
+            const parsed = JSON.parse(run.logs || '[]');
+            if (Array.isArray(parsed)) {
+                steps = parsed;
+            } else if (typeof parsed === 'object' && parsed !== null) {
+                steps = parsed.steps || [];
+                summary = parsed.summary || null;
+                integrations = parsed.integrations || [];
+                bugAnalysis = parsed.bug_analysis || [];
+            }
+        } catch (e) {
+            console.error("Logs parse error", e);
         }
-    } catch (e) {
-        console.error("Logs parse error", e);
-    }
 
+        return { steps, summary, integrations, bugAnalysis };
+    }, [run.logs]);
+
+    const [integrationLogs, setIntegrationLogs] = useState<IntegrationLog[]>(parsedLogs.integrations);
+
+    useEffect(() => {
+        setIntegrationLogs(parsedLogs.integrations);
+    }, [parsedLogs.integrations, run.id]);
+
+    const { steps, summary, bugAnalysis } = parsedLogs;
     const passed = steps.filter(s => s.status === 'passed').length;
+    const bugsByStep = new Map<number, BugAnalysisLog[]>();
+    bugAnalysis.forEach((bug) => {
+        const order = Number(bug.failed_step_order);
+        if (!order) return;
+        bugsByStep.set(order, [...(bugsByStep.get(order) || []), bug]);
+    });
+
+    const runReportAction = async () => {
+        setTicketLoading(true);
+        setActionStatus({
+            type: 'loading',
+            message: 'Jira ticket akışı çalıştırılıyor...',
+        });
+
+        try {
+            const response = await axios.post(`/api/reports/${run.id}/send-to-jira`);
+            if (response.data?.ticket) {
+                setIntegrationLogs(current => [response.data.ticket, ...current]);
+            }
+            setActionStatus({
+                type: 'success',
+                message: response.data?.message || 'Jira ticket akışı tamamlandı.',
+            });
+        } catch (error) {
+            const message = axios.isAxiosError(error)
+                ? error.response?.data?.detail || error.message
+                : 'Beklenmeyen bir hata oluştu.';
+            setActionStatus({
+                type: 'error',
+                message: `Jira ticket açılmadı: ${message}`,
+            });
+        } finally {
+            setTicketLoading(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -69,25 +163,23 @@ function LogsModal({ run, onClose }: { run: TestRun; onClose: () => void }) {
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => axios.post(`/api/reports/${run.id}/send-to-jira`).then(() => alert("Jira Ticket Created!"))}
-                            className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-blue-500/20 transition-all"
+                            type="button"
+                            onClick={runReportAction}
+                            disabled={ticketLoading}
+                            className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-blue-500/20 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                         >
-                            Jira
+                            {ticketLoading ? 'Sending...' : 'Jira'}
                         </button>
                         <button
-                            onClick={() => axios.post(`/api/reports/${run.id}/notify-slack`).then(() => alert("Slack Notified!"))}
-                            className="bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-purple-500/20 transition-all"
-                        >
-                            Slack
-                        </button>
-                        <button
+                            type="button"
                             onClick={() => window.open(`/api/reports/${run.id}/json`)}
-                            className="bg-slate-800 hover:bg-slate-700 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all"
+                            className="bg-slate-800 hover:bg-slate-700 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
                         >
                             Export JSON
                         </button>
 
                         <button
+                            type="button"
                             onClick={onClose}
                             className="h-12 w-12 flex items-center justify-center rounded-2xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all active:scale-90"
                         >
@@ -100,6 +192,18 @@ function LogsModal({ run, onClose }: { run: TestRun; onClose: () => void }) {
 
                 {/* Content */}
                 <div className="overflow-y-auto flex-1 p-8 space-y-6 bg-slate-950/20">
+                    {actionStatus && (
+                        <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
+                            actionStatus.type === 'success'
+                                ? 'bg-green-500/10 border-green-500/25 text-green-300'
+                                : actionStatus.type === 'error'
+                                    ? 'bg-red-500/10 border-red-500/25 text-red-300'
+                                    : 'bg-blue-500/10 border-blue-500/25 text-blue-300'
+                        }`}>
+                            {actionStatus.message}
+                        </div>
+                    )}
+
                     {/* AI Intelligence Summary */}
                     {summary && (
                         <div className="bg-gradient-to-br from-indigo-600/10 to-blue-600/10 border border-indigo-500/20 rounded-2xl p-6 relative overflow-hidden group">
@@ -121,7 +225,57 @@ function LogsModal({ run, onClose }: { run: TestRun; onClose: () => void }) {
                             <Activity className="h-3 w-3" /> Protocol Execution Logs
                         </h3>
 
-                        {steps.length === 0 ? (
+                        {integrationLogs.length > 0 && (
+                            <div className="space-y-3 mb-5">
+                                {integrationLogs.map((item, i) => (
+                                    <button
+                                        key={`${item.ticket_key}-${i}`}
+                                        type="button"
+                                        onClick={() => setSelectedTicket(item)}
+                                        className={`w-full text-left p-5 rounded-2xl border transition-all hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 ${
+                                        item.provider === 'jira'
+                                            ? 'bg-blue-500/10 border-blue-500/25 hover:border-blue-400/60 focus:ring-blue-500/40'
+                                            : 'bg-blue-500/10 border-blue-500/25 hover:border-blue-400/60 focus:ring-blue-500/40'
+                                    }`}>
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className={`text-[10px] px-2 py-1 rounded-md font-black uppercase tracking-widest ${
+                                                        item.provider === 'jira'
+                                                            ? 'bg-blue-500/15 text-blue-300'
+                                                            : 'bg-blue-500/15 text-blue-300'
+                                                    }`}>
+                                                        {item.provider}
+                                                    </span>
+                                                    <span className="text-[10px] font-mono text-slate-500">{item.ticket_key}</span>
+                                                </div>
+                                                <div className="text-sm font-black text-white">{item.title}</div>
+                                                {item.work_items && item.work_items.length > 0 && (
+                                                    <div className="mt-2 text-xs font-semibold text-slate-300">
+                                                        {item.work_items.length} çalışma maddesi oluşturuldu
+                                                    </div>
+                                                )}
+                                                {item.target && (
+                                                    <code className="text-[10px] text-slate-500 block mt-2 break-all">{item.target}</code>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                {item.priority && (
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1">
+                                                        {item.priority}
+                                                    </span>
+                                                )}
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-green-300 bg-green-500/10 border border-green-500/20 rounded-lg px-2 py-1">
+                                                    {item.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {steps.length === 0 && integrationLogs.length === 0 ? (
                             <div className="py-20 text-center text-slate-700 border-2 border-dashed border-slate-800 rounded-3xl">
                                 <Activity className="h-12 w-12 mx-auto mb-4 opacity-10" />
                                 <p className="font-bold text-sm">No protocol data available for this run.</p>
@@ -159,6 +313,45 @@ function LogsModal({ run, onClose }: { run: TestRun; onClose: () => void }) {
                                                         </p>
                                                     </div>
                                                 )}
+                                                {(bugsByStep.get(Number(step.order)) || []).map((bug, bugIndex) => (
+                                                    <div key={`${bug.category}-${bugIndex}`} className="mt-3 rounded-xl border border-blue-400/20 bg-blue-500/10 p-3">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">Bug Analysis</div>
+                                                            <span className="rounded-full border border-blue-400/25 bg-blue-500/10 px-2 py-0.5 text-[9px] text-blue-100">{bug.category}</span>
+                                                        </div>
+                                                        <p className="mt-2 text-xs leading-relaxed text-slate-300">{bug.probable_cause}</p>
+                                                        <p className="mt-1 text-xs leading-relaxed text-blue-100">{bug.recommendation}</p>
+                                                    </div>
+                                                ))}
+                                                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-mono text-slate-500">
+                                                    {step.duration_ms !== undefined && (
+                                                        <span className="rounded-lg border border-white/5 bg-black/30 px-2 py-1">
+                                                            {step.duration_ms} ms
+                                                        </span>
+                                                    )}
+                                                    {step.selector_used && (
+                                                        <span className="rounded-lg border border-white/5 bg-black/30 px-2 py-1 break-all">
+                                                            Selector: {step.selector_used}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {step.screenshot && (
+                                                    <div className="mt-4 overflow-hidden rounded-2xl border border-slate-800 bg-black/30">
+                                                        <img
+                                                            src={step.screenshot}
+                                                            alt={`Run ${run.id} step ${step.order} screenshot`}
+                                                            className="w-full h-auto"
+                                                        />
+                                                    </div>
+                                                )}
+                                                {!step.screenshot && (
+                                                    <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200">
+                                                        Screenshot bu kayıtta yok.
+                                                        {step.screenshot_error
+                                                            ? ` Sebep: ${step.screenshot_error}`
+                                                            : ' Bu run eski olabilir; yeni Deploy koşularında ekran görüntüsü kaydedilir.'}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -166,6 +359,44 @@ function LogsModal({ run, onClose }: { run: TestRun; onClose: () => void }) {
                             </div>
                         )}
                     </div>
+
+                    {bugAnalysis.length > 0 && (
+                        <div>
+                            <h3 className="text-[10px] font-black text-blue-300 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <AlertTriangle className="h-3 w-3" /> Bug Analysis
+                            </h3>
+                            <div className="space-y-3">
+                                {bugAnalysis.map((bug, index) => (
+                                    <div key={`${bug.category}-${index}`} className="rounded-2xl border border-blue-400/20 bg-blue-500/10 p-5">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <h4 className="text-sm font-black text-white">{bug.title}</h4>
+                                                <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-blue-200">
+                                                    step #{bug.failed_step_order ?? '--'} / {bug.failed_action || 'step'}
+                                                </p>
+                                            </div>
+                                            <span className="rounded-full border border-blue-400/25 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold text-blue-100">
+                                                {bug.category}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Probable Cause</div>
+                                                <p className="mt-2 text-sm leading-6 text-slate-300">{bug.probable_cause}</p>
+                                            </div>
+                                            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recommended Action</div>
+                                                <p className="mt-2 text-sm leading-6 text-blue-100">{bug.recommendation}</p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400">
+                                            Evidence: {bug.evidence?.reason || 'No failure reason was captured.'}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer summary */}
@@ -192,12 +423,102 @@ function LogsModal({ run, onClose }: { run: TestRun; onClose: () => void }) {
                     </div>
                 </div>
             </div>
+
+            {selectedTicket && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+                    <div className="flex w-full max-w-lg max-h-[88vh] flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl">
+                        <div className="shrink-0 flex items-center justify-between border-b border-slate-800 px-6 py-5">
+                            <div>
+                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                                    Ticket Detail
+                                </div>
+                                <h3 className="mt-1 text-xl font-black text-white">{selectedTicket.ticket_key}</h3>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedTicket(null)}
+                                className="h-10 w-10 rounded-xl bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
+                            >
+                                <XCircle className="mx-auto h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+                            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Title</div>
+                                <div className="mt-1 text-sm font-bold text-white">{selectedTicket.title}</div>
+                                {selectedTicket.description && (
+                                    <p className="mt-2 text-xs leading-relaxed text-slate-400">{selectedTicket.description}</p>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Provider</div>
+                                    <div className="mt-1 text-sm font-bold uppercase text-blue-300">{selectedTicket.provider}</div>
+                                </div>
+                                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</div>
+                                    <div className="mt-1 text-sm font-bold uppercase text-green-300">{selectedTicket.status}</div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Priority</div>
+                                    <div className="mt-1 text-sm font-bold uppercase text-amber-300">{selectedTicket.priority || '-'}</div>
+                                </div>
+                                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Module</div>
+                                    <div className="mt-1 text-sm font-bold text-slate-200">{selectedTicket.module || '-'}</div>
+                                </div>
+                            </div>
+                            {selectedTicket.work_items && selectedTicket.work_items.length > 0 && (
+                                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Work Items</div>
+                                    <ul className="mt-3 space-y-2">
+                                        {selectedTicket.work_items.map((item, index) => (
+                                            <li key={index} className="rounded-lg border border-white/5 bg-black/20 p-3 text-xs leading-relaxed text-slate-300">
+                                                {item}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            {selectedTicket.acceptance_criteria && selectedTicket.acceptance_criteria.length > 0 && (
+                                <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Acceptance Criteria</div>
+                                    <ul className="mt-3 space-y-2">
+                                        {selectedTicket.acceptance_criteria.map((item, index) => (
+                                            <li key={index} className="text-xs leading-relaxed text-slate-300">
+                                                {index + 1}. {item}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Target</div>
+                                <code className="mt-1 block break-all text-xs text-slate-300">{selectedTicket.target || '-'}</code>
+                            </div>
+                            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Created At</div>
+                                <div className="mt-1 text-sm text-slate-300">
+                                    {selectedTicket.created_at ? new Date(selectedTicket.created_at).toLocaleString('tr-TR') : '-'}
+                                </div>
+                            </div>
+                            <p className="text-xs leading-relaxed text-slate-500">
+                                Bu kayıt VisionQA içi Jira ticket kaydıdır. Gerçek Jira bağlantısı eklendiğinde burada dış sistem linki de gösterilebilir.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
 // ─── Ana Sayfa ───────────────────────────────────────────────────────
 export function TestRunsPage() {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [runs, setRuns] = useState<TestRun[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
@@ -242,6 +563,16 @@ export function TestRunsPage() {
 
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        const runId = Number(searchParams.get('run'));
+        if (!runId || runs.length === 0) return;
+        const run = runs.find(item => item.id === runId);
+        if (run) {
+            setSelectedRun(run);
+            setSearchParams({}, { replace: true });
+        }
+    }, [runs, searchParams, setSearchParams]);
 
     // Memoized filtered runs
     const filteredRuns = useMemo(() => {

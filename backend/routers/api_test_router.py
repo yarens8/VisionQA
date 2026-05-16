@@ -1,12 +1,16 @@
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from database import get_db
+from database.models import ApiAnalysisRecord
 from executors.api.api_executor import APIExecutor
 from schemas import (
     ApiCrossModuleCorrelation,
+    ApiEvidenceSummary,
     ApiGeneratedTest,
     ApiNegativeCheck,
     ApiScoreBreakdown,
@@ -24,6 +28,47 @@ class APIRequestSchema(BaseModel):
     headers: Optional[Dict[str, str]] = None
     body: Optional[Any] = None
     params: Optional[Dict[str, Any]] = None
+
+
+def _save_api_record(db: Session, result: ApiTestAnalyzeResponse) -> None:
+    try:
+        payload = result.model_dump(mode="json")
+        record = ApiAnalysisRecord(
+            platform="api",
+            source_type="endpoint",
+            source_label=f"{result.method} {result.url}",
+            source_url=result.url,
+            overall_score=int(result.overall_score or 0),
+            findings_count=len(result.findings or []),
+            overview=result.summary,
+            analysis_payload=payload,
+        )
+        db.add(record)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"⚠️ API analysis history save failed: {exc}")
+
+
+def _api_history_item(record: ApiAnalysisRecord) -> Dict[str, Any]:
+    payload = record.analysis_payload or {}
+    return {
+        "id": record.id,
+        "platform": record.platform,
+        "source_type": record.source_type,
+        "source_label": record.source_label,
+        "source_url": record.source_url,
+        "project_id": payload.get("project_id"),
+        "method": payload.get("method"),
+        "success": payload.get("success"),
+        "status_code": payload.get("status_code"),
+        "duration_ms": payload.get("duration_ms"),
+        "overall_score": record.overall_score,
+        "findings_count": record.findings_count,
+        "overview": record.overview,
+        "endpoint_context": payload.get("endpoint_context"),
+        "created_at": record.created_at.isoformat() if record.created_at else None,
+    }
 
 
 def _response_text(raw_result: Dict[str, Any]) -> str:
@@ -371,6 +416,39 @@ def _score_breakdown(
     )
 
 
+def _api_evidence_summary(
+    findings: List[ApiTestFinding],
+    negative_checks: List[ApiNegativeCheck],
+    correlations: List[ApiCrossModuleCorrelation],
+) -> ApiEvidenceSummary:
+    categories = [finding.category for finding in findings]
+    primary_categories = []
+    for category in categories:
+        if category not in primary_categories:
+            primary_categories.append(category)
+
+    def count_signals(group: set[str]) -> int:
+        return sum(1 for category in categories if category in group)
+
+    negative_probe_signals = sum(1 for check in negative_checks if check.status in {"signal", "missing"})
+    recommended_modules = []
+    for correlation in correlations:
+        module = correlation.module
+        if module not in recommended_modules:
+            recommended_modules.append(module)
+
+    return ApiEvidenceSummary(
+        contract_signals=count_signals({"schema-mismatch", "response-type", "content-type"}),
+        security_signals=count_signals({"auth-signal", "error-leakage", "session-signal"}) + negative_probe_signals,
+        performance_signals=count_signals({"slow-response", "payload-size"}),
+        validation_signals=count_signals({"status-mismatch"}),
+        availability_signals=count_signals({"transport-error", "server-error"}),
+        negative_probe_signals=negative_probe_signals,
+        primary_categories=primary_categories[:6],
+        recommended_modules=recommended_modules[:5],
+    )
+
+
 def _endpoint_risk_score(request_data: ApiTestAnalyzeRequest, findings: List[ApiTestFinding], context: str) -> int:
     base = 22
     if context == "auth":
@@ -459,6 +537,8 @@ def _build_api_analysis_response(
     generated_tests = _generate_context_tests(request_data, raw_result)
     score_breakdown = _score_breakdown(request_data, findings, negative_checks)
     endpoint_risk_score = _endpoint_risk_score(request_data, findings, context)
+    cross_module_correlation = _cross_module_correlation(request_data, findings, context)
+    evidence_summary = _api_evidence_summary(findings, negative_checks, cross_module_correlation)
     response_text = _response_text(raw_result)
     response_type = str(raw_result.get("headers", {}).get("content-type", "unknown")).split(";")[0]
     summary = (
@@ -477,6 +557,7 @@ def _build_api_analysis_response(
     return ApiTestAnalyzeResponse(
         method=request_data.method.upper(),
         url=request_data.url,
+        project_id=request_data.project_id,
         success=bool(raw_result.get("success")),
         status_code=raw_result.get("status_code"),
         duration_ms=float(raw_result.get("duration_ms", 0)),
@@ -490,10 +571,11 @@ def _build_api_analysis_response(
         response_type=response_type,
         response_size=len(response_text),
         score_breakdown=score_breakdown,
+        evidence_summary=evidence_summary,
         findings=findings,
         negative_checks=negative_checks,
         generated_tests=generated_tests,
-        cross_module_correlation=_cross_module_correlation(request_data, findings, context),
+        cross_module_correlation=cross_module_correlation,
         raw_result=raw_result,
     )
 
@@ -513,8 +595,30 @@ async def run_api_request(request_data: APIRequestSchema):
         await executor.close()
 
 
+@router.get("/history")
+async def get_api_history(limit: int = 12, db: Session = Depends(get_db)):
+    safe_limit = max(1, min(limit, 50))
+    records = (
+        db.query(ApiAnalysisRecord)
+        .order_by(ApiAnalysisRecord.created_at.desc(), ApiAnalysisRecord.id.desc())
+        .limit(safe_limit)
+        .all()
+    )
+    return [_api_history_item(record) for record in records]
+
+
+@router.get("/history/{record_id}")
+async def get_api_history_detail(record_id: int, db: Session = Depends(get_db)):
+    record = db.query(ApiAnalysisRecord).filter(ApiAnalysisRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="API analysis record not found")
+    item = _api_history_item(record)
+    item["analysis_payload"] = record.analysis_payload
+    return item
+
+
 @router.post("/analyze", response_model=ApiTestAnalyzeResponse)
-async def analyze_api_request(request_data: ApiTestAnalyzeRequest):
+async def analyze_api_request(request_data: ApiTestAnalyzeRequest, db: Session = Depends(get_db)):
     executor = APIExecutor()
     try:
         raw_result = await executor.execute_step(
@@ -526,7 +630,9 @@ async def analyze_api_request(request_data: ApiTestAnalyzeRequest):
         )
         findings = _detect_api_findings(request_data, raw_result)
         negative_checks = await _run_negative_checks(executor, request_data) if request_data.run_negative_checks else []
-        return _build_api_analysis_response(request_data, raw_result, findings, negative_checks)
+        result = _build_api_analysis_response(request_data, raw_result, findings, negative_checks)
+        _save_api_record(db, result)
+        return result
     finally:
         await executor.close()
 

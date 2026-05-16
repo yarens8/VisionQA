@@ -147,6 +147,51 @@ def test_dataset_zip_upload_reads_annotation_and_checks_images():
     assert "missing-image" in categories
 
 
+def test_dataset_ticket_uses_real_analysis_findings_and_validator_errors():
+    client = TestClient(main.app)
+    payload = {
+        "dataset_name": "Dataset Ticket QA",
+        "records": [
+            {"id": "1", "label": "cat", "image_name": "cat.jpg", "width": 100, "height": 100, "annotations": [{"id": "ann-1", "label": "cat", "bbox": [90, 90, 30, 30]}]},
+        ],
+    }
+    analysis_response = client.post("/dataset/analyze", json=payload)
+    assert analysis_response.status_code == 200
+    analysis = analysis_response.json()
+
+    ticket_response = client.post("/dataset/tickets/jira", json=analysis)
+
+    assert ticket_response.status_code == 200
+    ticket = ticket_response.json()["ticket"]
+    assert ticket["module"] == "dataset"
+    assert ticket["dataset_name"] == "Dataset Ticket QA"
+    assert ticket["summary"]["findings_count"] >= 1
+    assert ticket["summary"]["detail_errors_count"] >= 1
+    assert any(item["source"] == "dataset_finding" for item in ticket["work_items"])
+    assert any(item["source"] == "validator_error" for item in ticket["work_items"])
+
+
+def test_dataset_ticket_rejects_clean_analysis_without_real_signals():
+    client = TestClient(main.app)
+    payload = {
+        "dataset_name": "Clean Dataset Ticket QA",
+        "records": [
+            {"id": "1", "label": "cat", "image_name": "cat.jpg", "width": 100, "height": 100, "annotations": [{"label": "cat", "bbox": [1, 1, 10, 10]}]},
+            {"id": "2", "label": "dog", "image_name": "dog.jpg", "width": 100, "height": 100, "annotations": [{"label": "dog", "bbox": [2, 2, 10, 10]}]},
+        ],
+    }
+    analysis_response = client.post("/dataset/analyze", json=payload)
+    assert analysis_response.status_code == 200
+    analysis = analysis_response.json()
+    assert analysis["findings"] == []
+    assert analysis["detail_errors"] == []
+
+    ticket_response = client.post("/dataset/tickets/jira", json=analysis)
+
+    assert ticket_response.status_code == 422
+    assert "gerçek finding" in ticket_response.json()["detail"]
+
+
 def test_dataset_zip_upload_reads_csv_annotations():
     client = TestClient(main.app)
     csv_payload = "\n".join(

@@ -1,7 +1,7 @@
-# VisionQA Ultimate Platform
+# VisionQA Platform
 ## Proje Yönetim Dokümanı
 
-**Proje Adı:** VisionQA Ultimate Platform  
+**Proje Adı:** VisionQA Platform  
 **Hazırlayan:** [Yaren APAYDIN]  
 **Tarih:** 10 Şubat 2026  
 **Durum:** Planlama Fazı Tamamlandı
@@ -10,7 +10,7 @@
 
 ## 📌 Yönetici Özeti
 
-VisionQA, yazılım kalite güvencesini yapay zeka teknolojileri ile yeniden tanımlayan bir platformdur. Geleneksel test araçlarından farklı olarak, Vision Language Models (SAM3, DINO-X) ve Large Language Models kullanarak:
+VisionQA, yazılım kalite güvencesi akışlarını tek bir çatı altında toplamayı hedefleyen AI destekli bir platformdur. Vision provider'lar (SAM3, Grounding DINO/DINO-X) ve Large Language Models kullanarak:
 
 - ✅ **Otonom test senaryosu keşfi** - Manuel senaryo yazımı gerektirmez
 - ✅ **Görsel algı tabanlı test** - DOM bağımlılığı olmadan UI testi
@@ -18,7 +18,7 @@ VisionQA, yazılım kalite güvencesini yapay zeka teknolojileri ile yeniden tan
 - ✅ **Otomatik hata raporlama** - Video analizinden Jira ticket'a
 
 ### Teknoloji Stack
-- **AI Models:** SAM3, DINO-X (Cloud API - GPU gerektirmez)
+- **AI Models:** SAM3 ve Grounding DINO/DINO-X opsiyonel provider olarak konumlanır; yerel model kullanımı cache gerektirir.
 - **Backend:** Python 3.11, FastAPI, PostgreSQL, Redis, Celery
 - **Frontend:** React 18, TypeScript, Vite, TailwindCSS
 - **DevOps:** Docker, Docker Compose, GitHub Actions CI/CD
@@ -53,7 +53,7 @@ VisionQA, yazılım kalite güvencesini yapay zeka teknolojileri ile yeniden tan
 - Docker development environment
 - CI/CD pipeline (GitHub Actions)
 - Database schema (PostgreSQL)
-- SAM3 & DINO-X API entegrasyonu
+- SAM3 & Grounding DINO/DINO-X provider entegrasyonu
 - Browser automation (Playwright)
 - FastAPI + React kurulumu
 

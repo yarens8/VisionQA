@@ -5,9 +5,11 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from routers.api_test_router import (
     _build_api_analysis_response,
+    _api_history_item,
     _detect_api_findings,
 )
-from routers.db_test_router import _analyze_query_text, _analyze_sample_rows
+from database.models import ApiAnalysisRecord, DbAnalysisRecord
+from routers.db_test_router import _analyze_query_text, _analyze_sample_rows, _db_history_item
 from schemas import ApiTestAnalyzeRequest
 
 
@@ -15,6 +17,7 @@ def test_api_analysis_detects_status_and_debug_findings():
     request = ApiTestAnalyzeRequest(
         method="POST",
         url="https://example.com/api/items",
+        project_id=42,
         body={"name": "demo"},
         expected_status=201,
         expected_fields=["id", "status"],
@@ -42,6 +45,10 @@ def test_api_analysis_detects_status_and_debug_findings():
     assert response.ai_failure_explanation
     assert response.generated_tests
     assert response.score_breakdown.health < 100
+    assert response.project_id == 42
+    assert response.evidence_summary.contract_signals >= 2
+    assert response.evidence_summary.security_signals >= 1
+    assert "server-error" in response.evidence_summary.primary_categories
 
 
 def test_db_query_analysis_flags_risky_patterns_and_duplicates():
@@ -63,3 +70,60 @@ def test_db_query_analysis_flags_risky_patterns_and_duplicates():
     assert "null-density" in categories
     assert "business-rule" in categories
     assert "security-storage" in categories
+
+
+def test_api_history_item_exposes_saved_analysis_summary():
+    record = ApiAnalysisRecord(
+        id=7,
+        platform="api",
+        source_type="endpoint",
+        source_label="GET https://example.com/api/items",
+        source_url="https://example.com/api/items",
+        overall_score=82,
+        findings_count=1,
+        overview="API analizi tamamlandi.",
+        analysis_payload={
+            "project_id": 12,
+            "method": "GET",
+            "success": True,
+            "status_code": 200,
+            "duration_ms": 91.4,
+            "endpoint_context": "generic",
+        },
+    )
+
+    item = _api_history_item(record)
+
+    assert item["id"] == 7
+    assert item["method"] == "GET"
+    assert item["project_id"] == 12
+    assert item["status_code"] == 200
+    assert item["duration_ms"] == 91.4
+    assert item["findings_count"] == 1
+
+
+def test_db_history_item_exposes_saved_quality_summary():
+    record = DbAnalysisRecord(
+        id=11,
+        platform="database",
+        source_type="query",
+        source_label="SELECT * FROM projects LIMIT 5",
+        overall_score=88,
+        findings_count=2,
+        overview="DB quality summary",
+        analysis_payload={
+            "success": True,
+            "table_name": None,
+            "table_quality_score": 92,
+            "duration_ms": 42.5,
+            "detected_columns": ["id", "name"],
+        },
+    )
+
+    item = _db_history_item(record)
+
+    assert item["id"] == 11
+    assert item["source_type"] == "query"
+    assert item["overall_score"] == 88
+    assert item["table_quality_score"] == 92
+    assert item["detected_columns_count"] == 2

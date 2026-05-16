@@ -2,10 +2,13 @@ import re
 import time
 from typing import List, Dict, Any, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import inspect
+from sqlalchemy.orm import Session
 
+from database import get_db
+from database.models import DbAnalysisRecord
 from executors.database.db_executor import DatabaseExecutor
 from schemas import (
     DbConstraintSummary,
@@ -29,6 +32,47 @@ class DBSchemaValidationSchema(BaseModel):
     connection_string: str
     table_name: str
     expected_columns: List[str]
+
+
+def _save_db_record(db: Session, result: DbQualityResponse, request_data: DbQualityRequest) -> None:
+    try:
+        payload = result.model_dump(mode="json")
+        source_label = result.table_name or (request_data.query or "DB quality audit")[:120]
+        record = DbAnalysisRecord(
+            platform="database",
+            source_type="table" if result.table_name else "query",
+            source_label=source_label,
+            source_url=None,
+            overall_score=int(result.overall_score or 0),
+            findings_count=len(result.findings or []) + len(result.schema_smells or []),
+            overview=result.summary,
+            analysis_payload=payload,
+        )
+        db.add(record)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"⚠️ DB analysis history save failed: {exc}")
+
+
+def _db_history_item(record: DbAnalysisRecord) -> Dict[str, Any]:
+    payload = record.analysis_payload or {}
+    return {
+        "id": record.id,
+        "platform": record.platform,
+        "source_type": record.source_type,
+        "source_label": record.source_label,
+        "source_url": record.source_url,
+        "overall_score": record.overall_score,
+        "findings_count": record.findings_count,
+        "overview": record.overview,
+        "success": payload.get("success"),
+        "table_name": payload.get("table_name"),
+        "table_quality_score": payload.get("table_quality_score"),
+        "duration_ms": payload.get("duration_ms"),
+        "detected_columns_count": len(payload.get("detected_columns") or []),
+        "created_at": record.created_at.isoformat() if record.created_at else None,
+    }
 
 
 def _add_db_finding(
@@ -341,8 +385,30 @@ def run_db_query(data: DBQuerySchema):
     return executor.execute_query(data.query, data.params)
 
 
+@router.get("/history")
+def get_db_history(limit: int = 12, db: Session = Depends(get_db)):
+    safe_limit = max(1, min(limit, 50))
+    records = (
+        db.query(DbAnalysisRecord)
+        .order_by(DbAnalysisRecord.created_at.desc(), DbAnalysisRecord.id.desc())
+        .limit(safe_limit)
+        .all()
+    )
+    return [_db_history_item(record) for record in records]
+
+
+@router.get("/history/{record_id}")
+def get_db_history_detail(record_id: int, db: Session = Depends(get_db)):
+    record = db.query(DbAnalysisRecord).filter(DbAnalysisRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="DB analysis record not found")
+    item = _db_history_item(record)
+    item["analysis_payload"] = record.analysis_payload
+    return item
+
+
 @router.post("/quality-audit", response_model=DbQualityResponse)
-def run_db_quality_audit(data: DbQualityRequest):
+def run_db_quality_audit(data: DbQualityRequest, db: Session = Depends(get_db)):
     start_time = time.time()
     executor = DatabaseExecutor(data.connection_string)
     findings: List[DbQualityFinding] = []
@@ -466,7 +532,7 @@ def run_db_quality_audit(data: DbQualityRequest):
         nullable_columns=constraint_summary.nullable_columns if constraint_summary else [],
     )
 
-    return _build_db_quality_response(
+    result = _build_db_quality_response(
         findings=findings,
         schema_smells=schema_smells,
         constraint_summary=constraint_summary,
@@ -477,6 +543,8 @@ def run_db_quality_audit(data: DbQualityRequest):
         detected_columns=detected_columns,
         sample_rows=sample_rows[: min(len(sample_rows), 10)],
     )
+    _save_db_record(db, result, data)
+    return result
 
 
 @router.post("/validate-schema")

@@ -1821,9 +1821,15 @@ def _build_dino_candidates(image: Image.Image, detected_elements: List[Dict], te
 
 def _detect_elements_with_dino(image: Image.Image) -> List[Dict]:
     try:
-        from core.models.dinox_client import DINOXClient
+        from core.models.vision_provider import VisionProviderManager
     except Exception:
         return []
+
+    try:
+        asyncio.get_running_loop()
+        return []
+    except RuntimeError:
+        pass
 
     temp_path = None
     try:
@@ -1832,17 +1838,8 @@ def _detect_elements_with_dino(image: Image.Image) -> List[Dict]:
         temp.close()
         image.save(temp_path, format="PNG")
 
-        client = DINOXClient()
-        try:
-            elements = asyncio.run(client.detect_elements(temp_path))
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            try:
-                asyncio.set_event_loop(loop)
-                elements = loop.run_until_complete(client.detect_elements(temp_path))
-            finally:
-                loop.close()
-                asyncio.set_event_loop(None)
+        manager = VisionProviderManager()
+        elements, _provider = asyncio.run(manager.detect_elements(temp_path))
         return elements or []
     except Exception:
         return []

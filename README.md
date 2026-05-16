@@ -1,6 +1,6 @@
-# VisionQA Ultimate Platform
+# VisionQA Platform
 
-AI-Powered Universal Software Quality and Testing Framework
+AI-assisted software quality and testing framework
 
 ## Overview
 
@@ -45,14 +45,14 @@ VisionQA bu problemi, moduler ama tek orkestrasyon altinda calisan bir framework
 
 ## ✨ Key Features
 
-### 10 AI-Powered Testing Modules
+### 10 Testing Modules
 
-1. 🤖 **Universal Autonomous Tester** - Otonom test modulu Grounding DINO tabanli sayfa analizi ile `Llama 3.3 70B` destekli page identity, business rule discovery ve test case generation akisini birlestirir; risk dengeli pozitif/negatif scenario uretir. Step bazli execution, run progress, execution summary ve protocol loglari sayesinde test sadece calismaz, hangi adimin neden koptugu da okunabilir hale gelir; self-healing executor katmani da overlay temizleme, selector iyilestirme ve retry denemeleriyle kosuyu daha dayanikli hale getirir. Web tarafinda guclu v1 seviyesinde calisir; cok platformlu production parity ise sonraki fazin ana genisleme alanidir.
+1. 🤖 **Autonomous Tester** - Test modulu SAM3 veya Grounding DINO tabanli opsiyonel sayfa analizi ile LLM destekli page identity, business rule discovery ve test case generation akisini birlestirir; risk dengeli pozitif/negatif scenario taslaklari uretir. Step bazli execution, run progress, execution summary ve protocol loglari sayesinde hangi adimin neden koptugu okunabilir hale gelir; self-healing executor katmani overlay temizleme, selector iyilestirme ve retry denemeleriyle kosuyu daha dayanikli hale getirmeyi hedefler. Web akisi aktif v1 seviyesindedir; diger platformlarda parity gelistirme alanidir.
 2. 🎨 **Cross-Platform UI/UX Auditor** - Web, mobil ve masaustu uygulamalarda tasarim ile gercek arayuzun uyumunu analiz eder. Layout hatalari, hizalama problemleri ve gorsel tutarsizliklari tespit eder.
 3. 🧾 **AI Dataset Validator** - Dataset modulu yalnizca eksik veri veya class imbalance bulmakla kalmaz; annotation health, label consistency, suspicious label sinyali, duplicate/near-duplicate benzeri tekrarlar, split health ve coverage gaps katmanlarini birlikte yorumlar. Dataset Quality Score ile completeness, balance, consistency, validity ve annotation health eksenlerinde puanlama yapar; Training Risk Analyzer ve Dataset -> Model Impact ozetleri ile bu veri setinin egitim tarafinda ne tur riskler uretebilecegini aciklar. Synthetic data suggestion, collection target onerileri ve bulgu bazli AI interpretation sayesinde sadece sorun degil, sonraki veri toplama ve iyilestirme yonu de tarif edilir.
 4. 🎥 **Universal Bug Analyzer** - Bug analyzer katmani step bazli hata/sonuc toplama, reason/error sinyalleri, execution summary ve run loglari ile kosu sonrasini okunur hale getirir. JSON export akisi ve Jira/Slack entegrasyon starter'lari mevcut; boylece bulunan problem sadece tespit edilmez, paylasilabilir bir rapor akisina da baglanir. Buna karsin kanit paketleme, tam standardize bug schema ve zengin export formatlari halen genisletilmesi gereken alanlardir.
 5. 🔒 **Multi-Platform Security Auditor** - Guvenlik modulu tek bir scanner degil, katmanli bir `Security Intelligence Framework` olarak tasarlanir. Visual Exposure katmani screenshot/OCR/metadata ile hassas veri ifsasini, token veya debug sizintilarini bulur. Surface Security Audit katmani URL, response body ve header uzerinden temel sertlestirme ve dis yuzey risklerini denetler. Sonraki katmanlarda AI Attack Hypotheses ile baglama gore hangi saldiri siniflarinin denenmesi gerektigi uretilir; Attack Correlation & Root Cause ile web, API ve veritabani sinyalleri baglanarak attack chain ve muhtemel kok neden aciklanir.
-6. ♿ **Universal Accessibility Expert** - Screenshot veya URL girdileri uzerinden uygulamalarin erisilebilirlik standartlarina uygunlugunu visual-first yaklasimla analiz eder. Sayisal goruntu isleme kullanarak ekranin tamami uzerinde kontrast, okunabilirlik, renk ayrismasi ve gorunur erisilebilirlik sorunlarini tespit eder; OCR, Grounding DINO ve metadata destekli bilesen anlama ile buton, giris alani, yardimci metin ve benzeri UI parcalarini daha dogru yorumlayip sorunlu alanlari isaretler ve iyilestirme onerileri uretir.
+6. ♿ **Accessibility Analyzer** - Screenshot veya URL girdileri uzerinden visual-first erisilebilirlik sinyalleri uretir. Sayisal goruntu isleme kullanarak kontrast, okunabilirlik, renk ayrismasi ve gorunur erisilebilirlik risklerini tespit eder; OCR, opsiyonel vision provider ve metadata destekli bilesen anlama ile buton, giris alani, yardimci metin ve benzeri UI parcalarini yorumlayip iyilestirme onerileri uretir.
 7. 🚀 **Cross-Platform Performance Analyzer** - Performans modulu web, API ve DB sinyallerini ayni analiz altinda toplar. Web tarafinda page load ve temel browser metric'leri; API tarafinda avg/p50/p95/p99, timeout ve error-rate; DB tarafinda query duration ve query-level latency korelasyonu uretir. Technical Score ile User Perceived Performance Score ayridir; AI Performance Root Cause Analyzer, bottleneck confidence, timeline summary ve module-specific optimization suggestions ile performans sayilari yorumlanan bir rapora donusur. Boylece metrikler sadece olculmez, muhtemel darbogaz kaynagi da UI/API/DB baglaminda aciklanir.
 8. 📱 **Mobile-Specific Test Suite** - Mobil modulu mevcut capability'yi durustce urunlestirir ve screenshot + metadata tabanli `AI Mobile UX Analyzer` cikarir. Touch target, readability, overflow, density, auth friction, thumb-zone analysis, keyboard overlap, safe-area risk ve gesture friction sinyalleri uretilir. Screen type baglamina gore context-aware mobile yorum, task completion friction, context playbook ve cross-platform parity summary sunulur; `supported now` ve `next phase` ayrimi ile canli emulator/device farm, battery/FPS telemetry ve network shaping gibi daha ileri katmanlar net sekilde konumlandirilir.
 9. 🔌 **API Test Suite** - API modulu klasik request calistiricidan daha genis bir analiz katmani sunar. Endpoint health check, response/status validation, basit contract kontrolu ve negatif senaryo sinyallerini tek cikti altinda toplar. AI Failure Explanation katmani bir 5xx veya validation sapmasinin muhtemel nedenini yorumlar; Context-Aware Test Generation endpoint baglamina gore login, search, upload veya admin akislarina uygun test onerileri cikarir. Endpoint Risk Score ve cross-module correlation sayesinde API bulgulari performans, security ve DB modulleriyle bir arada okunabilir.
@@ -131,17 +131,29 @@ High-level flow:
 
 ## Current Module Snapshot
 
-Su an platform icinde moduller ayni olgunluk seviyesinde degildir; bazilari kapanisa yakin `tamamlandi v1`, bazilari ise `guclu v1` veya `guclu v1+` seviyesindedir.
+Su an platform icinde moduller ayni olgunluk seviyesinde degildir; bazilari aktif v1, bazilari erken/orta v1 seviyesindedir.
 
-- `4.1 Autonomous Tester`: guclu v1. Grounding DINO tabanli sayfa analizi, `Llama 3.3 70B` destekli identity/business-rule/case generation, pozitif/negatif scenario uretimi, self-healing destekli step bazli execution ve run log/summary akisi aktif; web akisi urunlesen cekirdek olarak oturdu, multi-platform parity sonraki buyume alani.
+- `4.1 Autonomous Tester`: aktif v1. SAM3 primary ve Grounding DINO fallback destekli opsiyonel sayfa analizi, LLM destekli identity/business-rule/case generation, pozitif/negatif scenario uretimi, self-healing destekli step bazli execution ve run log/summary akisi mevcut; web akisi ana odaktir, multi-platform parity sonraki gelistirme alanidir.
 - `4.2 Bug Analyzer`: erken/orta v1. Step log, execution summary, JSON export ve Jira/Slack starter akislari var; ancak standardize reproduction schema, artifact packaging ve zengin export formatlari henuz tamamlanmadi.
-- `4.6 Accessibility`: tamamlanmis v1. OCR + Grounding DINO + metadata destekli visual-first accessibility analiz akisi, history ve URL/screenshot parity ile aktif.
-- `4.3 UI/UX`: guclu v1+. Screenshot tabanli finding, AI UX Critic, score sistemi, attention/focus yorumlari ve history akisi ile vitrin seviyesinde.
-- `4.5 Security`: guclu v1. Katmanli Security Intelligence Framework omurgasi, visual exposure, surface audit, attack hypotheses, correlation/root cause ve active simulation starter ile calisiyor.
-- `4.7 Performance`: guclu v1. Web/API/DB metrikleri, technical vs perceived score, root cause, timeline summary ve optimization katmanlari aktif.
-- `4.8 API`: guclu v1. Endpoint health, validation, context-aware test generation, risk scoring ve AI failure explanation aktif.
-- `4.10 Database`: guclu v1. Schema/constraint/consistency/performance/security yorumu, table quality score ve AI interpretation aktif.
-- `4.4 Dataset`: guclu v1+. Validation, class balance, annotation health, duplicate/suspicious label sinyali, split health, training risk, synthetic suggestion, collection target ve model impact aktif.
-- `4.9 Mobile`: guclu v1+. Capability positioning, AI Mobile UX Analyzer, thumb-zone/keyboard/safe-area/gesture friction katmanlari ve parity yorumlari aktif.
+- `4.6 Accessibility`: aktif v1. OCR + opsiyonel vision provider + metadata destekli visual-first accessibility analiz akisi, history ve URL/screenshot akisi mevcut.
+- `4.3 UI/UX`: aktif v1. Screenshot tabanli finding, UX critic ozeti, score sistemi, attention/focus yorumlari ve history akisi mevcut.
+- `4.5 Security`: aktif v1. Visual exposure, surface audit, attack hypotheses, correlation/root cause ve active simulation starter akislari mevcut.
+- `4.7 Performance`: aktif v1. Web/API/DB metrikleri, technical vs perceived score, root cause, timeline summary ve optimization katmanlari mevcut.
+- `4.8 API`: aktif v1. Endpoint health, validation, context-aware test generation, risk scoring ve failure explanation mevcut.
+- `4.10 Database`: aktif v1. Schema/constraint/consistency/performance/security yorumu, table quality score ve interpretation akisi mevcut.
+- `4.4 Dataset`: aktif v1. Validation, class balance, annotation health, duplicate/suspicious label sinyali, split health, training risk, synthetic suggestion, collection target ve model impact akislari mevcut.
+- `4.9 Mobile`: aktif v1. Capability positioning, mobile UX analyzer, thumb-zone/keyboard/safe-area/gesture friction katmanlari ve parity yorumlari mevcut.
 
 Sonraki fazlarda moduller history/trend, deeper telemetry, live execution parity ve cross-module chain analiziyle daha da derinlestirilecektir.
+
+## Vision Providers
+
+SAM3 ve Grounding DINO opsiyonel runtime provider olarak kullanilir. Varsayilan akista `VISION_MODEL_PROVIDER=sam3`, `VISION_MODEL_FALLBACK=dinox` seklindedir; SAM3 yuklenemezse veya sonuc uretmezse Grounding DINO denenir. CI yalnizca import ve fallback davranisini test eder, gercek model indirme/inference calistirmaz.
+
+Yerel Docker smoke testi:
+
+```bash
+docker compose run --rm sam3-cache
+```
+
+Bu komut `facebook/sam3` modelini `huggingface_cache` volume'una indirir. Volume silinmedigi surece sonraki calistirmalarda model yeniden indirilmez; sadece cache'ten yuklenir.

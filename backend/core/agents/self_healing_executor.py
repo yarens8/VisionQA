@@ -5,7 +5,7 @@ import asyncio
 from typing import Dict, Any, Optional, List
 from executors.web.web_executor import WebExecutor
 from core.models.llm_client import LLMClient
-from core.models.dinox_client import DINOXClient
+from core.models.vision_provider import VisionProviderManager
 from core.agents.intelligence_vault import IntelligenceVault
 
 class SelfHealingExecutor:
@@ -16,7 +16,9 @@ class SelfHealingExecutor:
     def __init__(self, web_executor: WebExecutor, vault_data: Optional[Dict[str, Any]] = None):
         self.web = web_executor
         self.llm = LLMClient()
-        self.dinox = DINOXClient()
+        self.vision = VisionProviderManager()
+        self.ai_healing_enabled = os.getenv("EXECUTION_AI_HEALING_ENABLED", "false").lower() == "true"
+        self.vision_obstacles_enabled = os.getenv("EXECUTION_VISION_OBSTACLES_ENABLED", "false").lower() == "true"
         self.vault = IntelligenceVault(vault_data)
         self.last_healing_report = None
 
@@ -35,6 +37,8 @@ class SelfHealingExecutor:
         try:
             await self.web.click_element(selector)
         except Exception as e:
+            if not self.ai_healing_enabled:
+                raise e
             print(f"⚠️ [Self-Healing] Tıklama başarısız: {selector}. İyileştirme başlatılıyor...")
             success = await self.heal_and_retry("click", selector, str(e))
             if not success:
@@ -45,6 +49,8 @@ class SelfHealingExecutor:
         try:
             await self.web.type_input(selector, text)
         except Exception as e:
+            if not self.ai_healing_enabled:
+                raise e
             print(f"⚠️ [Self-Healing] Yazma başarısız: {selector}. İyileştirme başlatılıyor...")
             success = await self.heal_and_retry("type", selector, str(e), value=text)
             if not success:
@@ -54,6 +60,8 @@ class SelfHealingExecutor:
         """Güvenli doğrulama — element görünmezse iyileştirmeyi dene."""
         is_visible = await self.web.verify_element(selector)
         if not is_visible:
+            if not self.ai_healing_enabled:
+                return False
             print(f"⚠️ [Self-Healing] Doğrulama başarısız: {selector}. İyileştirme başlatılıyor...")
             success = await self.heal_and_retry("verify", selector, "Element not visible")
             return success
@@ -86,13 +94,17 @@ class SelfHealingExecutor:
         # Bekleme ve Fallback (Kapat/Kabul Et gibi)
         await asyncio.sleep(1)
 
-        # 🔵 2. AI TABANLI ÇÖZÜM: DINO-X ile Görsel Tespit
+        if not self.vision_obstacles_enabled:
+            print("ℹ️ [Global Solvers] Vision obstacle taraması kapalı; hızlı DOM/selector akışıyla devam.")
+            return
+
+        # 🔵 2. GORSEL COZUM: optional vision provider ile tespit
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             screenshot_path = tmp.name
         
         try:
             await self.web.screenshot(screenshot_path)
-            elements = await self.dinox.detect_elements(screenshot_path, prompt=self.dinox.OBSTACLES_PROMPT)
+            elements, provider = await self.vision.detect_obstacles(screenshot_path)
             
             for elem in elements:
                 if elem.get("score", 0) > 0.40:
@@ -100,7 +112,7 @@ class SelfHealingExecutor:
                     # Sadece kapatma/kabul değil, 'kadın/erkek' gibi seçimleri de engel sayıyoruz
                     targets = ["accept", "dismiss", "close", "agree", "ok", "allow", "kadın", "erkek", "woman", "man"]
                     if any(t in label for t in targets):
-                        print(f"✨ [Global Solver] Engel/Seçim tespit edildi: {label} (Score: {elem['score']:.2f})")
+                        print(f"✨ [Global Solver] Engel/Seçim tespit edildi: {label} ({provider}, Score: {elem['score']:.2f})")
                         box = elem["box"]
                         if isinstance(box, dict):
                             x = (box["xmin"] + box["xmax"]) / 2
@@ -122,6 +134,8 @@ class SelfHealingExecutor:
         """
         🚑 İyileştirme Süreci (Healing Phase)
         """
+        if not self.ai_healing_enabled:
+            return False
         print(f"🚑 [Healing] Analiz ediliyor: {action_type} -> {selector}")
         
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
@@ -130,8 +144,8 @@ class SelfHealingExecutor:
         try:
             await self.web.screenshot(screenshot_path)
             
-            # 1. DINO-X World View al
-            world_view = await self.dinox.get_world_view(screenshot_path)
+            # 1. Vision provider world view al
+            world_view, _provider = await self.vision.get_world_view(screenshot_path)
             
             # 2. LLM Analizi
             analysis = await self.llm.analyze_error(

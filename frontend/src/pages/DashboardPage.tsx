@@ -24,9 +24,9 @@ export function DashboardPage() {
         <div className="space-y-8">
             {/* Hero Section */}
             <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-8 shadow-sm">
-                <h2 className="text-3xl font-bold text-white mb-2">Welcome Back, Admin 👋</h2>
+                <h2 className="text-3xl font-bold text-white mb-2">Welcome Back, Admin</h2>
                 <p className="text-slate-400 max-w-2xl">
-                    VisionQA platform is ready for your test missions. Analyze your applications across Web, Mobile, and API platforms with AI-powered agents.
+                    VisionQA is ready to help you review web, mobile, API, and database quality signals from one workspace.
                 </p>
 
                 <div className="mt-8 flex gap-4">
@@ -124,7 +124,7 @@ export function DashboardPage() {
                         <div className="text-3xl font-bold text-white mb-1">
                             {isLoading ? '...' : stats?.total_cases || 0}
                         </div>
-                        <p className="text-sm text-slate-500">AI + Manual tests</p>
+                        <p className="text-sm text-slate-500">Generated + manual tests</p>
                     </div>
                 </Link>
 

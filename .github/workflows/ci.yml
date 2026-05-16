@@ -117,6 +117,8 @@ jobs:
           export PYTHONPATH=$PYTHONPATH:.
           python -c "from core.models.llm_client import LLMClient; print('✅ LLMClient import OK')"
           python -c "from core.models.sam3_client import SAM3Client; print('✅ SAM3Client import OK')"
+          python -c "from core.models.dinox_client import DINOXClient; print('✅ DINOXClient / Grounding DINO fallback import OK')"
+          python -c "from core.models.vision_provider import VisionProviderManager; print('✅ VisionProviderManager import OK')"
           python -c "from core.agents.case_generator import AICaseGenerator; print('✅ AICaseGenerator import OK')"
           python -c "from core.scenario_executor import ScenarioExecutor; print('✅ ScenarioExecutor import OK')"
           python -c "from executors.api.api_executor import APIExecutor; print('✅ APIExecutor import OK')"

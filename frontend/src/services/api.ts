@@ -95,6 +95,18 @@ export interface GenerateCasesResponse {
     summary: { happy_path: number; negative_path: number; edge_case: number; security: number };
     cases: TestCase[];
     saved_to_db: boolean;
+    visual_analysis?: {
+        vision_provider?: string;
+        detected_element_count?: number;
+        visual_fallback_used?: boolean;
+        fallback_reason?: string;
+        detected_elements?: { label?: string; score?: number; box?: number[] }[];
+        screenshot_base64?: string;
+        annotated_screenshot_base64?: string;
+        live_overlay_requested?: boolean;
+        live_overlay_status?: 'not_requested' | 'starting' | 'shown' | 'unavailable' | string;
+        live_overlay_error?: string;
+    };
 }
 
 export interface RunStartResponse {
@@ -110,6 +122,7 @@ export interface RunStatusResponse {
     status: 'running' | 'completed' | 'failed' | 'crashed';
     summary?: string;
     steps: any[];
+    bug_analysis?: BugAnalysisReport[];
 }
 
 export interface StartCaseRequest {
@@ -401,6 +414,42 @@ export interface SecurityContextProfile {
     attack_readiness: number;
 }
 
+export interface SecurityScanEvidence {
+    source: string;
+    url?: string;
+    final_url?: string;
+    status_code?: number | null;
+    content_type?: string | null;
+    ocr_regions: number;
+    ocr_text_chars: number;
+    response_text_chars: number;
+    headers_observed: number;
+    security_headers_checked: number;
+    security_headers_missing: number;
+    cookie_header_present: boolean;
+    checks_executed: string[];
+    collection_errors: string[];
+}
+
+export interface SecurityPriorityAction {
+    title: string;
+    severity: 'critical' | 'high' | 'medium' | 'low' | string;
+    category: string;
+    source: string;
+    evidence: string;
+    recommendation: string;
+}
+
+export interface SecurityRiskSummary {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    total: number;
+    highest_severity: string;
+    priority_actions: SecurityPriorityAction[];
+}
+
 export interface SecurityCrossModuleHint {
     module: string;
     reason: string;
@@ -492,6 +541,8 @@ export interface SecurityAnalysisResponse {
     };
     layer_summary: Record<string, SecurityLayerSummary>;
     context_profile: SecurityContextProfile;
+    scan_evidence: SecurityScanEvidence;
+    risk_summary: SecurityRiskSummary;
     cross_module_hints: SecurityCrossModuleHint[];
     recommendations: string[];
 }
@@ -503,9 +554,187 @@ export interface SecurityUrlAnalysisRequest {
     full_page?: boolean;
 }
 
+export interface ProjectSummaryReport {
+    project: {
+        id: number;
+        name: string;
+        description?: string;
+        platforms: string[];
+        pages_count: number;
+    };
+    generated_at: string;
+    overall_score: number;
+    summary: {
+        total_runs: number;
+        passed_runs: number;
+        failed_runs: number;
+        security_records: number;
+        high_security_risks: number;
+        medium_security_risks: number;
+        test_actions: number;
+        correlations: number;
+        bug_reports?: number;
+        api_actions?: number;
+    };
+    security: {
+        records: Array<{
+            id: number;
+            source_type: string;
+            source_label?: string;
+            source_url?: string;
+            overall_score: number;
+            findings_count: number;
+            overview: string;
+            created_at?: string;
+            risk_summary?: SecurityRiskSummary;
+            priority_actions: SecurityPriorityAction[];
+            scan_evidence: {
+                status_code?: number | null;
+                final_url?: string;
+                headers_observed: number;
+                checks_executed: number;
+            };
+        }>;
+        priority_actions: SecurityPriorityAction[];
+    };
+    tests: {
+        priority_actions: Array<{
+            title: string;
+            severity: string;
+            source: string;
+            module: string;
+            run_id: number;
+            test_case_id?: number;
+            page_id?: number;
+            target: string;
+            run_target?: string;
+            summary: string;
+            recommendation: string;
+            bug_report?: BugAnalysisReport;
+        }>;
+        bug_reports?: BugAnalysisReport[];
+    };
+    api?: {
+        records: Array<{
+            id?: number;
+            module?: string;
+            source_type?: string;
+            source_label?: string;
+            source_url?: string;
+            overall_score?: number;
+            findings_count?: number;
+            overview?: string;
+            created_at?: string;
+            method?: string;
+            status_code?: number | null;
+            duration_ms?: number | null;
+            endpoint_context?: string;
+            endpoint_risk_score?: number;
+            score_breakdown?: Record<string, number>;
+            evidence_summary?: ApiEvidenceSummary;
+            finding_categories?: string[];
+        }>;
+        priority_actions: Array<{
+            title: string;
+            severity: string;
+            category: string;
+            source: string;
+            api_record_id?: number;
+            api_record_ids?: number[];
+            duplicate_count?: number;
+            endpoint?: string;
+            method?: string;
+            status_code?: number | null;
+            duration_ms?: number | null;
+            summary: string;
+            evidence: string;
+            recommendation: string;
+            score_breakdown?: Record<string, number>;
+            evidence_summary?: ApiEvidenceSummary;
+        }>;
+    };
+    correlation: {
+        items: Array<{
+            title: string;
+            severity: string;
+            target: string;
+            related_modules: string[];
+            signal_count: number;
+            duplicate_count?: number;
+            security_record_id?: number;
+            run_ids: number[];
+            evidence: {
+                security: string[];
+                tests: string[];
+                bug_categories?: string[];
+            };
+            recommendation: string;
+        }>;
+    };
+    module_breakdown?: {
+        items: Array<{
+            module: string;
+            label: string;
+            status: string;
+            score?: number | null;
+            records: number;
+            findings: number;
+            summary: string;
+            latest: Array<{
+                id?: number;
+                module?: string;
+                source_type?: string;
+                source_label?: string;
+                source_url?: string;
+                overall_score?: number;
+                findings_count?: number;
+                overview?: string;
+                created_at?: string;
+            } | BugAnalysisReport | any>;
+        }>;
+    };
+    runs: Array<{
+        id: number;
+        module_name: string;
+        target: string;
+        status: string;
+        page_id?: number;
+        page_name?: string;
+        test_case_id?: number;
+        test_case_title?: string;
+        findings_count: number;
+        failed_steps_count: number;
+        created_at?: string;
+        completed_at?: string;
+        bug_reports_count?: number;
+    }>;
+}
+
+export interface BugAnalysisReport {
+    title: string;
+    category: string;
+    severity: string;
+    affected_case?: string;
+    run_target?: string;
+    failed_step_order?: number;
+    failed_action?: string;
+    target: string;
+    selector_used?: string;
+    probable_cause: string;
+    recommendation: string;
+    evidence: {
+        reason: string;
+        duration_ms?: number;
+        screenshot?: string;
+        screenshot_error?: string;
+        attempts?: Array<{ selector: string; error: string }>;
+    };
+}
+
 export interface ApiTestAnalyzeRequest {
     method: string;
     url: string;
+    project_id?: number;
     headers?: Record<string, string>;
     body?: any;
     params?: Record<string, any>;
@@ -551,6 +780,17 @@ export interface ApiScoreBreakdown {
     contract: number;
 }
 
+export interface ApiEvidenceSummary {
+    contract_signals: number;
+    security_signals: number;
+    performance_signals: number;
+    validation_signals: number;
+    availability_signals: number;
+    negative_probe_signals: number;
+    primary_categories: string[];
+    recommended_modules: string[];
+}
+
 export interface ApiCrossModuleCorrelation {
     module: string;
     summary: string;
@@ -561,6 +801,7 @@ export interface ApiCrossModuleCorrelation {
 export interface ApiTestAnalyzeResponse {
     method: string;
     url: string;
+    project_id?: number | null;
     success: boolean;
     status_code?: number;
     duration_ms: number;
@@ -574,11 +815,34 @@ export interface ApiTestAnalyzeResponse {
     response_type: string;
     response_size: number;
     score_breakdown: ApiScoreBreakdown;
+    evidence_summary: ApiEvidenceSummary;
     findings: ApiTestFinding[];
     negative_checks: ApiNegativeCheck[];
     generated_tests: ApiGeneratedTest[];
     cross_module_correlation: ApiCrossModuleCorrelation[];
     raw_result: Record<string, any>;
+}
+
+export interface ApiHistoryItem {
+    id: number;
+    platform: string;
+    source_type: string;
+    source_label?: string | null;
+    source_url?: string | null;
+    project_id?: number | null;
+    method?: string | null;
+    success?: boolean | null;
+    status_code?: number | null;
+    duration_ms?: number | null;
+    overall_score: number;
+    findings_count: number;
+    overview?: string | null;
+    endpoint_context?: string | null;
+    created_at?: string | null;
+}
+
+export interface ApiHistoryDetail extends ApiHistoryItem {
+    analysis_payload?: ApiTestAnalyzeResponse;
 }
 
 export interface DbQualityRequest {
@@ -641,9 +905,31 @@ export interface DbQualityResponse {
     sample_rows: Record<string, any>[];
 }
 
+export interface DbHistoryItem {
+    id: number;
+    platform: string;
+    source_type: string;
+    source_label?: string | null;
+    source_url?: string | null;
+    overall_score: number;
+    findings_count: number;
+    overview?: string | null;
+    success?: boolean | null;
+    table_name?: string | null;
+    table_quality_score?: number | null;
+    duration_ms?: number | null;
+    detected_columns_count: number;
+    created_at?: string | null;
+}
+
+export interface DbHistoryDetail extends DbHistoryItem {
+    analysis_payload?: DbQualityResponse;
+}
+
 export interface PerformanceAnalyzeRequest {
     url?: string;
     api_url?: string;
+    project_id?: number;
     api_method?: string;
     db_connection_string?: string;
     db_query?: string;
@@ -719,6 +1005,27 @@ export interface PerformanceAnalysisResponse {
     db_metrics?: PerformanceDbMetrics | null;
     findings: PerformanceFinding[];
     correlations: PerformanceCorrelation[];
+}
+
+export interface PerformanceHistoryItem {
+    id: number;
+    platform: string;
+    source_type: string;
+    source_label?: string | null;
+    source_url?: string | null;
+    project_id?: number | null;
+    overall_score: number;
+    findings_count: number;
+    overview?: string | null;
+    performance_grade?: string | null;
+    technical_score?: number | null;
+    perceived_score?: number | null;
+    bottleneck_confidence?: number | null;
+    created_at?: string | null;
+}
+
+export interface PerformanceHistoryDetail extends PerformanceHistoryItem {
+    analysis_payload?: PerformanceAnalysisResponse;
 }
 
 export interface DatasetAnnotationRecord {
@@ -848,6 +1155,53 @@ export interface DatasetAnalysisResponse {
     collection_targets: DatasetCollectionTarget[];
     model_impact_summary: string;
     training_risks: DatasetTrainingRisk[];
+    source_artifact?: {
+        type: string;
+        label?: string;
+        path: string;
+        sha256: string;
+        size_bytes: number;
+        saved_at: string;
+    } | null;
+}
+
+export interface DatasetTicketWorkItem {
+    source: string;
+    severity: 'high' | 'medium' | 'low' | string;
+    category: string;
+    title: string;
+    description: string;
+    evidence: string;
+    recommendation: string;
+}
+
+export interface DatasetTicket {
+    provider: 'jira' | string;
+    ticket_key: string;
+    title: string;
+    description: string;
+    priority: 'high' | 'medium' | 'low' | string;
+    status: string;
+    module: string;
+    dataset_name: string;
+    quality_grade: string;
+    overall_score: number;
+    total_records: number;
+    summary: {
+        findings_count: number;
+        detail_errors_count: number;
+        high_count: number;
+        medium_count: number;
+    };
+    work_items: DatasetTicketWorkItem[];
+}
+
+export interface DatasetTicketResponse {
+    success: boolean;
+    provider: 'jira' | string;
+    configured: boolean;
+    ticket: DatasetTicket;
+    message: string;
 }
 
 export interface DatasetHistoryItem {
@@ -984,8 +1338,8 @@ export const api = {
             project_id: data.project_id,
             page_id: data.page_id,
             use_screenshot: data.use_screenshot ?? true,  // Varsayılan: AI ekranı da görsün
-            strict_visual: data.strict_visual ?? true,    // Varsayılan: hayali fallback kapalı
-            require_live_show: data.require_live_show ?? true, // Varsayılan: canlı bridge zorunlu
+            strict_visual: data.strict_visual ?? false,
+            require_live_show: data.require_live_show ?? false,
         });
         return response.data;
     },
@@ -1152,6 +1506,11 @@ export const api = {
         await apiClient.delete(`/security/history/${recordId}`);
     },
 
+    getProjectSummaryReport: async (projectId: number): Promise<ProjectSummaryReport> => {
+        const response = await apiClient.get<ProjectSummaryReport>(`/reports/project/${projectId}/summary`);
+        return response.data;
+    },
+
     getAccessibilityHistory: async (limit = 8): Promise<AccessibilityHistoryItem[]> => {
         const response = await apiClient.get<AccessibilityHistoryItem[]>('/accessibility/history', {
             params: { limit },
@@ -1177,6 +1536,7 @@ export const api = {
         const response = await apiClient.post<ApiTestAnalyzeResponse>('/api-test/analyze', {
             method: data.method,
             url: data.url,
+            project_id: data.project_id,
             headers: data.headers ?? {},
             body: data.body ?? null,
             params: data.params ?? null,
@@ -1185,6 +1545,18 @@ export const api = {
             expected_response_type: data.expected_response_type,
             run_negative_checks: data.run_negative_checks ?? true,
         });
+        return response.data;
+    },
+
+    getApiHistory: async (limit = 12): Promise<ApiHistoryItem[]> => {
+        const response = await apiClient.get<ApiHistoryItem[]>('/api-test/history', {
+            params: { limit },
+        });
+        return response.data;
+    },
+
+    getApiHistoryDetail: async (recordId: number): Promise<ApiHistoryDetail> => {
+        const response = await apiClient.get<ApiHistoryDetail>(`/api-test/history/${recordId}`);
         return response.data;
     },
 
@@ -1200,16 +1572,41 @@ export const api = {
         return response.data;
     },
 
+    getDbHistory: async (limit = 12): Promise<DbHistoryItem[]> => {
+        const response = await apiClient.get<DbHistoryItem[]>('/db-test/history', {
+            params: { limit },
+        });
+        return response.data;
+    },
+
+    getDbHistoryDetail: async (recordId: number): Promise<DbHistoryDetail> => {
+        const response = await apiClient.get<DbHistoryDetail>(`/db-test/history/${recordId}`);
+        return response.data;
+    },
+
     analyzePerformance: async (data: PerformanceAnalyzeRequest): Promise<PerformanceAnalysisResponse> => {
         const response = await apiClient.post<PerformanceAnalysisResponse>('/performance/analyze', {
             url: data.url,
             api_url: data.api_url,
+            project_id: data.project_id,
             api_method: data.api_method ?? 'GET',
             db_connection_string: data.db_connection_string,
             db_query: data.db_query,
             sample_api_runs: data.sample_api_runs ?? 5,
             platform: data.platform ?? 'web',
         });
+        return response.data;
+    },
+
+    getPerformanceHistory: async (limit = 12): Promise<PerformanceHistoryItem[]> => {
+        const response = await apiClient.get<PerformanceHistoryItem[]>('/performance/history', {
+            params: { limit },
+        });
+        return response.data;
+    },
+
+    getPerformanceHistoryDetail: async (recordId: number): Promise<PerformanceHistoryDetail> => {
+        const response = await apiClient.get<PerformanceHistoryDetail>(`/performance/history/${recordId}`);
         return response.data;
     },
 
@@ -1239,6 +1636,11 @@ export const api = {
 
     getDatasetHistoryDetail: async (recordId: number): Promise<DatasetHistoryDetail> => {
         const response = await apiClient.get<DatasetHistoryDetail>(`/dataset/history/${recordId}`);
+        return response.data;
+    },
+
+    createDatasetJiraTicket: async (data: DatasetAnalysisResponse): Promise<DatasetTicketResponse> => {
+        const response = await apiClient.post<DatasetTicketResponse>('/dataset/tickets/jira', data);
         return response.data;
     },
 

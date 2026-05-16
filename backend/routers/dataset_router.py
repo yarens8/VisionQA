@@ -1,10 +1,12 @@
 import json
 import csv
 import hashlib
+import os
 import zipfile
 from collections import Counter, defaultdict
+from datetime import datetime
 from io import BytesIO
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List
 import xml.etree.ElementTree as ET
 
@@ -36,11 +38,36 @@ MAX_ZIP_BYTES = 1000 * 1024 * 1024
 MAX_ZIP_MEMBERS = 5000
 MAX_HASH_IMAGE_COUNT = 200
 MAX_HASH_TOTAL_BYTES = 50 * 1024 * 1024
+DATASET_STORAGE_DIR = Path(__file__).resolve().parents[1] / "storage" / "datasets"
 ANNOTATION_FILE_HINTS = ("dataset.json", "annotations.json", "annotation.json", "_annotations.coco.json")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 CSV_EXTENSIONS = {".csv"}
 XML_EXTENSIONS = {".xml"}
 YOLO_EXTENSIONS = {".txt"}
+
+
+def _safe_artifact_label(label: str | None, fallback: str) -> str:
+    raw = label or fallback
+    safe = "".join(ch if ch.isalnum() or ch in ("-", "_", ".") else "_" for ch in raw)
+    return safe[:120] or fallback
+
+
+def _write_dataset_artifact(source_type: str, source_label: str | None, content: bytes) -> Dict[str, Any]:
+    DATASET_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256(content).hexdigest()
+    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+    extension = ".zip" if source_type == "zip" else ".json"
+    filename = f"{timestamp}_{digest[:12]}_{_safe_artifact_label(source_label, 'dataset')}{extension}"
+    path = DATASET_STORAGE_DIR / filename
+    path.write_bytes(content)
+    return {
+        "type": source_type,
+        "label": source_label,
+        "path": os.path.relpath(path, Path(__file__).resolve().parents[1]),
+        "sha256": digest,
+        "size_bytes": len(content),
+        "saved_at": datetime.utcnow(),
+    }
 
 
 def _add_finding(
@@ -567,6 +594,135 @@ def _history_item_schema(record: DatasetAnalysisRecord) -> schemas.DatasetHistor
     )
 
 
+def _dataset_ticket_priority(analysis: DatasetAnalysisResponse) -> str:
+    severities = [item.severity for item in analysis.findings] + [item.severity for item in analysis.detail_errors]
+    if "high" in severities:
+        return "high"
+    if "medium" in severities:
+        return "medium"
+    return "low"
+
+
+def _dataset_ticket_items(analysis: DatasetAnalysisResponse) -> List[Dict[str, Any]]:
+    items: List[Dict[str, Any]] = []
+
+    for finding in analysis.findings:
+        items.append({
+            "source": "dataset_finding",
+            "severity": finding.severity,
+            "category": finding.category,
+            "title": finding.title,
+            "description": finding.description,
+            "evidence": finding.evidence,
+            "recommendation": finding.recommendation,
+        })
+
+    for error in analysis.detail_errors:
+        items.append({
+            "source": "validator_error",
+            "severity": error.severity,
+            "category": error.error_type,
+            "title": error.error_type,
+            "description": error.message,
+            "evidence": (
+                f"image_id={error.image_id or '-'}, annotation_id={error.annotation_id or '-'}, "
+                f"field={error.field}, file={error.file_name or '-'}"
+            ),
+            "recommendation": "Annotation kaydını belirtilen alan ve dosya bağlamında düzelt.",
+        })
+
+    for gap in analysis.coverage_gaps:
+        items.append({
+            "source": "coverage_gap",
+            "severity": "medium",
+            "category": "coverage",
+            "title": gap.title,
+            "description": gap.summary,
+            "evidence": f"Impacted labels: {', '.join(gap.impacted_labels)}",
+            "recommendation": "Etkilenen sınıflar için ek veri toplama veya augmentation planı oluştur.",
+        })
+
+    for signal in analysis.duplicate_signals:
+        items.append({
+            "source": "duplicate_signal",
+            "severity": "medium",
+            "category": "duplicate",
+            "title": "Duplicate dataset signal",
+            "description": signal.reason,
+            "evidence": f"Record IDs: {', '.join(signal.record_ids)}",
+            "recommendation": "Tekrarlı kayıtları deduplicate et veya split leakage etkisini kontrol et.",
+        })
+
+    for signal in analysis.suspicious_label_signals:
+        items.append({
+            "source": "suspicious_label",
+            "severity": "medium",
+            "category": "label_consistency",
+            "title": "Suspicious label signal",
+            "description": signal.reason,
+            "evidence": f"Record: {signal.record_id}; current_label={signal.current_label}",
+            "recommendation": signal.suggested_review,
+        })
+
+    for target in analysis.collection_targets:
+        items.append({
+            "source": "collection_target",
+            "severity": "low",
+            "category": "data_collection",
+            "title": f"Collect more data for {target.label}",
+            "description": target.reason,
+            "evidence": f"Priority: P{target.priority}",
+            "recommendation": "Bu sınıf için hedefli veri toplama planı oluştur.",
+        })
+
+    return items
+
+
+def _build_dataset_ticket_payload(analysis: DatasetAnalysisResponse, provider: str) -> Dict[str, Any]:
+    items = _dataset_ticket_items(analysis)
+    if not items:
+        raise HTTPException(
+            status_code=422,
+            detail="Bu dataset analizinde ticket'a aktarılacak gerçek finding, validator error veya coverage sinyali bulunamadı.",
+        )
+
+    provider_prefix = "JIRA" if provider == "jira" else "SLACK"
+    high_count = sum(1 for item in items if item["severity"] == "high")
+    medium_count = sum(1 for item in items if item["severity"] == "medium")
+    return {
+        "provider": provider,
+        "ticket_key": f"{provider_prefix}-DATASET-{hashlib.sha1((analysis.dataset_name + str(analysis.total_records) + str(len(items))).encode('utf-8')).hexdigest()[:8].upper()}",
+        "title": f"Dataset Quality: {analysis.dataset_name} - {len(items)} gerçek kalite bulgusu",
+        "description": analysis.overview,
+        "priority": _dataset_ticket_priority(analysis),
+        "status": "created",
+        "module": "dataset",
+        "dataset_name": analysis.dataset_name,
+        "quality_grade": analysis.quality_grade,
+        "overall_score": analysis.overall_score,
+        "total_records": analysis.total_records,
+        "summary": {
+            "findings_count": len(analysis.findings),
+            "detail_errors_count": len(analysis.detail_errors),
+            "high_count": high_count,
+            "medium_count": medium_count,
+        },
+        "work_items": items,
+    }
+
+
+@router.post("/tickets/jira")
+def create_dataset_jira_ticket(analysis: DatasetAnalysisResponse):
+    ticket = _build_dataset_ticket_payload(analysis, "jira")
+    return {
+        "success": True,
+        "provider": "jira",
+        "configured": False,
+        "ticket": ticket,
+        "message": f"{ticket['ticket_key']} dataset analiz çıktısından oluşturuldu.",
+    }
+
+
 @router.post("/upload-analyze", response_model=DatasetAnalysisResponse)
 async def upload_and_analyze_dataset(file: UploadFile = File(...), db: Session = Depends(get_db)):
     filename = file.filename or "dataset.zip"
@@ -576,6 +732,7 @@ async def upload_and_analyze_dataset(file: UploadFile = File(...), db: Session =
     raw = await file.read()
     if len(raw) > MAX_ZIP_BYTES:
         raise HTTPException(status_code=400, detail="ZIP dosyasi 250 MB limitini asiyor.")
+    source_artifact = _write_dataset_artifact("zip", filename, raw)
 
     try:
         with zipfile.ZipFile(BytesIO(raw)) as archive:
@@ -585,7 +742,7 @@ async def upload_and_analyze_dataset(file: UploadFile = File(...), db: Session =
 
             request = _request_from_zip_archive(archive, names)
             _attach_zip_image_evidence(request, image_names, image_hashes)
-            return analyze_dataset(request, db=db, source_type="zip", source_label=filename)
+            return _analyze_dataset_impl(request, db=db, source_type="zip", source_label=filename, source_artifact=source_artifact)
     except zipfile.BadZipFile as exc:
         raise HTTPException(status_code=400, detail="Yuklenen dosya gecerli bir ZIP degil.") from exc
 
@@ -594,9 +751,24 @@ async def upload_and_analyze_dataset(file: UploadFile = File(...), db: Session =
 def analyze_dataset(
     request: Any = Body(...),
     db: Session = Depends(get_db),
+):
+    return _analyze_dataset_impl(request, db=db)
+
+
+def _analyze_dataset_impl(
+    request: Any,
+    db: Session | None = None,
     source_type: str = "json",
     source_label: str | None = None,
+    source_artifact: Dict[str, Any] | None = None,
 ):
+    if source_artifact is None and source_type == "json":
+        try:
+            artifact_bytes = json.dumps(request, ensure_ascii=False, default=str).encode("utf-8")
+            source_artifact = _write_dataset_artifact("json", source_label or "dataset.json", artifact_bytes)
+        except Exception as exc:
+            print(f"Dataset source artifact save failed: {exc}")
+
     if not isinstance(request, DatasetAnalyzeRequest):
         try:
             request = _request_from_annotation_payload(request)
@@ -996,6 +1168,7 @@ def analyze_dataset(
             else "Bu örneklemde model eğitimini doğrudan zayıflatacak belirgin kalite sinyali görülmedi."
         ),
         training_risks=training_risks,
+        source_artifact=source_artifact,
     )
     _save_dataset_record(db, result, source_type=source_type, source_label=source_label)
     return result
