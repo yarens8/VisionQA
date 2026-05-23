@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, BarChart3, CheckCircle2, Code2, DatabaseZap, FileArchive, History, Loader2, Sparkles, UploadCloud, X } from 'lucide-react';
 
-import { api, DatasetAnalysisResponse, DatasetHistoryItem, DatasetTicket } from '../services/api';
+import { api, AnalysisJobStatusResponse, DatasetAnalysisResponse, DatasetHistoryItem, DatasetTicket } from '../services/api';
 
 const severityClasses: Record<string, string> = {
     high: 'border-red-500/40 bg-red-500/10 text-red-200',
@@ -52,6 +52,8 @@ export function DatasetPage() {
     const [ticket, setTicket] = useState<DatasetTicket | null>(null);
     const [historyItems, setHistoryItems] = useState<DatasetHistoryItem[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [jobStatus, setJobStatus] = useState<AnalysisJobStatusResponse | null>(null);
+    const activeJobRef = useRef<number | null>(null);
 
     const loadHistory = async () => {
         setHistoryLoading(true);
@@ -69,20 +71,56 @@ export function DatasetPage() {
         loadHistory();
     }, []);
 
+    useEffect(() => {
+        return () => {
+            activeJobRef.current = null;
+        };
+    }, []);
+
+    const pollDatasetJob = async (jobId: number) => {
+        activeJobRef.current = jobId;
+        for (let attempt = 0; attempt < 120; attempt += 1) {
+            if (activeJobRef.current !== jobId) return;
+            const status = await api.getDatasetJobStatus(jobId);
+            setJobStatus(status);
+            if (status.status === 'completed') {
+                if (status.result) {
+                    setResult(status.result as DatasetAnalysisResponse);
+                    setTicket(null);
+                    await loadHistory();
+                }
+                return;
+            }
+            if (status.status === 'failed' || status.status === 'cancelled') {
+                throw new Error(status.error_message || 'Dataset job tamamlanamadi.');
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        }
+        throw new Error('Dataset job zaman asimina ugradi.');
+    };
+
     const handleAnalyze = async () => {
         setLoading(true);
         setNotice(null);
+        setJobStatus(null);
         try {
             const parsed = JSON.parse(payload);
-            const analysis = await api.analyzeDataset(parsed);
-            setResult(analysis);
-            setTicket(null);
-            await loadHistory();
-            setNotice({ type: 'success', message: 'JSON dataset analizi tamamlandi.' });
+            setResult(null);
+            const job = await api.startDatasetAnalysisJob(parsed);
+            setJobStatus({
+                job_id: job.job_id,
+                status: job.status,
+                module_name: job.module_name,
+                target: job.target,
+                created_at: new Date().toISOString(),
+            });
+            await pollDatasetJob(job.job_id);
+            setNotice({ type: 'success', message: 'JSON dataset job tamamlandi.' });
         } catch (error: any) {
             setNotice({ type: 'error', message: getErrorMessage(error) });
             setResult(null);
         } finally {
+            activeJobRef.current = null;
             setLoading(false);
         }
     };
@@ -94,6 +132,7 @@ export function DatasetPage() {
         }
         setLoading(true);
         setNotice(null);
+        setJobStatus(null);
         try {
             const analysis = await api.analyzeDatasetZip(zipFile);
             setResult(analysis);
@@ -236,6 +275,16 @@ export function DatasetPage() {
                     <button type="button" onClick={() => setNotice(null)} className="rounded-md p-1 text-current/70 transition hover:bg-white/10 hover:text-current">
                         <X className="h-4 w-4" />
                     </button>
+                </div>
+            )}
+
+            {jobStatus && (
+                <div className="flex max-w-5xl items-center gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                    <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    <span>
+                        Job #{jobStatus.job_id} · {jobStatus.status}
+                        {jobStatus.celery_task_id ? <span className="text-amber-200/80"> · Celery {jobStatus.celery_task_id.slice(0, 8)}</span> : null}
+                    </span>
                 </div>
             )}
 

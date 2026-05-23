@@ -1,10 +1,15 @@
 import os
 import sys
 
+from fastapi.testclient import TestClient
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import main
 from core.performance.engine import PerformanceEngine, percentile
-from database.models import PerformanceAnalysisRecord
+from database import SessionLocal
+from database.models import AnalysisJob, PerformanceAnalysisRecord
+from routers import performance_router
 from routers.performance_router import _performance_history_item, _save_performance_record
 from schemas import PerformanceAnalyzeRequest
 
@@ -126,3 +131,42 @@ def test_save_performance_record_accepts_engine_dict_result():
     assert db.record.analysis_payload["project_id"] == 44
     assert db.record.overall_score == 81
     assert db.record.findings_count == 1
+
+
+def test_performance_analysis_job_starts_and_exposes_status(monkeypatch):
+    class _FakeAsyncResult:
+        id = "performance-celery-task"
+
+    monkeypatch.setattr(performance_router.run_performance_analysis_task, "delay", lambda job_id: _FakeAsyncResult())
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/performance/analyze-job",
+        json={
+            "url": "https://example.test",
+            "api_url": "https://example.test/api",
+            "platform": "web",
+            "sample_api_runs": 2,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "queued"
+    assert payload["module_name"] == "performance"
+
+    status_response = client.get(f"/performance/jobs/{payload['job_id']}")
+    assert status_response.status_code == 200
+    status_payload = status_response.json()
+    assert status_payload["job_id"] == payload["job_id"]
+    assert status_payload["status"] == "queued"
+    assert status_payload["celery_task_id"] == "performance-celery-task"
+
+    db = SessionLocal()
+    try:
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == payload["job_id"]).first()
+        assert job is not None
+        db.delete(job)
+        db.commit()
+    finally:
+        db.close()

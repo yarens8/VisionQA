@@ -13,3 +13,34 @@
     @apply bg-slate-950 text-slate-100 font-sans antialiased;
   }
 }
+
+@layer utilities {
+  .report-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(51 65 85 / 0.85) rgb(2 6 23 / 0.25);
+  }
+
+  .report-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .report-scrollbar::-webkit-scrollbar-track {
+    background: rgb(2 6 23 / 0.35);
+    border-radius: 999px;
+  }
+
+  .report-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(51 65 85 / 0.9);
+    border: 2px solid rgb(2 6 23 / 0.75);
+    border-radius: 999px;
+  }
+
+  .report-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(71 85 105 / 0.95);
+  }
+
+  .report-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}

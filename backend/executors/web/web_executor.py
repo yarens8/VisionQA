@@ -92,8 +92,15 @@ class WebExecutor:
                     'input',
                     'textarea',
                     'select',
+                    'h1',
+                    'h2',
+                    'h3',
+                    'h4',
+                    'h5',
+                    'h6',
                     '[role="button"]',
                     '[role="link"]',
+                    '[role="heading"]',
                     '[tabindex]',
                     '[contenteditable="true"]'
                 ].join(',');
@@ -106,6 +113,7 @@ class WebExecutor:
                     if (tag === 'img') return 'image';
                     if (tag === 'textarea') return 'textarea';
                     if (tag === 'select') return 'select';
+                    if (/^h[1-6]$/.test(tag) || role === 'heading') return 'heading';
                     if (tag === 'button' || role === 'button') return 'button';
                     if (tag === 'a' || role === 'link') return 'link';
                     if (tag === 'input') {
@@ -140,6 +148,49 @@ class WebExecutor:
                     return Boolean(outlineVisible || shadowVisible || borderVisible);
                 };
 
+                const labelFor = (el) => {
+                    const id = el.getAttribute('id');
+                    const labelledBy = el.getAttribute('aria-labelledby');
+                    const values = [];
+
+                    if (id) {
+                        document.querySelectorAll(`label[for="${CSS.escape(id)}"]`).forEach(label => {
+                            const text = (label.innerText || label.textContent || '').replace(/\s+/g, ' ').trim();
+                            if (text) values.push(text);
+                        });
+                    }
+
+                    const closestLabel = el.closest('label');
+                    if (closestLabel) {
+                        const text = (closestLabel.innerText || closestLabel.textContent || '').replace(/\s+/g, ' ').trim();
+                        if (text) values.push(text);
+                    }
+
+                    if (labelledBy) {
+                        labelledBy.split(/\s+/).forEach(part => {
+                            const node = document.getElementById(part);
+                            const text = node ? (node.innerText || node.textContent || '').replace(/\s+/g, ' ').trim() : '';
+                            if (text) values.push(text);
+                        });
+                    }
+
+                    return values.find(Boolean) || null;
+                };
+
+                const cssSelectorFor = (el) => {
+                    const tag = el.tagName.toLowerCase();
+                    const id = el.getAttribute('id');
+                    const testId = el.getAttribute('data-testid') || el.getAttribute('data-test');
+                    const name = el.getAttribute('name');
+                    if (id) return `${tag}#${CSS.escape(id)}`;
+                    if (testId) return `${tag}[data-testid="${CSS.escape(testId)}"]`;
+                    if (name) return `${tag}[name="${CSS.escape(name)}"]`;
+                    return tag;
+                };
+
+                const focusableNodes = Array.from(document.querySelectorAll(selector)).filter(isKeyboardFocusable);
+                const focusOrder = new Map(focusableNodes.map((node, index) => [node, index + 1]));
+
                 return Array.from(document.querySelectorAll(selector))
                     .map((el) => {
                         const rect = el.getBoundingClientRect();
@@ -154,6 +205,9 @@ class WebExecutor:
                         const title = el.getAttribute('title');
                         const name = el.getAttribute('name');
                         const inputType = el.getAttribute('type');
+                        const role = el.getAttribute('role');
+                        const tagHeadingLevel = /^h[1-6]$/.test(tagName) ? Number(tagName.slice(1)) : null;
+                        const ariaHeadingLevel = role === 'heading' ? Number(el.getAttribute('aria-level') || 0) || null : null;
                         const value = (() => {
                             if (tagName !== 'input' && tagName !== 'textarea') return null;
                             if ((inputType || '').toLowerCase() === 'password') return null;
@@ -174,6 +228,17 @@ class WebExecutor:
                             value,
                             name,
                             input_type: inputType,
+                            role,
+                            aria_hidden: el.getAttribute('aria-hidden') === 'true',
+                            aria_describedby: el.getAttribute('aria-describedby'),
+                            aria_controls: el.getAttribute('aria-controls'),
+                            aria_invalid: el.getAttribute('aria-invalid') === 'true',
+                            required: el.hasAttribute('required') || el.getAttribute('aria-required') === 'true',
+                            autocomplete: el.getAttribute('autocomplete'),
+                            label_text: labelFor(el),
+                            heading_level: tagHeadingLevel || ariaHeadingLevel,
+                            css_selector: cssSelectorFor(el),
+                            tab_order_index: focusOrder.get(el) || null,
                             keyboard_focusable: isKeyboardFocusable(el),
                             focus_visible: isFocused ? hasVisibleFocusIndicator(el, style) : null,
                             tab_index: el.hasAttribute('tabindex') ? Number(el.getAttribute('tabindex')) : null,

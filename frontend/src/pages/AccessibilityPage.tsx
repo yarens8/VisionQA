@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import {
     Accessibility,
@@ -16,7 +16,7 @@ import {
     Trash2,
     X,
 } from 'lucide-react';
-import { api, AccessibilityAnalysisResponse, AccessibilityHistoryItem } from '../services/api';
+import { api, AccessibilityAnalysisResponse, AccessibilityHistoryItem, AnalysisJobStatusResponse } from '../services/api';
 
 function severityBadge(severity: string) {
     if (severity === 'high') return 'border-red-400/40 bg-red-500/10 text-red-200';
@@ -45,6 +45,18 @@ function heatmapStyle(severity: string) {
     return 'bg-emerald-500/5 border-emerald-400/15';
 }
 
+function evidenceValue(evidence: Record<string, unknown> | undefined, key: string, fallback = '--') {
+    const value = evidence?.[key];
+    if (typeof value === 'string' && value.trim()) return value;
+    if (typeof value === 'number') return String(value);
+    return fallback;
+}
+
+function evidenceList(evidence: Record<string, unknown> | undefined, key: string) {
+    const value = evidence?.[key];
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0) : [];
+}
+
 export function AccessibilityPage() {
     const [preview, setPreview] = useState<string | null>(null);
     const [analysis, setAnalysis] = useState<AccessibilityAnalysisResponse | null>(null);
@@ -62,6 +74,8 @@ export function AccessibilityPage() {
     const [renameValue, setRenameValue] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<AccessibilityHistoryItem | null>(null);
     const [historyModalBusy, setHistoryModalBusy] = useState(false);
+    const [jobStatus, setJobStatus] = useState<AnalysisJobStatusResponse | null>(null);
+    const activeJobRef = useRef<number | null>(null);
 
     const getRequestErrorMessage = (err: unknown, fallback: string) => {
         if (axios.isAxiosError(err)) {
@@ -110,6 +124,42 @@ export function AccessibilityPage() {
         loadHistory();
     }, []);
 
+    const applyAnalysisResult = async (result: AccessibilityAnalysisResponse) => {
+        const sourceImage = result.artifacts.source_image_base64
+            ? `data:image/png;base64,${result.artifacts.source_image_base64}`
+            : preview;
+
+        setPreview(sourceImage);
+        setAnalysis(result);
+        setShowOverlay(true);
+        setShowHeatmap(false);
+        setSelectedFindingId(result.findings[0]?.id ?? null);
+        await loadHistory();
+    };
+
+    const pollAccessibilityJob = async (jobId: number) => {
+        activeJobRef.current = jobId;
+        for (let attempt = 0; attempt < 90; attempt += 1) {
+            const status = await api.getAccessibilityJobStatus(jobId);
+            if (activeJobRef.current !== jobId) return;
+            setJobStatus(status);
+
+            if (status.status === 'completed') {
+                if (status.result) {
+                    await applyAnalysisResult(status.result as AccessibilityAnalysisResponse);
+                }
+                return;
+            }
+
+            if (status.status === 'failed') {
+                throw new Error(status.error_message || 'Accessibility job basarisiz oldu.');
+            }
+
+            await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        }
+        throw new Error('Accessibility job zaman asimina ugradi.');
+    };
+
     const runAnalysis = async () => {
         if (!preview) {
             setError('Önce analiz edilecek bir ekran görüntüsü yükle.');
@@ -118,11 +168,11 @@ export function AccessibilityPage() {
 
         setLoading(true);
         setError(null);
+        setJobStatus(null);
         try {
-            const result = await api.analyzeAccessibilityImage(preview, 'web');
-            setAnalysis(result);
-            setSelectedFindingId(result.findings[0]?.id ?? null);
-            await loadHistory();
+            const job = await api.startAccessibilityImageJob(preview, 'web');
+            setJobStatus({ ...job, job_id: job.job_id, celery_task_id: undefined, error_message: undefined, result: undefined, created_at: new Date().toISOString() });
+            await pollAccessibilityJob(job.job_id);
         } catch (err) {
             setError(getRequestErrorMessage(err, 'Accessibility analizi başlatılamadı.'));
         } finally {
@@ -139,22 +189,15 @@ export function AccessibilityPage() {
 
         setLoading(true);
         setError(null);
+        setJobStatus(null);
         try {
-            const result = await api.analyzeAccessibilityUrl({
+            const job = await api.startAccessibilityUrlJob({
                 url: trimmedUrl,
                 platform: 'web',
                 full_page: fullPageUrlCapture,
             });
-            const sourceImage = result.artifacts.source_image_base64
-                ? `data:image/png;base64,${result.artifacts.source_image_base64}`
-                : null;
-
-            setPreview(sourceImage);
-            setAnalysis(result);
-            setShowOverlay(true);
-            setShowHeatmap(false);
-            setSelectedFindingId(result.findings[0]?.id ?? null);
-            await loadHistory();
+            setJobStatus({ ...job, job_id: job.job_id, celery_task_id: undefined, error_message: undefined, result: undefined, created_at: new Date().toISOString() });
+            await pollAccessibilityJob(job.job_id);
         } catch (err) {
             setError(getRequestErrorMessage(err, 'URL tabanlı accessibility analizi başlatılamadı.'));
         } finally {
@@ -240,6 +283,9 @@ export function AccessibilityPage() {
 
     const topFindings = analysis?.findings.slice(0, 5) ?? [];
     const topComponents = analysis?.components.slice(0, 5) ?? [];
+    const scoreBreakdownEntries = Object.entries(analysis?.score_breakdown ?? {});
+    const accessibilitySummary = analysis?.accessibility_summary ?? {};
+    const testSuggestions = analysis?.test_suggestions?.slice(0, 5) ?? [];
     const selectedFinding = topFindings.find((finding) => finding.id === selectedFindingId) ?? topFindings[0] ?? null;
     const filteredHistoryItems = historyItems.filter((item) => {
         if (historyFilter === 'favorites') return item.is_favorite;
@@ -521,6 +567,50 @@ export function AccessibilityPage() {
                                             </div>
                                         </div>
                                         <p className="mt-3 text-sm leading-6 text-slate-300">{selectedFinding.description}</p>
+                                        <div className="mt-4 rounded-xl border border-cyan-400/15 bg-cyan-400/5 p-4">
+                                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-200">
+                                                Evidence Details
+                                            </div>
+                                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
+                                                    <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Source</div>
+                                                    <div className="mt-1 text-xs text-slate-200">{evidenceValue(selectedFinding.evidence, 'source')}</div>
+                                                </div>
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
+                                                    <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Selector</div>
+                                                    <div className="mt-1 break-all text-xs text-slate-200">{evidenceValue(selectedFinding.evidence, 'selector')}</div>
+                                                </div>
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
+                                                    <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Element</div>
+                                                    <div className="mt-1 text-xs text-slate-200">{evidenceValue(selectedFinding.evidence, 'element_type')}</div>
+                                                </div>
+                                                <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
+                                                    <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Role</div>
+                                                    <div className="mt-1 text-xs text-slate-200">{evidenceValue(selectedFinding.evidence, 'role')}</div>
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2">
+                                                <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Why flagged</div>
+                                                <div className="mt-1 text-xs leading-5 text-slate-200">
+                                                    {evidenceValue(selectedFinding.evidence, 'why_flagged', selectedFinding.description)}
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {(selectedFinding.wcag_refs ?? evidenceList(selectedFinding.evidence, 'wcag_refs')).slice(0, 4).map((ref) => (
+                                                    <span key={ref} className="rounded-full border border-cyan-400/20 bg-slate-950 px-3 py-1 text-xs text-cyan-100">
+                                                        {ref}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-3 space-y-2">
+                                                {evidenceList(selectedFinding.evidence, 'validation_steps').map((step, index) => (
+                                                    <div key={`${step}-${index}`} className="flex gap-2 text-xs leading-5 text-slate-300">
+                                                        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300" />
+                                                        {step}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -529,6 +619,11 @@ export function AccessibilityPage() {
                         {error && (
                             <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                                 {error}
+                            </div>
+                        )}
+                        {jobStatus && (
+                            <div className="mt-4 rounded-2xl border border-cyan-400/25 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+                                Job #{jobStatus.job_id} · {jobStatus.status}
                             </div>
                         )}
                     </div>
@@ -545,6 +640,22 @@ export function AccessibilityPage() {
                             <p className="mt-4 text-sm leading-6 text-slate-300">
                                 {analysis?.overview ?? 'Henüz analiz sonucu yok.'}
                             </p>
+                            {analysis && (
+                                <div className="mt-4 grid grid-cols-2 gap-3">
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-3">
+                                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Risk</div>
+                                        <div className="mt-1 text-sm font-semibold uppercase text-white">
+                                            {String(accessibilitySummary.risk_level ?? '--')}
+                                        </div>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-3">
+                                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Zayif Alan</div>
+                                        <div className="mt-1 text-sm font-semibold text-white">
+                                            {String(accessibilitySummary.weakest_area ?? '--').replace(/_/g, ' ')}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
@@ -566,6 +677,31 @@ export function AccessibilityPage() {
                                     </div>
                                 )) : (
                                     <div className="col-span-2 text-sm text-slate-500">Palette analizi burada görünecek.</div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                            <div className="flex items-center gap-3 text-white">
+                                <Layers3 className="h-5 w-5 text-sky-300" />
+                                <div>
+                                    <div className="font-semibold">Skor Kirilimi</div>
+                                    <div className="text-sm text-slate-400">Kontrast, form ve klavye sinyalleri</div>
+                                </div>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                                {scoreBreakdownEntries.length ? scoreBreakdownEntries.map(([name, value]) => (
+                                    <div key={name}>
+                                        <div className="flex items-center justify-between text-xs">
+                                            <span className="capitalize text-slate-300">{name.replace(/_/g, ' ')}</span>
+                                            <span className={scoreTone(value)}>{value}</span>
+                                        </div>
+                                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-950">
+                                            <div className="h-full rounded-full bg-cyan-300" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="text-sm text-slate-500">Skor kırılımı analiz sonrası görünür.</div>
                                 )}
                             </div>
                         </div>
@@ -637,9 +773,36 @@ export function AccessibilityPage() {
                                 <div className="mt-3 text-xs text-slate-500">
                                     Kutudaki etiket: #{finding.id} • Bu karttaki onizleme ilgili sorunlu alani gosterir.
                                 </div>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    {(finding.wcag_refs ?? []).slice(0, 3).map((ref) => (
+                                        <span key={ref} className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-100">
+                                            {ref}
+                                        </span>
+                                    ))}
+                                    {typeof finding.impact_score === 'number' && (
+                                        <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
+                                            Impact {finding.impact_score}
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="mt-4 rounded-xl border border-cyan-400/15 bg-cyan-400/5 px-4 py-3 text-sm text-cyan-100">
                                     {finding.recommendation}
                                 </div>
+                                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2">
+                                        <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Source</div>
+                                        <div className="mt-1 text-xs text-slate-200">{evidenceValue(finding.evidence, 'source')}</div>
+                                    </div>
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 sm:col-span-2">
+                                        <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Selector</div>
+                                        <div className="mt-1 break-all text-xs text-slate-200">{evidenceValue(finding.evidence, 'selector')}</div>
+                                    </div>
+                                </div>
+                                {finding.test_suggestion && (
+                                    <div className="mt-3 rounded-xl border border-violet-400/15 bg-violet-400/5 px-4 py-3 text-sm text-violet-100">
+                                        {finding.test_suggestion}
+                                    </div>
+                                )}
                             </button>
                         )) : (
                             <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 p-8 text-center text-sm text-slate-500">
@@ -674,6 +837,33 @@ export function AccessibilityPage() {
                                 </div>
                             )) : (
                                 <div className="text-sm text-slate-500">Bileşen sinyalleri analizden sonra oluşacak.</div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="rounded-[28px] border border-slate-800 bg-slate-950 p-6">
+                        <div className="flex items-center gap-3 text-white">
+                            <CheckCircle2 className="h-5 w-5 text-cyan-300" />
+                            <div>
+                                <div className="font-semibold">Test Onerileri</div>
+                                <div className="text-sm text-slate-400">Bulgulardan turetilen kontrol listesi</div>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 space-y-3">
+                            {testSuggestions.length ? testSuggestions.map((item) => (
+                                <div key={`${item.category}-${item.title}`} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="text-sm font-semibold text-white">{item.title}</div>
+                                        <div className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] uppercase text-slate-300">
+                                            {item.priority ?? 'review'}
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 text-xs uppercase tracking-[0.18em] text-cyan-200">{item.category}</div>
+                                    <p className="mt-3 text-sm leading-6 text-slate-300">{item.suggestion}</p>
+                                </div>
+                            )) : (
+                                <div className="text-sm text-slate-500">Test önerileri analizden sonra oluşacak.</div>
                             )}
                         </div>
                     </div>

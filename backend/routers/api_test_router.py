@@ -1,3 +1,5 @@
+import asyncio
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
@@ -5,8 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import get_db
-from database.models import ApiAnalysisRecord
+from core.job_payload import to_json_payload
+from core.security.job_runner import update_job_status
+from core.tasks import run_api_analysis_task
+from database import SessionLocal, get_db
+from database.models import AnalysisJob, ApiAnalysisRecord
 from executors.api.api_executor import APIExecutor
 from schemas import (
     ApiCrossModuleCorrelation,
@@ -32,7 +37,7 @@ class APIRequestSchema(BaseModel):
 
 def _save_api_record(db: Session, result: ApiTestAnalyzeResponse) -> None:
     try:
-        payload = result.model_dump(mode="json")
+        payload = to_json_payload(result)
         record = ApiAnalysisRecord(
             platform="api",
             source_type="endpoint",
@@ -69,6 +74,59 @@ def _api_history_item(record: ApiAnalysisRecord) -> Dict[str, Any]:
         "endpoint_context": payload.get("endpoint_context"),
         "created_at": record.created_at.isoformat() if record.created_at else None,
     }
+
+
+def _job_status_schema(job: AnalysisJob):
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "module_name": job.module_name,
+        "target": job.target,
+        "celery_task_id": job.celery_task_id,
+        "source_record_id": job.source_record_id,
+        "error_message": job.error_message,
+        "result": job.result_payload,
+        "created_at": job.created_at,
+        "started_at": job.started_at,
+        "completed_at": job.completed_at,
+    }
+
+
+async def _run_api_analysis_impl(request_data: ApiTestAnalyzeRequest, db: Session) -> ApiTestAnalyzeResponse:
+    executor = APIExecutor()
+    try:
+        raw_result = await executor.execute_step(
+            method=request_data.method,
+            path=request_data.url,
+            json=request_data.body,
+            headers=request_data.headers,
+            params=request_data.params,
+        )
+        findings = _detect_api_findings(request_data, raw_result)
+        negative_checks = await _run_negative_checks(executor, request_data) if request_data.run_negative_checks else []
+        result = _build_api_analysis_response(request_data, raw_result, findings, negative_checks)
+        _save_api_record(db, result)
+        return result
+    finally:
+        await executor.close()
+
+
+async def _run_api_job_inline_if_still_queued(job_id: int, delay_seconds: float = 3.0) -> None:
+    await asyncio.sleep(delay_seconds)
+    db = SessionLocal()
+    try:
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
+        if not job or job.status != "queued":
+            return
+        update_job_status(db, job, "running")
+        try:
+            request_data = ApiTestAnalyzeRequest(**(job.request_payload or {}))
+            result = await _run_api_analysis_impl(request_data, db)
+            update_job_status(db, job, "completed", result_payload=to_json_payload(result))
+        except Exception as exc:
+            update_job_status(db, job, "failed", error_message=str(exc))
+    finally:
+        db.close()
 
 
 def _response_text(raw_result: Dict[str, Any]) -> str:
@@ -619,22 +677,36 @@ async def get_api_history_detail(record_id: int, db: Session = Depends(get_db)):
 
 @router.post("/analyze", response_model=ApiTestAnalyzeResponse)
 async def analyze_api_request(request_data: ApiTestAnalyzeRequest, db: Session = Depends(get_db)):
-    executor = APIExecutor()
-    try:
-        raw_result = await executor.execute_step(
-            method=request_data.method,
-            path=request_data.url,
-            json=request_data.body,
-            headers=request_data.headers,
-            params=request_data.params,
-        )
-        findings = _detect_api_findings(request_data, raw_result)
-        negative_checks = await _run_negative_checks(executor, request_data) if request_data.run_negative_checks else []
-        result = _build_api_analysis_response(request_data, raw_result, findings, negative_checks)
-        _save_api_record(db, result)
-        return result
-    finally:
-        await executor.close()
+    return await _run_api_analysis_impl(request_data, db)
+
+
+@router.post("/analyze-job", response_model=dict)
+async def start_api_analysis_job(request_data: ApiTestAnalyzeRequest, db: Session = Depends(get_db)):
+    job = AnalysisJob(
+        job_type="api_analysis",
+        module_name="api",
+        status="queued",
+        target=request_data.url,
+        request_payload=request_data.model_dump(mode="json"),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    async_result = run_api_analysis_task.delay(job.id)
+    job.celery_task_id = async_result.id
+    db.commit()
+    asyncio.create_task(_run_api_job_inline_if_still_queued(job.id))
+    return {"job_id": job.id, "status": job.status, "module_name": job.module_name, "target": job.target}
+
+
+@router.get("/jobs/{job_id}", response_model=dict)
+async def get_api_job_status(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id, AnalysisJob.module_name == "api").first()
+    if not job:
+        raise HTTPException(status_code=404, detail="API analysis job not found")
+    return _job_status_schema(job)
 
 
 @router.post("/batch")

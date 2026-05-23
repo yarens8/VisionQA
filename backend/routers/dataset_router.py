@@ -3,6 +3,7 @@ import csv
 import hashlib
 import os
 import zipfile
+import asyncio
 from collections import Counter, defaultdict
 from datetime import datetime
 from io import BytesIO
@@ -15,8 +16,11 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 import schemas
-from database import get_db
-from database.models import DatasetAnalysisRecord
+from core.job_payload import to_json_payload
+from core.security.job_runner import update_job_status
+from core.tasks import run_dataset_analysis_task
+from database import SessionLocal, get_db
+from database.models import AnalysisJob, DatasetAnalysisRecord
 from schemas import (
     DatasetAnalysisResponse,
     DatasetAnalyzeRequest,
@@ -560,7 +564,7 @@ def _save_dataset_record(db: Session | None, result: DatasetAnalysisResponse, *,
     if db is None or not hasattr(db, "add"):
         return
     try:
-        payload = result.model_dump(mode="json")
+        payload = to_json_payload(result)
         record = DatasetAnalysisRecord(
             dataset_name=result.dataset_name,
             source_type=source_type,
@@ -592,6 +596,44 @@ def _history_item_schema(record: DatasetAnalysisRecord) -> schemas.DatasetHistor
         total_records=record.total_records,
         created_at=record.created_at,
     )
+
+
+def _job_status_schema(job: AnalysisJob) -> schemas.AnalysisJobStatusResponse:
+    return schemas.AnalysisJobStatusResponse(
+        job_id=job.id,
+        status=job.status,
+        module_name=job.module_name,
+        target=job.target,
+        celery_task_id=job.celery_task_id,
+        source_record_id=job.source_record_id,
+        error_message=job.error_message,
+        result=job.result_payload,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+    )
+
+
+async def _run_dataset_job_inline_if_still_queued(job_id: int, delay_seconds: float = 3.0) -> None:
+    await asyncio.sleep(delay_seconds)
+    db = SessionLocal()
+    try:
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
+        if not job or job.status != "queued":
+            return
+        update_job_status(db, job, "running")
+        try:
+            result = _analyze_dataset_impl(
+                job.request_payload or {},
+                db=db,
+                source_type="json",
+                source_label=(job.request_payload or {}).get("dataset_name") or "dataset.json",
+            )
+            update_job_status(db, job, "completed", result_payload=to_json_payload(result))
+        except Exception as exc:
+            update_job_status(db, job, "failed", error_message=str(exc))
+    finally:
+        db.close()
 
 
 def _dataset_ticket_priority(analysis: DatasetAnalysisResponse) -> str:
@@ -753,6 +795,49 @@ def analyze_dataset(
     db: Session = Depends(get_db),
 ):
     return _analyze_dataset_impl(request, db=db)
+
+
+@router.post("/analyze-job", response_model=schemas.AnalysisJobStartResponse)
+async def start_dataset_analysis_job(
+    request: Any = Body(...),
+    db: Session = Depends(get_db),
+):
+    dataset_name = "Dataset v1"
+    if isinstance(request, dict):
+        dataset_name = str(request.get("dataset_name") or request.get("name") or dataset_name)
+
+    job = AnalysisJob(
+        job_type="dataset_analysis",
+        module_name="dataset",
+        status="queued",
+        target=dataset_name,
+        request_payload=request,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    async_result = run_dataset_analysis_task.delay(job.id)
+    job.celery_task_id = async_result.id
+    db.commit()
+    asyncio.create_task(_run_dataset_job_inline_if_still_queued(job.id))
+
+    return schemas.AnalysisJobStartResponse(
+        job_id=job.id,
+        status=job.status,
+        module_name=job.module_name,
+        target=job.target,
+    )
+
+
+@router.get("/jobs/{job_id}", response_model=schemas.AnalysisJobStatusResponse)
+def get_dataset_job_status(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id, AnalysisJob.module_name == "dataset").first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Dataset analysis job not found.")
+    return _job_status_schema(job)
 
 
 def _analyze_dataset_impl(

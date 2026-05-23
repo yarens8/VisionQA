@@ -30,6 +30,29 @@ class TestStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+class AnalysisJob(Base):
+    """Asenkron analiz orkestrasyonu icin ortak job kaydi"""
+    __tablename__ = "analysis_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_type = Column(String(100), nullable=False, index=True)
+    module_name = Column(String(100), nullable=False, index=True)
+    status = Column(String(50), nullable=False, default="queued", index=True)
+    target = Column(String(1000), nullable=True)
+    request_payload = Column(JSON, nullable=False, default=dict)
+    result_payload = Column(JSON, nullable=True)
+    error_message = Column(Text, nullable=True)
+    celery_task_id = Column(String(255), nullable=True)
+    source_record_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    def __repr__(self):
+        return f"<AnalysisJob(id={self.id}, module='{self.module_name}', status='{self.status}')>"
+
+
 class Project(Base):
     """Proje modeli - Kullanıcıların oluşturduğu ana çatılar (Örn: Trendyol)"""
     __tablename__ = "projects"
@@ -254,6 +277,50 @@ class PerformanceAnalysisRecord(Base):
 
     def __repr__(self):
         return f"<PerformanceAnalysisRecord(id={self.id}, source_url='{self.source_url}')>"
+
+
+class MobileAnalysisRecord(Base):
+    """Mobile analiz geçmişi - screenshot/metadata tabanlı mobil kalite kayıtları"""
+    __tablename__ = "mobile_analysis_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    platform = Column(String(50), nullable=False, default="android")
+    source_type = Column(String(50), nullable=False, default="metadata")
+    source_label = Column(String(255), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    overall_score = Column(Integer, nullable=False, default=0)
+    findings_count = Column(Integer, nullable=False, default=0)
+    overview = Column(Text, nullable=True)
+    analysis_payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<MobileAnalysisRecord(id={self.id}, platform='{self.platform}', source_type='{self.source_type}')>"
+
+
+class JiraTicketDraft(Base):
+    """Final Report aksiyon kartlarından uretilen Jira ticket taslaklari"""
+    __tablename__ = "jira_ticket_drafts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    provider = Column(String(50), nullable=False, default="jira")
+    ticket_key = Column(String(100), nullable=False, index=True)
+    source_module = Column(String(100), nullable=False, index=True)
+    source_type = Column(String(100), nullable=False, default="final_report_action")
+    source_ref = Column(String(255), nullable=True)
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=False)
+    priority = Column(String(50), nullable=False, default="medium")
+    status = Column(String(50), nullable=False, default="draft")
+    payload = Column(JSON, nullable=False, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project = relationship("Project")
+
+    def __repr__(self):
+        return f"<JiraTicketDraft(id={self.id}, project_id={self.project_id}, source='{self.source_module}')>"
 
 
 class TestCase(Base):

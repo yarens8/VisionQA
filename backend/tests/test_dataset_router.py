@@ -9,6 +9,9 @@ from fastapi.testclient import TestClient
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import main
+from database import SessionLocal
+from database.models import AnalysisJob
+from routers import dataset_router
 
 
 def test_dataset_analysis_detects_core_signals():
@@ -35,6 +38,45 @@ def test_dataset_analysis_detects_core_signals():
     assert "broken-record" in categories
     assert data["training_risks"]
     assert "score_breakdown" in data
+
+
+def test_dataset_analysis_job_starts_and_exposes_status(monkeypatch):
+    class _FakeAsyncResult:
+        id = "dataset-celery-task"
+
+    monkeypatch.setattr(dataset_router.run_dataset_analysis_task, "delay", lambda job_id: _FakeAsyncResult())
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/dataset/analyze-job",
+        json={
+            "dataset_name": "Dataset Job QA",
+            "records": [
+                {"id": "1", "split": "train", "label": "", "image_name": "a.jpg", "annotations": []},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "queued"
+    assert payload["module_name"] == "dataset"
+
+    status_response = client.get(f"/dataset/jobs/{payload['job_id']}")
+    assert status_response.status_code == 200
+    status_payload = status_response.json()
+    assert status_payload["job_id"] == payload["job_id"]
+    assert status_payload["status"] == "queued"
+    assert status_payload["celery_task_id"] == "dataset-celery-task"
+
+    db = SessionLocal()
+    try:
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == payload["job_id"]).first()
+        assert job is not None
+        db.delete(job)
+        db.commit()
+    finally:
+        db.close()
 
 
 def test_dataset_analysis_accepts_raw_record_list():

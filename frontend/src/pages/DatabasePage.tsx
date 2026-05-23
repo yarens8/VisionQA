@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Clock, Database, List as ListIcon, Loader2, RefreshCw } from 'lucide-react';
 
-import { api, DbHistoryItem, DbQualityResponse } from '../services/api';
+import { api, AnalysisJobStatusResponse, DbHistoryItem, DbQualityResponse } from '../services/api';
+import { readableErrorMessage } from '../utils/errors';
 
 const severityClasses: Record<string, string> = {
     high: 'border-red-500/40 bg-red-500/10 text-red-200',
@@ -21,6 +22,8 @@ export function DatabasePage() {
     const [historyItems, setHistoryItems] = useState<DbHistoryItem[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [historyError, setHistoryError] = useState('');
+    const [jobStatus, setJobStatus] = useState<AnalysisJobStatusResponse | null>(null);
+    const activeJobRef = useRef<number | null>(null);
 
     const loadHistory = async () => {
         setHistoryLoading(true);
@@ -40,7 +43,31 @@ export function DatabasePage() {
 
     useEffect(() => {
         loadHistory();
+        return () => {
+            activeJobRef.current = null;
+        };
     }, []);
+
+    const pollDbJob = async (jobId: number) => {
+        activeJobRef.current = jobId;
+        for (let attempt = 0; attempt < 120; attempt += 1) {
+            if (activeJobRef.current !== jobId) return;
+            const status = await api.getDbJobStatus(jobId);
+            setJobStatus(status);
+            if (status.status === 'completed') {
+                if (status.result) {
+                    setQualityResult(status.result as DbQualityResponse);
+                    await loadHistory();
+                }
+                return;
+            }
+            if (status.status === 'failed' || status.status === 'cancelled') {
+                throw new Error(status.error_message || 'Database job tamamlanamadi.');
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        }
+        throw new Error('Database job zaman asimina ugradi.');
+    };
 
     const fetchTables = async () => {
         try {
@@ -54,8 +81,10 @@ export function DatabasePage() {
 
     const handleQualityAudit = async () => {
         setLoading(true);
+        setJobStatus(null);
         try {
-            const audit = await api.analyzeDbQuality({
+            setQualityResult(null);
+            const job = await api.startDbQualityJob({
                 connection_string: connString,
                 query,
                 table_name: selectedTable || undefined,
@@ -68,8 +97,14 @@ export function DatabasePage() {
                     .map((column) => column.trim())
                     .filter(Boolean),
             });
-            setQualityResult(audit);
-            loadHistory();
+            setJobStatus({
+                job_id: job.job_id,
+                status: job.status,
+                module_name: job.module_name,
+                target: job.target,
+                created_at: new Date().toISOString(),
+            });
+            await pollDbJob(job.job_id);
         } catch (error: any) {
             setQualityResult({
                 success: false,
@@ -87,6 +122,7 @@ export function DatabasePage() {
                 sample_rows: [],
             });
         } finally {
+            activeJobRef.current = null;
             setLoading(false);
         }
     };
@@ -100,8 +136,8 @@ export function DatabasePage() {
                     setSelectedTable(detail.analysis_payload.table_name);
                 }
             }
-        } catch {
-            alert('Database history kaydi acilamadi.');
+        } catch (error) {
+            alert(readableErrorMessage(error, 'Database history kaydi acilamadi.'));
         }
     };
 
@@ -141,6 +177,13 @@ export function DatabasePage() {
                                 Run Quality Audit
                             </button>
                         </div>
+
+                        {jobStatus && (
+                            <div className="mb-5 rounded-xl border border-blue-500/25 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+                                Job #{jobStatus.job_id} · {jobStatus.status}
+                                {jobStatus.celery_task_id ? <span className="text-blue-200/80"> · Celery {jobStatus.celery_task_id.slice(0, 8)}</span> : null}
+                            </div>
+                        )}
 
                         <div className="mb-5">
                             <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-slate-500">Connection String</label>

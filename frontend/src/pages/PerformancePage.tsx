@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Activity, AlertTriangle, Clock, Gauge, Loader2, RefreshCw, Timer } from 'lucide-react';
 
-import { api, PerformanceAnalysisResponse, PerformanceHistoryItem, Project } from '../services/api';
+import { api, AnalysisJobStatusResponse, PerformanceAnalysisResponse, PerformanceHistoryItem, Project } from '../services/api';
+import { readableErrorMessage } from '../utils/errors';
 
 const severityClasses: Record<string, string> = {
     high: 'border-red-500/40 bg-red-500/10 text-red-200',
@@ -22,6 +23,8 @@ export function PerformancePage() {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [projects, setProjects] = useState<Project[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
+    const [jobStatus, setJobStatus] = useState<AnalysisJobStatusResponse | null>(null);
+    const activeJobRef = useRef<number | null>(null);
 
     const loadHistory = async () => {
         setHistoryLoading(true);
@@ -40,12 +43,38 @@ export function PerformancePage() {
         api.getProjects()
             .then(setProjects)
             .catch((error) => console.warn('Projects could not be loaded for performance lab', error));
+        return () => {
+            activeJobRef.current = null;
+        };
     }, []);
+
+    const pollPerformanceJob = async (jobId: number) => {
+        activeJobRef.current = jobId;
+        for (let attempt = 0; attempt < 120; attempt += 1) {
+            if (activeJobRef.current !== jobId) return;
+            const status = await api.getPerformanceJobStatus(jobId);
+            setJobStatus(status);
+            if (status.status === 'completed') {
+                if (status.result) {
+                    setResult(status.result as PerformanceAnalysisResponse);
+                    await loadHistory();
+                }
+                return;
+            }
+            if (status.status === 'failed' || status.status === 'cancelled') {
+                throw new Error(status.error_message || 'Performance job tamamlanamadi.');
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        }
+        throw new Error('Performance job zaman asimina ugradi.');
+    };
 
     const handleAnalyze = async () => {
         setLoading(true);
+        setJobStatus(null);
         try {
-            const response = await api.analyzePerformance({
+            setResult(null);
+            const job = await api.startPerformanceJob({
                 url: url || undefined,
                 api_url: apiUrl || undefined,
                 project_id: selectedProjectId ? Number(selectedProjectId) : undefined,
@@ -54,12 +83,19 @@ export function PerformancePage() {
                 db_query: dbQuery || undefined,
                 sample_api_runs: sampleRuns,
             });
-            setResult(response);
-            loadHistory();
+            setJobStatus({
+                job_id: job.job_id,
+                status: job.status,
+                module_name: job.module_name,
+                target: job.target,
+                created_at: new Date().toISOString(),
+            });
+            await pollPerformanceJob(job.job_id);
         } catch (error: any) {
             setResult(null);
-            alert(error.response?.data?.detail || error.message);
+            alert(readableErrorMessage(error, 'Performans analizi tamamlanamadi.'));
         } finally {
+            activeJobRef.current = null;
             setLoading(false);
         }
     };
@@ -73,8 +109,8 @@ export function PerformancePage() {
                     setSelectedProjectId(String(detail.project_id));
                 }
             }
-        } catch {
-            alert('Performance history kaydi acilamadi.');
+        } catch (error) {
+            alert(readableErrorMessage(error, 'Performance history kaydi acilamadi.'));
         }
     };
 
@@ -237,6 +273,12 @@ export function PerformancePage() {
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Gauge className="h-4 w-4" />}
                             Performans Analizini Baslat
                         </button>
+                        {jobStatus && (
+                            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                                Job #{jobStatus.job_id} · {jobStatus.status}
+                                {jobStatus.celery_task_id ? <span className="text-emerald-200/80"> · Celery {jobStatus.celery_task_id.slice(0, 8)}</span> : null}
+                            </div>
+                        )}
                     </div>
 
                     {resultSummaryPanel}

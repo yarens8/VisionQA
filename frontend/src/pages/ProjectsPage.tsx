@@ -1,8 +1,9 @@
 import React from 'react';
-import { Layers, Plus, ExternalLink, Calendar, Loader2, Trash2, AlertTriangle } from "lucide-react"
+import { Layers, Plus, ExternalLink, Calendar, Loader2, Trash2, AlertTriangle, Search, X } from "lucide-react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { api, Project } from "@/services/api"
 import { Link } from "react-router-dom"
+import { readableErrorMessage } from "@/utils/errors"
 
 // ─── Confirm Delete Modal ────────────────────────────────────────────
 interface ConfirmDeleteProps {
@@ -130,6 +131,7 @@ function ProjectCard({ project, onDeleteClick }: ProjectCardProps) {
 export function ProjectsPage() {
     const queryClient = useQueryClient();
     const [confirmProject, setConfirmProject] = React.useState<Project | null>(null);
+    const [searchTerm, setSearchTerm] = React.useState('');
 
     const { data: projects, isLoading, isError } = useQuery({
         queryKey: ['projects'],
@@ -151,10 +153,24 @@ export function ProjectsPage() {
             setConfirmProject(null);
         },
         onError: (error: any) => {
-            alert('Silme hatası: ' + (error?.response?.data?.detail || error.message));
+            alert(readableErrorMessage(error, 'Proje silinemedi.'));
             setConfirmProject(null);
         }
     });
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const filteredProjects = React.useMemo(() => {
+        if (!projects) return [];
+        if (!normalizedSearch) return projects;
+        return projects.filter((project) => {
+            const haystack = [
+                String(project.id),
+                project.name,
+                project.description || '',
+                ...(project.platforms || []),
+            ].join(' ').toLowerCase();
+            return haystack.includes(normalizedSearch);
+        });
+    }, [projects, normalizedSearch]);
 
     if (isLoading) {
         return (
@@ -186,7 +202,7 @@ export function ProjectsPage() {
             )}
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col gap-5 mb-8 xl:flex-row xl:items-end xl:justify-between">
                 <div className="flex items-center gap-4">
                     <div className="h-14 w-14 bg-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-900/20">
                         <Layers className="h-7 w-7 text-white" />
@@ -198,25 +214,69 @@ export function ProjectsPage() {
                         </p>
                     </div>
                 </div>
-                <Link
-                    to="/projects/new"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl flex items-center shadow-lg shadow-blue-900/10 font-bold transition-all active:scale-95 group text-sm"
-                >
-                    <Plus className="mr-2 h-4 w-4 group-hover:rotate-90 transition-transform duration-300" /> New Project
-                </Link>
+                <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+                    <div className="relative w-full sm:w-80">
+                        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                        <input
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            placeholder="Proje ara..."
+                            className="h-11 w-full rounded-xl border border-slate-800 bg-slate-950 pl-11 pr-10 text-sm font-medium text-white outline-none transition focus:border-blue-500/60 focus:bg-slate-900"
+                        />
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-white"
+                                title="Aramayı temizle"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
+                    </div>
+                    <Link
+                        to="/projects/new"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/10 font-bold transition-all active:scale-95 group text-sm"
+                    >
+                        <Plus className="mr-2 h-4 w-4 group-hover:rotate-90 transition-transform duration-300" /> New Project
+                    </Link>
+                </div>
             </div>
 
             {/* Project Grid */}
             {projects && projects.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {projects.map((project) => (
-                        <ProjectCard
-                            key={project.id}
-                            project={project}
-                            onDeleteClick={setConfirmProject}
-                        />
-                    ))}
-                </div>
+                filteredProjects.length > 0 ? (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-[0.16em] text-slate-600">
+                            <span>{filteredProjects.length} / {projects.length} proje</span>
+                            {normalizedSearch && <span>Arama: {searchTerm}</span>}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredProjects.map((project) => (
+                                <ProjectCard
+                                    key={project.id}
+                                    project={project}
+                                    onDeleteClick={setConfirmProject}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex min-h-[320px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-800 bg-slate-900/10 px-6 text-center">
+                        <Search className="mb-4 h-10 w-10 text-slate-700" />
+                        <h3 className="text-xl font-bold text-white">Eşleşen proje yok</h3>
+                        <p className="mt-2 max-w-sm text-sm leading-6 text-slate-500">
+                            İsim, açıklama, platform veya proje ID ile tekrar ara.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setSearchTerm('')}
+                            className="mt-6 rounded-xl border border-slate-700 bg-slate-900 px-5 py-2.5 text-sm font-bold text-slate-200 transition hover:bg-slate-800"
+                        >
+                            Aramayı temizle
+                        </button>
+                    </div>
+                )
             ) : (
                 <div className="flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed border-slate-800 rounded-3xl bg-slate-900/10 group">
                     <div className="bg-slate-900/50 p-6 rounded-full mb-6 border border-white/5">
@@ -224,7 +284,7 @@ export function ProjectsPage() {
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">No projects found</h3>
                     <p className="text-slate-500 text-center max-w-sm mb-8 text-sm leading-relaxed">
-                        Deploy your first automated test environment to start analyzing your application stack.
+                        İlk hedefini ekleyerek analiz ve test senaryosu üretimine başlayabilirsin.
                     </p>
                     <Link
                         to="/projects/new"

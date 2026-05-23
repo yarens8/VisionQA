@@ -12,6 +12,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import main
 from core.security.engine import SecurityEngine
 from core.security.engine_v2 import SecurityEngineV2
+from database import SessionLocal
+from database.models import AnalysisJob
+from routers import security_router
 
 
 def _sample_security_image_base64() -> str:
@@ -78,3 +81,37 @@ def test_security_endpoint_works():
     assert "risk_summary" in payload
     assert isinstance(payload["risk_summary"]["priority_actions"], list)
     assert payload["artifacts"]["source_image_base64"]
+
+
+def test_security_url_job_starts_and_exposes_status(monkeypatch):
+    class _FakeAsyncResult:
+        id = "celery-test-task"
+
+    monkeypatch.setattr(security_router.run_security_url_analysis_task, "delay", lambda job_id: _FakeAsyncResult())
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/security/analyze-url-job",
+        json={"url": "https://example.test", "platform": "web", "headless": True, "full_page": True},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "queued"
+    assert payload["module_name"] == "security"
+
+    status_response = client.get(f"/security/jobs/{payload['job_id']}")
+    assert status_response.status_code == 200
+    status_payload = status_response.json()
+    assert status_payload["job_id"] == payload["job_id"]
+    assert status_payload["status"] == "queued"
+    assert status_payload["celery_task_id"] == "celery-test-task"
+
+    db = SessionLocal()
+    try:
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == payload["job_id"]).first()
+        assert job is not None
+        db.delete(job)
+        db.commit()
+    finally:
+        db.close()

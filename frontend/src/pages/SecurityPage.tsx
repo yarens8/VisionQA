@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import {
     AlertTriangle,
@@ -18,6 +18,7 @@ import {
 
 import {
     api,
+    AnalysisJobStatusResponse,
     SecurityAnalysisResponse,
     SecurityAttackChain,
     SecurityAttackHypothesis,
@@ -66,6 +67,8 @@ export function SecurityPage() {
     const [renameValue, setRenameValue] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<SecurityHistoryItem | null>(null);
     const [historyModalBusy, setHistoryModalBusy] = useState(false);
+    const [jobStatus, setJobStatus] = useState<AnalysisJobStatusResponse | null>(null);
+    const activeJobRef = useRef<number | null>(null);
 
     const getRequestErrorMessage = (err: unknown, fallback: string) => {
         if (axios.isAxiosError(err)) {
@@ -96,6 +99,12 @@ export function SecurityPage() {
 
     useEffect(() => {
         loadHistory();
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            activeJobRef.current = null;
+        };
     }, []);
 
     const handleFile = (file: File | null) => {
@@ -134,6 +143,32 @@ export function SecurityPage() {
         }
     };
 
+    const pollSecurityJob = async (jobId: number) => {
+        activeJobRef.current = jobId;
+        for (let attempt = 0; attempt < 120; attempt += 1) {
+            if (activeJobRef.current !== jobId) return;
+            const status = await api.getSecurityJobStatus(jobId);
+            setJobStatus(status);
+            if (status.status === 'completed') {
+                if (status.result) {
+                    const sourceImage = status.result.artifacts.source_image_base64 ? `data:image/png;base64,${status.result.artifacts.source_image_base64}` : null;
+                    setPreview(sourceImage);
+                    setAnalysis(status.result);
+                    setSimulation(null);
+                    resetSelection(status.result);
+                    setViewMode('overlay');
+                    await loadHistory();
+                }
+                return;
+            }
+            if (status.status === 'failed' || status.status === 'cancelled') {
+                throw new Error(status.error_message || 'Security job tamamlanamadi.');
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        }
+        throw new Error('Security job zaman asimina ugradi.');
+    };
+
     const runUrlAnalysis = async () => {
         const trimmedUrl = urlInput.trim();
         if (!trimmedUrl) {
@@ -142,22 +177,26 @@ export function SecurityPage() {
         }
         setLoading(true);
         setError(null);
+        setJobStatus(null);
+        setAnalysis(null);
         try {
-            const result = await api.analyzeSecurityUrl({
+            const job = await api.startSecurityUrlJob({
                 url: trimmedUrl,
                 platform: 'web',
                 full_page: true,
             });
-            const sourceImage = result.artifacts.source_image_base64 ? `data:image/png;base64,${result.artifacts.source_image_base64}` : null;
-            setPreview(sourceImage);
-            setAnalysis(result);
-            setSimulation(null);
-            resetSelection(result);
-            setViewMode('overlay');
-            await loadHistory();
+            setJobStatus({
+                job_id: job.job_id,
+                status: job.status,
+                module_name: job.module_name,
+                target: job.target,
+                created_at: new Date().toISOString(),
+            });
+            await pollSecurityJob(job.job_id);
         } catch (err) {
             setError(getRequestErrorMessage(err, 'URL tabanli security analizi baslatilamadi.'));
         } finally {
+            activeJobRef.current = null;
             setLoading(false);
         }
     };
@@ -474,12 +513,18 @@ export function SecurityPage() {
                             <div className="mt-2 flex flex-col gap-3 lg:flex-row">
                                 <input type="text" value={urlInput} onChange={(event) => setUrlInput(event.target.value)} placeholder="https://example.com/login" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white outline-none transition focus:border-red-400/40" />
                                 <button type="button" onClick={runUrlAnalysis} disabled={loading} className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100 transition hover:border-red-300/50 hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60">
-                                    URL Analizi
+                                    {loading ? 'Job izleniyor...' : 'URL Analizi'}
                                 </button>
                                 <button type="button" onClick={runActiveSimulation} disabled={simulating || !urlInput.trim()} className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-60">
                                     {simulating ? 'Probe calisiyor...' : 'Active Simulation'}
                                 </button>
                             </div>
+                            {jobStatus ? (
+                                <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm leading-6 text-cyan-100">
+                                    Job #{jobStatus.job_id} · {jobStatus.status}
+                                    {jobStatus.celery_task_id ? <span className="text-cyan-300/80"> · Celery {jobStatus.celery_task_id.slice(0, 8)}</span> : null}
+                                </div>
+                            ) : null}
                         </div>
                     </div>
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import io
+import math
 from dataclasses import dataclass
 from statistics import median
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from PIL import Image, ImageDraw
 
@@ -146,6 +147,319 @@ def _foreground_ratio(image: Image.Image, region: tuple[int, int, int, int]) -> 
             if sum(abs(int(channel) - int(bg)) for channel, bg in zip(rgb, background)) > 54:
                 foreground += 1
     return foreground / max(total, 1)
+
+
+def _sampled_luminance_grid(image: Image.Image, step: int = 6) -> List[List[int]]:
+    grayscale = image.convert("L")
+    width, height = grayscale.size
+    grid: List[List[int]] = []
+    for y in range(0, height, max(1, step)):
+        row = []
+        for x in range(0, width, max(1, step)):
+            row.append(int(grayscale.getpixel((x, y))))
+        if row:
+            grid.append(row)
+    return grid
+
+
+def _edge_density(image: Image.Image) -> float:
+    grid = _sampled_luminance_grid(image, step=5)
+    if not grid or not grid[0]:
+        return 0.0
+    edges = 0
+    total = 0
+    for row_index, row in enumerate(grid):
+        for col_index, value in enumerate(row):
+            if col_index + 1 < len(row):
+                total += 1
+                if abs(value - row[col_index + 1]) > 42:
+                    edges += 1
+            if row_index + 1 < len(grid) and col_index < len(grid[row_index + 1]):
+                total += 1
+                if abs(value - grid[row_index + 1][col_index]) > 42:
+                    edges += 1
+    return round(edges / max(total, 1), 4)
+
+
+def _color_complexity(image: Image.Image) -> Dict[str, Any]:
+    thumb = image.resize((max(1, image.width // 6), max(1, image.height // 6))).convert("RGB")
+    buckets: Dict[tuple[int, int, int], int] = {}
+    for r, g, b in thumb.getdata():
+        key = (r // 32, g // 32, b // 32)
+        buckets[key] = buckets.get(key, 0) + 1
+    total = max(1, sum(buckets.values()))
+    dominant_share = max(buckets.values()) / total if buckets else 0
+    significant_colors = sum(1 for count in buckets.values() if count / total >= 0.015)
+    return {
+        "significant_color_buckets": significant_colors,
+        "dominant_color_share": round(dominant_share, 3),
+        "color_complexity_score": max(0, min(100, 100 - significant_colors * 4 + int(dominant_share * 12))),
+    }
+
+
+def _text_region_metrics(image: Image.Image) -> Dict[str, Any]:
+    grayscale = image.convert("L")
+    width, height = grayscale.size
+    if width <= 0 or height <= 0:
+        return {
+            "text_region_count": 0,
+            "small_text_regions": 0,
+            "long_text_lines": 0,
+            "text_density": 0.0,
+            "average_text_height_px": 0,
+            "readability_risk_score": 0,
+            "primary_text_region": None,
+        }
+
+    sample_step = 2 if max(width, height) <= 1400 else 3
+    sampled_width = max(1, width // sample_step)
+    active_rows: List[int] = []
+    active_pixels = 0
+
+    for y in range(0, height, sample_step):
+        dark_pixels = 0
+        transitions = 0
+        previous_value: Optional[int] = None
+        for x in range(0, width, sample_step):
+            value = int(grayscale.getpixel((x, y)))
+            if 32 < value < 226:
+                dark_pixels += 1
+            if previous_value is not None and abs(value - previous_value) >= 34:
+                transitions += 1
+            previous_value = value
+
+        active_pixels += dark_pixels
+        dark_ratio = dark_pixels / sampled_width
+        transition_ratio = transitions / sampled_width
+        if 0.006 <= dark_ratio <= 0.42 and transition_ratio >= 0.012:
+            active_rows.append(y)
+
+    bands: List[tuple[int, int]] = []
+    if active_rows:
+        start = active_rows[0]
+        end = active_rows[0]
+        for row in active_rows[1:]:
+            if row - end <= sample_step * 3:
+                end = row
+            else:
+                bands.append((start, end))
+                start = row
+                end = row
+        bands.append((start, end))
+
+    text_regions: List[Dict[str, int]] = []
+    for top, bottom in bands:
+        band_height = bottom - top + sample_step
+        if band_height < 5 or band_height > max(44, int(height * 0.16)):
+            continue
+
+        active_columns: List[int] = []
+        for x in range(0, width, sample_step):
+            column_hits = 0
+            column_samples = 0
+            for y in range(top, min(height, bottom + sample_step), sample_step):
+                value = int(grayscale.getpixel((x, y)))
+                if 32 < value < 226:
+                    column_hits += 1
+                column_samples += 1
+            if column_samples and column_hits / column_samples >= 0.08:
+                active_columns.append(x)
+
+        if not active_columns:
+            continue
+
+        left = min(active_columns)
+        right = max(active_columns) + sample_step
+        region_width = right - left
+        if region_width < max(16, width * 0.025):
+            continue
+
+        text_regions.append(
+            {
+                "x": int(left),
+                "y": int(top),
+                "width": int(min(width - left, region_width)),
+                "height": int(band_height),
+            }
+        )
+
+    region_count = len(text_regions)
+    small_text_regions = sum(1 for region in text_regions if region["height"] < 11)
+    long_text_lines = sum(1 for region in text_regions if region["width"] > width * 0.72)
+    average_height = int(round(sum(region["height"] for region in text_regions) / max(region_count, 1))) if region_count else 0
+    text_density = round(active_pixels / max((width // sample_step) * (height // sample_step), 1), 4)
+    dense_text_penalty = max(0, int((text_density - 0.18) * 130))
+    readability_risk = min(
+        100,
+        small_text_regions * 12
+        + long_text_lines * 10
+        + max(0, region_count - 18) * 3
+        + dense_text_penalty,
+    )
+    primary_region = max(text_regions, key=lambda region: region["width"] * region["height"]) if text_regions else None
+
+    return {
+        "text_region_count": region_count,
+        "small_text_regions": small_text_regions,
+        "long_text_lines": long_text_lines,
+        "text_density": text_density,
+        "average_text_height_px": average_height,
+        "readability_risk_score": int(readability_risk),
+        "primary_text_region": primary_region,
+    }
+
+
+def _layout_metrics(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> Dict[str, Any]:
+    if not candidates:
+        return {
+            "component_count": 0,
+            "grid_deviation_px": 0,
+            "spacing_variance_px": 0,
+            "fill_ratio": 0.0,
+            "left_right_balance": 1.0,
+            "responsive_risk_score": 0,
+        }
+
+    x_positions = [candidate.x for candidate in candidates]
+    y_gaps = []
+    for current, next_candidate in zip(sorted(candidates, key=lambda item: item.y), sorted(candidates, key=lambda item: item.y)[1:]):
+        gap = next_candidate.y - (current.y + current.height)
+        if gap >= 0:
+            y_gaps.append(gap)
+
+    x_baseline = median(x_positions)
+    grid_deviation = median([abs(x - x_baseline) for x in x_positions]) if x_positions else 0
+    spacing_variance = 0
+    if len(y_gaps) >= 2:
+        gap_mid = median(y_gaps)
+        spacing_variance = median([abs(gap - gap_mid) for gap in y_gaps])
+
+    total_area = sum(candidate.width * candidate.height for candidate in candidates)
+    left_area = sum(
+        candidate.width * candidate.height
+        for candidate in candidates
+        if (candidate.x + candidate.width / 2) < image_width * 0.5
+    )
+    right_area = max(1, total_area - left_area)
+    balance = max(left_area, right_area) / max(1, min(left_area or 1, right_area))
+    wide_items = sum(1 for candidate in candidates if candidate.width > image_width * 0.72)
+    small_targets = sum(1 for candidate in candidates if candidate.width < 48 or candidate.height < 36)
+
+    return {
+        "component_count": len(candidates),
+        "grid_deviation_px": int(round(grid_deviation)),
+        "spacing_variance_px": int(round(spacing_variance)),
+        "fill_ratio": round(total_area / max(image_width * image_height, 1), 3),
+        "left_right_balance": round(balance, 2),
+        "responsive_risk_score": min(100, wide_items * 18 + small_targets * 8 + max(0, len(candidates) - 9) * 5),
+    }
+
+
+def _attention_metrics(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> Dict[str, Any]:
+    if not candidates:
+        return {"primary_dominance": 0.0, "attention_dispersion": 0.0, "primary_center_bias": 0.0}
+    ranked = sorted(candidates, key=lambda item: item.width * item.height, reverse=True)
+    primary = ranked[0]
+    secondary_area = ranked[1].width * ranked[1].height if len(ranked) > 1 else 1
+    dominance = (primary.width * primary.height) / max(1, secondary_area)
+    centers = [(item.x + item.width / 2, item.y + item.height / 2) for item in ranked[:4]]
+    if len(centers) >= 2:
+        xs = [point[0] for point in centers]
+        ys = [point[1] for point in centers]
+        dispersion = ((max(xs) - min(xs)) / max(image_width, 1) + (max(ys) - min(ys)) / max(image_height, 1)) / 2
+    else:
+        dispersion = 0.0
+    center_bias = 1 - min(
+        1,
+        (
+            abs((primary.x + primary.width / 2) - image_width / 2) / max(image_width / 2, 1)
+            + abs((primary.y + primary.height / 2) - image_height * 0.38) / max(image_height, 1)
+        )
+        / 2,
+    )
+    return {
+        "primary_dominance": round(dominance, 2),
+        "attention_dispersion": round(dispersion, 3),
+        "primary_center_bias": round(center_bias, 3),
+    }
+
+
+def _image_processing_metrics(image: Image.Image, candidates: List[ComponentCandidate]) -> Dict[str, Any]:
+    image_width, image_height = image.size
+    edge_density = _edge_density(image)
+    color_metrics = _color_complexity(image)
+    layout = _layout_metrics(candidates, image_width, image_height)
+    attention = _attention_metrics(candidates, image_width, image_height)
+    text = _text_region_metrics(image)
+    clutter_score = min(
+        100,
+        int(edge_density * 180)
+        + int(layout["fill_ratio"] * 80)
+        + max(0, layout["component_count"] - 7) * 7
+        + max(0, color_metrics["significant_color_buckets"] - 8) * 3,
+        + max(0, text["text_region_count"] - 18) * 2,
+    )
+    whitespace_score = max(0, min(100, 100 - int(layout["fill_ratio"] * 115) - int(max(0, layout["left_right_balance"] - 1) * 18)))
+    return {
+        "edge_density": edge_density,
+        "visual_clutter_score": clutter_score,
+        "whitespace_score": whitespace_score,
+        "layout": layout,
+        "color": color_metrics,
+        "attention": attention,
+        "text": text,
+    }
+
+
+def _metric_evidence_for(issue: UiuxIssue, metrics: Dict[str, Any]) -> Dict[str, Any]:
+    category = issue.category
+    layout = metrics.get("layout", {})
+    attention = metrics.get("attention", {})
+    color = metrics.get("color", {})
+    text = metrics.get("text", {})
+    metric_map = {
+        "alignment": ("grid_deviation_px", layout.get("grid_deviation_px"), "Benzer bloklarin x koordinatlari arasindaki sapma."),
+        "spacing": ("spacing_variance_px", layout.get("spacing_variance_px"), "Dikey bosluklarin referans ritimden sapmasi."),
+        "consistency": ("component_count", layout.get("component_count"), "Ayni satir/akistaki bilesen dagilimi."),
+        "hierarchy": ("primary_dominance", attention.get("primary_dominance"), "Birincil odagin ikincil odaklara gore baskinligi."),
+        "cta-dominance": ("primary_center_bias", attention.get("primary_center_bias"), "Ana aksiyonun ekranin beklenen odak bandina yakinligi."),
+        "intent-mismatch": ("attention_dispersion", attention.get("attention_dispersion"), "Odak noktalarinin ekrana yayilma miktari."),
+        "visual-clutter": ("visual_clutter_score", metrics.get("visual_clutter_score"), "Kenar yogunlugu, bilesen sayisi ve renk cesitliligi karmasasi."),
+        "whitespace-balance": ("whitespace_score", metrics.get("whitespace_score"), "Icerik dolulugu ve negatif alan dengesinin sayisal ozeti."),
+        "section-separation": ("spacing_variance_px", layout.get("spacing_variance_px"), "Bolumler arasindaki ara bosluk tutarliligi."),
+        "readability-flow": ("readability_risk_score", text.get("readability_risk_score"), "Metin bolgesi yogunlugu, kucuk metin ve uzun satir riskinin ozeti."),
+        "attention-flow": ("attention_dispersion", attention.get("attention_dispersion"), "Ilk odak adaylarinin tek rota yerine dagilip dagilmadigi."),
+        "conversion-friction": ("primary_center_bias", attention.get("primary_center_bias"), "Ana aksiyonun gorev akisi icindeki konumu."),
+        "trust-signal": ("component_count", layout.get("component_count"), "Form cevresindeki destekleyici sinyal sayisi icin proxy."),
+        "persona-risk": ("visual_clutter_score", metrics.get("visual_clutter_score"), "Ilk taramada olusan bilissel yuk icin proxy."),
+    }
+    metric_name, metric_value, explanation = metric_map.get(
+        category,
+        ("significant_color_buckets", color.get("significant_color_buckets"), "Goruntu isleme tabanli destekleyici metrik."),
+    )
+    return {
+        "source": "image-processing",
+        "metric": metric_name,
+        "value": metric_value,
+        "explanation": explanation,
+        "category": category,
+    }
+
+
+def _test_suggestion_for(issue: UiuxIssue) -> str:
+    mapping = {
+        "alignment": "Ayni akistaki kart/input/button x koordinatlarini snapshot uzerinden karsilastiran layout regresyon testi ekle.",
+        "spacing": "Ardisik bloklar arasindaki vertical gap degerlerini tasarim token'i ile karsilastir.",
+        "consistency": "Ayni satirdaki benzer bilesenlerin genislik/yukseklik oranlarini karsilastir.",
+        "hierarchy": "Birincil odagin ikincil odaklara gore alan ve kontrast bakimindan baskin oldugunu dogrula.",
+        "cta-dominance": "Primary CTA'nin fold icinde ve ana gorev bloguna yakin oldugunu kontrol et.",
+        "visual-clutter": "Edge density ve bilesen sayisi esiklerini izleyen clutter regresyon testi ekle.",
+        "readability-flow": "Metin bolgesi sayisi, kucuk metin ve uzun satir metriklerini screenshot regresyon testine ekle.",
+        "whitespace-balance": "Doluluk orani ve sol/sag agirlik dengesini viewport bazinda olc.",
+        "attention-flow": "Attention overlay'deki ilk 3 odak noktasinin tek akista ilerledigini kontrol et.",
+        "conversion-friction": "Form ile primary CTA arasindaki mesafenin viewport yuksekligine oranini dogrula.",
+    }
+    return mapping.get(issue.category, "Bu UI/UX bulgusunu screenshot tabanli metrik ve manuel tasarim kontrolu ile dogrula.")
 
 
 def _fallback_structure_issues(image: Image.Image, image_width: int, image_height: int) -> List[UiuxIssue]:
@@ -831,12 +1145,54 @@ def _primary_focus_label(candidates: List[ComponentCandidate], image_width: int,
     return _role_name(candidate, image_width, image_height)
 
 
+def _text_readability_issue(metrics: Dict[str, Any], image_width: int, image_height: int) -> Optional[UiuxIssue]:
+    text_metrics = metrics.get("text", {})
+    risk_score = int(text_metrics.get("readability_risk_score") or 0)
+    if risk_score < 42:
+        return None
+
+    small_regions = int(text_metrics.get("small_text_regions") or 0)
+    long_lines = int(text_metrics.get("long_text_lines") or 0)
+    region_count = int(text_metrics.get("text_region_count") or 0)
+    primary_region = text_metrics.get("primary_text_region") or {
+        "x": int(image_width * 0.08),
+        "y": int(image_height * 0.12),
+        "width": int(image_width * 0.84),
+        "height": int(image_height * 0.18),
+    }
+    if small_regions >= 3:
+        signal = f"{small_regions} kucuk metin bolgesi"
+    elif long_lines >= 2:
+        signal = f"{long_lines} uzun metin satiri"
+    else:
+        signal = f"{region_count} metin bolgesi"
+
+    return UiuxIssue(
+        title="Metin okunabilirligi riskli",
+        severity="high" if risk_score >= 70 else "medium",
+        category="readability-flow",
+        description=(
+            f"Screenshot icinde {signal} algilandi. Metin bloklari kucuk, uzun veya yogun oldugunda "
+            "kullanici ekrani tararken ana mesaj ve aksiyonlari daha gec kavrayabilir."
+        ),
+        recommendation="Metin boyutunu, satir uzunlugunu ve bloklar arasi nefes alanini kontrol et; kritik metni daha kisa ve daha okunur parcalara bol.",
+        candidate=_zone_candidate(
+            int(primary_region.get("x", 0)),
+            int(primary_region.get("y", 0)),
+            int(primary_region.get("width", image_width)),
+            int(primary_region.get("height", max(24, image_height * 0.12))),
+            "text-readability-region",
+        ),
+    )
+
+
 class UiuxEngine:
     def analyze_image(self, image_base64: str, platform: str = "web") -> Dict:
         image_bytes = _normalize_base64_image(image_base64)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         image_width, image_height = image.size
         candidates = _meaningful_candidates(image)
+        processing_metrics = _image_processing_metrics(image, candidates)
 
         issues = []
         for resolver in (
@@ -869,6 +1225,10 @@ class UiuxEngine:
                 if len(issues) >= 4:
                     break
 
+        readability_issue = _text_readability_issue(processing_metrics, image_width, image_height)
+        if readability_issue and not any(issue.title == readability_issue.title for issue in issues):
+            issues.append(readability_issue)
+
         findings = []
         for index, issue in enumerate(issues, start=1):
             box = _component_box(issue.candidate)
@@ -891,17 +1251,40 @@ class UiuxEngine:
                         box["height"],
                     ),
                     "recommendation": issue.recommendation,
+                    "numeric_evidence": _metric_evidence_for(issue, processing_metrics),
+                    "evidence": {
+                        "source": "image-processing",
+                        "region": box,
+                        "metric": _metric_evidence_for(issue, processing_metrics),
+                        "why_flagged": issue.description,
+                        "recommended_action": issue.recommendation,
+                        "validation_steps": [
+                            "Annotated screenshot uzerindeki isaretli bolgeyi kontrol et.",
+                            "Ilgili sayisal metrigin tasarim beklentisini asip asmadigini incele.",
+                            "Ayni ekrani farkli viewport veya tekrarli kosuda karsilastir.",
+                        ],
+                    },
+                    "test_suggestion": _test_suggestion_for(issue),
                 }
             )
 
-        alignment_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category == "alignment"))
-        spacing_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category == "spacing"))
-        consistency_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"consistency", "section-separation"}))
-        hierarchy_score = max(48, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"hierarchy", "cta-dominance", "intent-mismatch", "attention-flow"}))
-        readability_score = max(50, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"readability-flow", "section-separation", "whitespace-balance"}))
-        friction_score = max(46, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"conversion-friction", "visual-clutter", "persona-risk", "trust-signal"}))
+        alignment_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"alignment", "intent-mismatch"}))
+        spacing_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"spacing", "section-separation", "whitespace-balance"}))
+        consistency_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"consistency", "section-separation", "whitespace-balance"}))
+        hierarchy_score = max(48, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"hierarchy", "cta-dominance", "attention-flow"}))
+        text_readability_risk = int(processing_metrics["text"]["readability_risk_score"])
+        readability_score = max(
+            42,
+            100
+            - sum(_penalty(issue.severity) for issue in issues if issue.category in {"readability-flow", "section-separation", "whitespace-balance", "visual-clutter"})
+            - int(text_readability_risk * 0.22),
+        )
+        friction_score = max(46, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"conversion-friction", "visual-clutter", "persona-risk", "trust-signal", "attention-flow"}))
         focus_score = _focus_score(candidates, image_width, image_height)
         overall_score = round((alignment_score + spacing_score + consistency_score + hierarchy_score + readability_score + friction_score + focus_score) / 7)
+        responsive_score = max(40, 100 - int(processing_metrics["layout"]["responsive_risk_score"]))
+        clutter_score = max(35, 100 - int(processing_metrics["visual_clutter_score"]))
+        color_score = int(processing_metrics["color"]["color_complexity_score"])
 
         if findings:
             overview = (
@@ -952,6 +1335,37 @@ class UiuxEngine:
                 "friction_score": int(friction_score),
                 "focus_score": int(focus_score),
             },
+            "score_breakdown": {
+                "layout_alignment": int(alignment_score),
+                "spacing_consistency": int(spacing_score),
+                "visual_hierarchy": int(hierarchy_score),
+                "readability_flow": int(readability_score),
+                "clutter_control": int(clutter_score),
+                "color_consistency": int(color_score),
+                "responsive_risk": int(responsive_score),
+            },
+            "image_processing_metrics": processing_metrics,
+            "evidence_matrix": {
+                "candidate_count": len(candidates),
+                "edge_density": processing_metrics["edge_density"],
+                "visual_clutter_score": processing_metrics["visual_clutter_score"],
+                "spacing_variance_px": processing_metrics["layout"]["spacing_variance_px"],
+                "grid_deviation_px": processing_metrics["layout"]["grid_deviation_px"],
+                "primary_dominance": processing_metrics["attention"]["primary_dominance"],
+                "text_region_count": processing_metrics["text"]["text_region_count"],
+                "small_text_regions": processing_metrics["text"]["small_text_regions"],
+                "long_text_lines": processing_metrics["text"]["long_text_lines"],
+                "readability_risk_score": processing_metrics["text"]["readability_risk_score"],
+            },
+            "test_suggestions": [
+                {
+                    "category": finding["category"],
+                    "priority": finding["severity"],
+                    "title": finding["title"],
+                    "suggestion": finding["test_suggestion"],
+                }
+                for finding in findings[:6]
+            ],
             "attention_prediction": {
                 "focus_score": int(focus_score),
                 "primary_focus_label": _primary_focus_label(candidates, image_width, image_height),

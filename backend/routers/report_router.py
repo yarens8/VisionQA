@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from database import get_db
 from database.models import (
@@ -12,6 +13,8 @@ from database.models import (
     ApiAnalysisRecord,
     DbAnalysisRecord,
     DatasetAnalysisRecord,
+    JiraTicketDraft,
+    MobileAnalysisRecord,
     PerformanceAnalysisRecord,
     Project,
     SecurityAnalysisRecord,
@@ -22,6 +25,22 @@ from core.bug_analysis import build_bug_analysis
 import json
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+class JiraDraftRequest(BaseModel):
+    source_module: str = Field(..., min_length=1, max_length=100)
+    source_type: str = Field(default="final_report_action", max_length=100)
+    source_ref: str | None = Field(default=None, max_length=255)
+    title: str = Field(..., min_length=1, max_length=500)
+    description: str | None = None
+    priority: str = Field(default="medium", max_length=50)
+    evidence: str | None = None
+    recommendation: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class JiraDraftChecklistUpdate(BaseModel):
+    acceptance_criteria: list[dict[str, Any]] = Field(default_factory=list)
 
 
 def _enum_value(value: Any) -> Any:
@@ -224,6 +243,92 @@ def _generic_analysis_summary(record: Any, module_key: str) -> dict[str, Any]:
     }
 
 
+def _accessibility_analysis_summary(record: AccessibilityAnalysisRecord) -> dict[str, Any]:
+    payload = record.analysis_payload or {}
+    findings = [
+        finding
+        for finding in (payload.get("findings") or [])
+        if isinstance(finding, dict)
+    ]
+    return {
+        **_generic_analysis_summary(record, "accessibility"),
+        "score_breakdown": payload.get("score_breakdown") or {},
+        "accessibility_summary": payload.get("accessibility_summary") or {},
+        "test_suggestions": payload.get("test_suggestions") or [],
+        "keyboard_profile": payload.get("keyboard_profile") or {},
+        "component_summary": payload.get("component_summary") or {},
+        "finding_categories": [
+            finding.get("category")
+            for finding in findings
+            if finding.get("category")
+        ],
+        "findings": findings[:8],
+        "high_findings": [
+            finding
+            for finding in findings
+            if finding.get("severity") in {"critical", "high"}
+        ][:4],
+    }
+
+
+def _uiux_analysis_summary(record: UiuxAnalysisRecord) -> dict[str, Any]:
+    payload = record.analysis_payload or {}
+    findings = [
+        finding
+        for finding in (payload.get("findings") or [])
+        if isinstance(finding, dict)
+    ]
+    return {
+        **_generic_analysis_summary(record, "uiux"),
+        "score_breakdown": payload.get("score_breakdown") or {},
+        "evidence_matrix": payload.get("evidence_matrix") or {},
+        "test_suggestions": payload.get("test_suggestions") or [],
+        "finding_categories": [
+            finding.get("category")
+            for finding in findings
+            if finding.get("category")
+        ],
+        "findings": findings[:6],
+        "high_findings": [
+            finding
+            for finding in findings
+            if finding.get("severity") in {"critical", "high"}
+        ][:3],
+    }
+
+
+def _mobile_analysis_summary(record: MobileAnalysisRecord) -> dict[str, Any]:
+    payload = record.analysis_payload or {}
+    findings = [
+        finding
+        for finding in (payload.get("findings") or [])
+        if isinstance(finding, dict)
+    ]
+    context_profile = payload.get("context_profile") or {}
+    return {
+        **_generic_analysis_summary(record, "mobile"),
+        "score_breakdown": payload.get("score_breakdown") or {},
+        "context_profile": context_profile,
+        "screen_type": context_profile.get("screen_type"),
+        "task_completion_friction": payload.get("task_completion_friction"),
+        "cross_platform_parity_summary": payload.get("cross_platform_parity_summary"),
+        "thumb_zone_summary": payload.get("thumb_zone_summary"),
+        "keyboard_overlap_signal": payload.get("keyboard_overlap_signal"),
+        "safe_area_signal": payload.get("safe_area_signal"),
+        "finding_categories": [
+            finding.get("category")
+            for finding in findings
+            if finding.get("category")
+        ],
+        "findings": findings[:8],
+        "high_findings": [
+            finding
+            for finding in findings
+            if finding.get("severity") in {"critical", "high"}
+        ][:4],
+    }
+
+
 def _api_analysis_summary(record: ApiAnalysisRecord) -> dict[str, Any]:
     payload = record.analysis_payload or {}
     findings = payload.get("findings") or []
@@ -368,6 +473,307 @@ def _db_analysis_summary(record: DbAnalysisRecord) -> dict[str, Any]:
     }
 
 
+def _performance_analysis_summary(record: PerformanceAnalysisRecord) -> dict[str, Any]:
+    payload = record.analysis_payload or {}
+    findings = [
+        finding
+        for finding in (payload.get("findings") or [])
+        if isinstance(finding, dict)
+    ]
+    return {
+        **_generic_analysis_summary(record, "performance"),
+        "performance_grade": payload.get("performance_grade"),
+        "technical_score": payload.get("technical_score"),
+        "perceived_score": payload.get("perceived_score"),
+        "api_duration_ms": payload.get("api_duration_ms") or payload.get("duration_ms"),
+        "sample_api_runs": payload.get("sample_api_runs"),
+        "finding_categories": [
+            finding.get("category")
+            for finding in findings
+            if finding.get("category")
+        ],
+        "findings": findings[:6],
+        "high_findings": [
+            finding
+            for finding in findings
+            if finding.get("severity") == "high"
+        ][:3],
+    }
+
+
+def _db_priority_actions(db_summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+    merged: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for record in db_summaries:
+        findings = (record.get("high_findings") or record.get("findings") or record.get("schema_smells") or [])
+        if not findings and record.get("finding_categories"):
+            findings = [
+                {
+                    "title": f"DB {category} sinyali",
+                    "severity": "medium",
+                    "category": category,
+                    "description": record.get("overview") or "DB kalite bulgusu incelenmeli.",
+                    "evidence": record.get("query") or record.get("source_label") or "DB record",
+                    "recommendation": "Schema, query ve API field beklentilerini birlikte dogrula.",
+                }
+                for category in record.get("finding_categories", [])[:3]
+            ]
+
+        for finding in findings[:3]:
+            if not isinstance(finding, dict):
+                continue
+            category = finding.get("category") or "database"
+            evidence = finding.get("evidence") or record.get("query") or record.get("source_label") or ""
+            key = (str(record.get("table_name") or record.get("source_label") or ""), category, evidence)
+            action = {
+                "title": finding.get("title") or "Database quality finding",
+                "severity": finding.get("severity") or "medium",
+                "category": category,
+                "source": "database",
+                "db_record_id": record.get("id"),
+                "db_record_ids": [record.get("id")] if record.get("id") else [],
+                "duplicate_count": 1,
+                "table_name": record.get("table_name"),
+                "query": record.get("query"),
+                "summary": finding.get("description") or record.get("overview") or "DB kalite bulgusu incelenmeli.",
+                "evidence": evidence,
+                "recommendation": finding.get("recommendation") or "DB schema, query shape ve API field beklentilerini birlikte hizala.",
+                "score": record.get("overall_score"),
+                "detected_columns": record.get("detected_columns") or [],
+            }
+            existing = merged.get(key)
+            if existing:
+                existing["duplicate_count"] = int(existing.get("duplicate_count", 1) or 1) + 1
+                if record.get("id") and record.get("id") not in existing["db_record_ids"]:
+                    existing["db_record_ids"].append(record.get("id"))
+                existing["db_record_id"] = max(existing["db_record_ids"])
+                existing["severity"] = min(
+                    [existing.get("severity"), action.get("severity")],
+                    key=lambda value: _severity_rank(str(value)),
+                )
+            else:
+                merged[key] = action
+
+    actions = list(merged.values())
+    actions.sort(key=lambda item: (_severity_rank(item.get("severity")), item.get("db_record_id") or 0))
+    return actions[:8]
+
+
+def _performance_priority_actions(performance_summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+    merged: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for record in performance_summaries:
+        findings = (record.get("high_findings") or record.get("findings") or [])
+        if not findings and record.get("findings_count", 0) > 0:
+            findings = [
+                {
+                    "title": "Performance attention signal",
+                    "severity": "medium",
+                    "category": "performance",
+                    "description": record.get("overview") or "Performance kaydi bulgu uretti.",
+                    "evidence": record.get("source_url") or record.get("source_label") or "Performance record",
+                    "recommendation": "Latency, asset, DB query ve downstream servis etkisini birlikte incele.",
+                }
+            ]
+
+        for finding in findings[:3]:
+            if not isinstance(finding, dict):
+                continue
+            category = finding.get("category") or "performance"
+            target = record.get("source_url") or record.get("source_label") or ""
+            evidence = finding.get("evidence") or record.get("overview") or target
+            key = (target, category, evidence)
+            action = {
+                "title": finding.get("title") or "Performance finding",
+                "severity": finding.get("severity") or "medium",
+                "category": category,
+                "source": "performance",
+                "performance_record_id": record.get("id"),
+                "performance_record_ids": [record.get("id")] if record.get("id") else [],
+                "duplicate_count": 1,
+                "target": target,
+                "summary": finding.get("description") or record.get("overview") or "Performans bulgusu incelenmeli.",
+                "evidence": evidence,
+                "recommendation": finding.get("recommendation") or "p95 hedefi, cache, query ve network davranisini birlikte profille.",
+                "score": record.get("overall_score"),
+                "grade": record.get("performance_grade"),
+                "technical_score": record.get("technical_score"),
+                "perceived_score": record.get("perceived_score"),
+                "api_duration_ms": record.get("api_duration_ms"),
+            }
+            existing = merged.get(key)
+            if existing:
+                existing["duplicate_count"] = int(existing.get("duplicate_count", 1) or 1) + 1
+                if record.get("id") and record.get("id") not in existing["performance_record_ids"]:
+                    existing["performance_record_ids"].append(record.get("id"))
+                existing["performance_record_id"] = max(existing["performance_record_ids"])
+                existing["severity"] = min(
+                    [existing.get("severity"), action.get("severity")],
+                    key=lambda value: _severity_rank(str(value)),
+                )
+            else:
+                merged[key] = action
+
+    actions = list(merged.values())
+    actions.sort(key=lambda item: (_severity_rank(item.get("severity")), item.get("performance_record_id") or 0))
+    return actions[:8]
+
+
+def _uiux_priority_actions(uiux_summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for record in uiux_summaries:
+        findings = record.get("findings") or []
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            severity = str(finding.get("severity") or "medium")
+            if severity not in {"critical", "high", "medium"}:
+                continue
+            category = str(finding.get("category") or "uiux")
+            title = str(finding.get("title") or "UI/UX bulgusu incelenmeli")
+            evidence = finding.get("numeric_evidence") or {}
+            metric = evidence.get("metric") or category
+            key = (title, category)
+            action = {
+                "title": title,
+                "severity": severity,
+                "category": category,
+                "source": "uiux",
+                "uiux_record_id": record.get("id"),
+                "uiux_record_ids": [record.get("id")] if record.get("id") else [],
+                "duplicate_count": 1,
+                "summary": finding.get("description") or record.get("overview") or "UI/UX bulgusu incelenmeli.",
+                "evidence": f"{metric}: {evidence.get('value', 'n/a')}",
+                "recommendation": finding.get("recommendation") or "İlgili UI/UX metriğini tasarım ve screenshot regresyon testiyle doğrula.",
+                "score": record.get("overall_score"),
+                "metric": metric,
+                "metric_value": evidence.get("value"),
+                "test_suggestion": finding.get("test_suggestion"),
+            }
+            existing = merged.get(key)
+            if existing:
+                existing["duplicate_count"] = int(existing.get("duplicate_count", 1) or 1) + 1
+                if record.get("id") and record.get("id") not in existing["uiux_record_ids"]:
+                    existing["uiux_record_ids"].append(record.get("id"))
+                existing["uiux_record_id"] = max(existing["uiux_record_ids"]) if existing["uiux_record_ids"] else existing.get("uiux_record_id")
+                existing["severity"] = min([existing.get("severity"), severity], key=lambda value: _severity_rank(str(value)))
+            else:
+                merged[key] = action
+
+    actions = list(merged.values())
+    actions.sort(key=lambda item: (_severity_rank(item.get("severity")), item.get("uiux_record_id") or 0))
+    return actions[:8]
+
+
+def _accessibility_priority_actions(accessibility_summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for record in accessibility_summaries:
+        findings = record.get("findings") or []
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            severity = str(finding.get("severity") or "medium").lower()
+            if severity not in {"critical", "high", "medium"}:
+                continue
+            category = str(finding.get("category") or "accessibility")
+            title = str(finding.get("title") or finding.get("summary") or "Accessibility issue")
+            key = (title, category)
+            evidence = finding.get("evidence") if isinstance(finding.get("evidence"), dict) else {}
+            action = {
+                "title": title,
+                "severity": severity,
+                "category": category,
+                "source": "accessibility",
+                "accessibility_record_id": record.get("id"),
+                "accessibility_record_ids": [record.get("id")] if record.get("id") else [],
+                "duplicate_count": 1,
+                "summary": str(
+                    finding.get("description")
+                    or finding.get("why_flagged")
+                    or record.get("overview")
+                    or "Accessibility finding requires review."
+                ),
+                "evidence": str(
+                    evidence.get("why_flagged")
+                    or evidence.get("selector")
+                    or finding.get("evidence_text")
+                    or finding.get("category")
+                    or category
+                ),
+                "recommendation": str(
+                    finding.get("recommendation")
+                    or "Label, focus, contrast ve semantic accessibility davranisini dogrula."
+                ),
+                "wcag_refs": finding.get("wcag_refs") or [],
+                "impact_score": finding.get("impact_score"),
+                "selector": evidence.get("selector"),
+                "component": finding.get("component") or evidence.get("element"),
+            }
+            if key in merged:
+                existing = merged[key]
+                existing["duplicate_count"] += 1
+                if record.get("id") and record.get("id") not in existing["accessibility_record_ids"]:
+                    existing["accessibility_record_ids"].append(record.get("id"))
+                existing["accessibility_record_id"] = max(existing["accessibility_record_ids"]) if existing["accessibility_record_ids"] else existing.get("accessibility_record_id")
+                if _severity_rank(severity) < _severity_rank(existing.get("severity")):
+                    existing["severity"] = severity
+            else:
+                merged[key] = action
+
+    actions = list(merged.values())
+    actions.sort(key=lambda item: (_severity_rank(item.get("severity")), item.get("accessibility_record_id") or 0))
+    return actions[:8]
+
+
+def _mobile_priority_actions(mobile_summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = []
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for record in mobile_summaries:
+        findings = record.get("findings") or []
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            severity = str(finding.get("severity") or "medium").lower()
+            if severity not in {"critical", "high", "medium"}:
+                continue
+            category = str(finding.get("category") or "mobile")
+            title = str(finding.get("title") or "Mobile UX bulgusu incelenmeli")
+            key = (title, category)
+            action = {
+                "title": title,
+                "severity": severity,
+                "category": category,
+                "source": "mobile",
+                "mobile_record_id": record.get("id"),
+                "mobile_record_ids": [record.get("id")] if record.get("id") else [],
+                "duplicate_count": 1,
+                "platform": record.get("platform"),
+                "screen_type": record.get("screen_type"),
+                "summary": finding.get("description") or record.get("overview") or "Mobile bulgusu incelenmeli.",
+                "evidence": finding.get("evidence") or record.get("source_label") or category,
+                "recommendation": finding.get("recommendation") or "Touch target, responsive davranis ve mobil akisi cihaz bazli dogrula.",
+                "score": record.get("overall_score"),
+                "task_completion_friction": record.get("task_completion_friction"),
+                "cross_platform_parity_summary": record.get("cross_platform_parity_summary"),
+            }
+            if key in merged:
+                existing = merged[key]
+                existing["duplicate_count"] += 1
+                if record.get("id") and record.get("id") not in existing["mobile_record_ids"]:
+                    existing["mobile_record_ids"].append(record.get("id"))
+                existing["mobile_record_id"] = max(existing["mobile_record_ids"]) if existing["mobile_record_ids"] else existing.get("mobile_record_id")
+                if _severity_rank(severity) < _severity_rank(existing.get("severity")):
+                    existing["severity"] = severity
+            else:
+                merged[key] = action
+
+    actions = list(merged.values())
+    actions.sort(key=lambda item: (_severity_rank(item.get("severity")), item.get("mobile_record_id") or 0))
+    return actions[:8]
+
+
 def _module_status(score: int | None, issues: int = 0, present: bool = True) -> str:
     if not present:
         return "not_connected"
@@ -376,6 +782,69 @@ def _module_status(score: int | None, issues: int = 0, present: bool = True) -> 
     if score is not None and score >= 85:
         return "healthy"
     return "observed"
+
+
+def _module_guidance(module: str, status: str, findings: int, records: int) -> dict[str, str]:
+    if status == "not_connected":
+        return {
+            "interpretation": "Bu modülden henüz projeye bağlı kayıt yok.",
+            "recommended_action": "Modülü aynı proje seçimiyle çalıştır; çıktı Full Report içinde otomatik birleşir.",
+            "evidence_level": "none",
+        }
+
+    guidance = {
+        "autonomous": {
+            "interpretation": "URL ve test run çıktıları otonom test üretimiyle ilişkilendirildi.",
+            "recommended_action": "Failed run varsa ilgili case protokolünü ve Bug Analysis kanıtını birlikte incele.",
+        },
+        "bug_analysis": {
+            "interpretation": "Failed step logları yapılandırılmış bug raporuna dönüştürüldü.",
+            "recommended_action": "Kategori, hedef selector ve önerilen aksiyonu ticket veya backlog maddesine çevir.",
+        },
+        "security": {
+            "interpretation": "Security taramaları yüzey, header ve saldırı hipotezi sinyali üretiyor.",
+            "recommended_action": "High/medium aksiyonları önceliklendir; correlation varsa aynı hedefteki test ve API bulgularıyla birlikte doğrula.",
+        },
+        "accessibility": {
+            "interpretation": "Erişilebilirlik sinyalleri görsel/URL analizi üzerinden rapora bağlanır.",
+            "recommended_action": "Label, focus, kontrast ve bileşen semantiği bulgularını UI/UX çıktılarıyla birlikte değerlendir.",
+        },
+        "uiux": {
+            "interpretation": "UI/UX görsel kalite ve kullanılabilirlik sinyalleri rapora taşındı.",
+            "recommended_action": "Yoğunluk, kontrast, hizalama ve okunabilirlik bulgularını accessibility ile eşleştir.",
+        },
+        "dataset": {
+            "interpretation": "Dataset kalite bulguları model güvenilirliği ve annotation sağlığı için özetlendi.",
+            "recommended_action": "Eksik etiket, duplicate, label consistency ve split dağılımı bulgularını veri hazırlama backlog'una ekle.",
+        },
+        "api": {
+            "interpretation": "Endpoint contract, status, latency ve negatif kontrol sinyalleri rapora bağlandı.",
+            "recommended_action": "Schema mismatch, status mismatch ve yavaş response bulgularını serializer, gateway ve servis katmanıyla doğrula.",
+        },
+        "database": {
+            "interpretation": "DB query/schema kalite bulguları API contract ve veri tutarlılığı açısından özetlendi.",
+            "recommended_action": "Query shape, constraint, null density ve API-DB consistency bulgularını migration/model değişiklikleriyle hizala.",
+        },
+        "performance": {
+            "interpretation": "Web/API/DB performans sinyalleri proje seviyesinde raporlandı.",
+            "recommended_action": "Yavaş endpoint veya sayfa varsa p95 hedefi, cache, query ve asset yükleme davranışını birlikte incele.",
+        },
+        "mobile": {
+            "interpretation": "Mobil screenshot ve element metadata sinyalleri touch target, responsive risk ve platform uyumluluğu açısından rapora taşındı.",
+            "recommended_action": "Küçük dokunma hedefleri, input erişilebilirliği, ekran taşması ve mobil yoğunluk bulgularını cihaz bazlı regresyonla doğrula.",
+        },
+    }
+    default = guidance.get(module, {
+        "interpretation": "Modül çıktısı proje raporuna bağlandı.",
+        "recommended_action": "Bulguları ilgili modül ekranında detaylandır.",
+    })
+    if findings > 0:
+        evidence_level = "actionable"
+    elif records > 0:
+        evidence_level = "observed"
+    else:
+        evidence_level = "none"
+    return {**default, "evidence_level": evidence_level}
 
 
 def _average_score(items: list[dict[str, Any]], default: int | None = None) -> int | None:
@@ -405,6 +874,7 @@ def _build_module_breakdown(
     api_summaries: list[dict[str, Any]],
     db_summaries: list[dict[str, Any]],
     performance_summaries: list[dict[str, Any]],
+    mobile_summaries: list[dict[str, Any]],
     bug_reports: list[dict[str, Any]],
     total_cases: int,
 ) -> list[dict[str, Any]]:
@@ -421,12 +891,13 @@ def _build_module_breakdown(
     api_findings = sum(item.get("findings_count", 0) for item in api_summaries)
     db_findings = sum(item.get("findings_count", 0) for item in db_summaries)
     performance_findings = sum(item.get("findings_count", 0) for item in performance_summaries)
+    mobile_findings = sum(item.get("findings_count", 0) for item in mobile_summaries)
     module_counts: dict[str, int] = {}
     for run in runs:
         module_name = str(run.module_name or "unknown").lower()
         module_counts[module_name] = module_counts.get(module_name, 0) + 1
 
-    return [
+    items = [
         {
             "module": "autonomous",
             "label": "Autonomous Testing",
@@ -517,7 +988,27 @@ def _build_module_breakdown(
             "summary": f"{len(performance_summaries)} performance analizi ve {performance_findings} performans bulgusu var.",
             "latest": performance_summaries[:3],
         },
+        {
+            "module": "mobile",
+            "label": "Mobile",
+            "status": _module_status(_average_score(mobile_summaries), mobile_findings, bool(mobile_summaries)),
+            "score": _average_score(mobile_summaries),
+            "records": len(mobile_summaries),
+            "findings": mobile_findings,
+            "summary": f"{len(mobile_summaries)} mobil analiz ve {mobile_findings} mobil bulgu var.",
+            "latest": mobile_summaries[:3],
+        },
     ]
+    for item in items:
+        item.update(
+            _module_guidance(
+                str(item.get("module") or ""),
+                str(item.get("status") or ""),
+                int(item.get("findings") or 0),
+                int(item.get("records") or 0),
+            )
+        )
+    return items
 
 
 def _run_summary(run: TestRun) -> dict[str, Any]:
@@ -635,11 +1126,15 @@ def _correlate_project_findings(
     api_summaries: list[dict[str, Any]] | None = None,
     db_summaries: list[dict[str, Any]] | None = None,
     performance_summaries: list[dict[str, Any]] | None = None,
+    accessibility_summaries: list[dict[str, Any]] | None = None,
+    uiux_summaries: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     correlations: list[dict[str, Any]] = []
     api_summaries = api_summaries or []
     db_summaries = db_summaries or []
     performance_summaries = performance_summaries or []
+    accessibility_summaries = accessibility_summaries or []
+    uiux_summaries = uiux_summaries or []
 
     def _bug_categories(actions: list[dict[str, Any]]) -> list[str]:
         categories: list[str] = []
@@ -856,6 +1351,45 @@ def _correlate_project_findings(
                     }
                 )
 
+    accessibility_signal_count = sum(int(item.get("findings_count", 0) or 0) for item in accessibility_summaries)
+    uiux_signal_count = sum(int(item.get("findings_count", 0) or 0) for item in uiux_summaries)
+    if accessibility_signal_count > 0 and uiux_signal_count > 0:
+        uiux_categories = list(
+            dict.fromkeys(
+                category
+                for record in uiux_summaries
+                for category in (record.get("finding_categories") or [])
+                if category
+            )
+        )
+        accessibility_urls = [
+            record.get("source_url")
+            for record in accessibility_summaries
+            if record.get("source_url")
+        ]
+        target = accessibility_urls[0] if accessibility_urls else "project-level-ui-accessibility"
+        has_readability = any(category in {"readability-flow", "visual-clutter", "hierarchy"} for category in uiux_categories)
+        correlations.append(
+            {
+                "title": "UI okunabilirlik sinyali accessibility bulgulari ile eslesti",
+                "severity": "high" if has_readability and accessibility_signal_count >= 3 else "medium",
+                "target": target,
+                "related_modules": ["uiux", "accessibility"],
+                "signal_count": accessibility_signal_count + uiux_signal_count,
+                "security_record_id": None,
+                "run_ids": [],
+                "evidence": {
+                    "security": [],
+                    "tests": [
+                        f"Accessibility: {accessibility_signal_count} bulgu",
+                        f"UI/UX: {uiux_signal_count} bulgu",
+                    ],
+                    "bug_categories": uiux_categories[:6],
+                },
+                "recommendation": "Okunabilirlik, kontrast, label/focus ve görsel hiyerarşi bulgularını aynı ekran tasarım düzeltmesinde birlikte doğrula.",
+            }
+        )
+
     merged_correlations: dict[tuple[str, str, tuple[str, ...]], dict[str, Any]] = {}
     for item in correlations:
         key = (
@@ -892,12 +1426,265 @@ def _correlate_project_findings(
     return correlations[:6]
 
 
+def _risk_level(overall_score: int, failed_runs: int, high_security: int, correlations: int) -> str:
+    if high_security > 0 or failed_runs >= 3 or overall_score < 55:
+        return "high"
+    if failed_runs > 0 or correlations > 0 or overall_score < 80:
+        return "medium"
+    return "low"
+
+
+def _build_executive_summary(
+    *,
+    project: Project,
+    overall_score: int,
+    total_runs: int,
+    failed_runs: int,
+    high_security: int,
+    medium_security: int,
+    correlations: list[dict[str, Any]],
+    module_breakdown: list[dict[str, Any]],
+    api_actions: list[dict[str, Any]],
+    bug_reports: list[dict[str, Any]],
+) -> dict[str, Any]:
+    risk_level = _risk_level(overall_score, failed_runs, high_security, len(correlations))
+    connected_modules = [item for item in module_breakdown if item.get("status") != "not_connected"]
+    attention_modules = [
+        item.get("label")
+        for item in module_breakdown
+        if item.get("status") == "attention"
+    ]
+    healthy_modules = [
+        item.get("label")
+        for item in module_breakdown
+        if item.get("status") == "healthy"
+    ]
+
+    top_risks: list[str] = []
+    if failed_runs:
+        top_risks.append(f"{failed_runs} failed run yapılandırılmış bug/test aksiyonu üretti.")
+    if high_security + medium_security:
+        top_risks.append(f"{high_security} high/critical ve {medium_security} medium security sinyali var.")
+    if api_actions:
+        top_risks.append(f"{len(api_actions)} API endpoint aksiyonu contract, latency veya availability açısından izlenmeli.")
+    if correlations:
+        top_risks.append(f"{len(correlations)} cross-module correlation aynı hedefte birden fazla modül sinyali gösteriyor.")
+    if not top_risks:
+        top_risks.append("Bu raporda öncelikli kırılım sinyali oluşmadı.")
+
+    next_actions: list[str] = []
+    if correlations:
+        next_actions.append("Önce correlation kartlarındaki aynı hedefli modül sinyallerini doğrula.")
+    if bug_reports:
+        next_actions.append("Failed step için Bug Analysis önerisini case/protokol düzeltmesine çevir.")
+    if high_security + medium_security:
+        next_actions.append("Security priority actions listesindeki header, auth ve surface hardening maddelerini uygula.")
+    if api_actions:
+        next_actions.append("API endpoint aksiyonlarında schema/status/latency bulgularını servis contract testlerine bağla.")
+    if not next_actions:
+        next_actions.append("Yeni modül çalıştırmalarıyla rapor kanıt kapsamını genişlet.")
+
+    return {
+        "title": f"{project.name} project quality executive summary",
+        "risk_level": risk_level,
+        "readiness_score": overall_score,
+        "narrative": (
+            f"{project.name} için {len(connected_modules)} modülden kanıt toplandı. "
+            f"{total_runs} run içinde {failed_runs} failed run, "
+            f"{high_security + medium_security} security sinyali ve {len(correlations)} correlation bulundu."
+        ),
+        "attention_modules": attention_modules,
+        "healthy_modules": healthy_modules,
+        "top_risks": top_risks[:4],
+        "next_actions": next_actions[:4],
+    }
+
+
+def _build_evidence_matrix(
+    *,
+    module_breakdown: list[dict[str, Any]],
+    runs: list[TestRun],
+    security_summaries: list[dict[str, Any]],
+    accessibility_summaries: list[dict[str, Any]],
+    uiux_summaries: list[dict[str, Any]],
+    dataset_summaries: list[dict[str, Any]],
+    api_summaries: list[dict[str, Any]],
+    db_summaries: list[dict[str, Any]],
+    performance_summaries: list[dict[str, Any]],
+    mobile_summaries: list[dict[str, Any]],
+    correlations: list[dict[str, Any]],
+    jira_drafts: list[JiraTicketDraft],
+) -> dict[str, Any]:
+    connected = [item for item in module_breakdown if item.get("status") != "not_connected"]
+    actionable = [item for item in module_breakdown if item.get("evidence_level") == "actionable"]
+    return {
+        "coverage": {
+            "connected_modules": len(connected),
+            "total_modules": len(module_breakdown),
+            "actionable_modules": len(actionable),
+            "evidence_coverage_percent": round((len(connected) / len(module_breakdown)) * 100) if module_breakdown else 0,
+        },
+        "artifacts": {
+            "test_runs": len(runs),
+            "security_records": len(security_summaries),
+            "accessibility_records": len(accessibility_summaries),
+            "uiux_records": len(uiux_summaries),
+            "dataset_records": len(dataset_summaries),
+            "api_records": len(api_summaries),
+            "database_records": len(db_summaries),
+            "performance_records": len(performance_summaries),
+            "mobile_records": len(mobile_summaries),
+            "correlation_items": len(correlations),
+            "jira_drafts": len(jira_drafts),
+        },
+        "paper_evidence": [
+            "module_breakdown",
+            "priority_security_actions",
+            "api_endpoint_actions",
+            "database_quality_actions",
+            "performance_actions",
+            "accessibility_actions",
+            "uiux_actions",
+            "mobile_actions",
+            "jira_drafts",
+            "failed_test_actions",
+            "cross_module_correlation",
+            "run_history",
+        ],
+        "limitations": [
+            "Benchmark metrikleri ayrı deney dosyalarıyla tamamlanmalıdır.",
+            "Gerçek üretim sitelerinde credential, captcha ve rate-limit kısıtları test kapsamını etkileyebilir.",
+        ],
+    }
+
+
+def _build_paper_alignment(
+    *,
+    module_breakdown: list[dict[str, Any]],
+    evidence_matrix: dict[str, Any],
+    correlations: list[dict[str, Any]],
+    bug_reports: list[dict[str, Any]],
+    accessibility_actions: list[dict[str, Any]],
+    api_actions: list[dict[str, Any]],
+    db_actions: list[dict[str, Any]],
+    performance_actions: list[dict[str, Any]],
+    uiux_actions: list[dict[str, Any]],
+    mobile_actions: list[dict[str, Any]],
+    jira_drafts: list[JiraTicketDraft],
+) -> dict[str, Any]:
+    modules = {item.get("module"): item for item in module_breakdown}
+
+    def _module_status(module_key: str) -> str:
+        item = modules.get(module_key) or {}
+        if item.get("status") == "not_connected":
+            return "pending"
+        if item.get("evidence_level") == "actionable":
+            return "supported"
+        return "observed"
+
+    claims = [
+        {
+            "claim": "Unified multi-module QA framework",
+            "status": "supported" if evidence_matrix.get("coverage", {}).get("connected_modules", 0) >= 4 else "observed",
+            "evidence": "Final Report module breakdown, action cards and shared project summary combine module outputs.",
+        },
+        {
+            "claim": "Autonomous test generation and failed-step evidence",
+            "status": _module_status("autonomous"),
+            "evidence": "Test runs, failed test actions and structured Bug Analysis records are linked in one report.",
+        },
+        {
+            "claim": "Visual security intelligence",
+            "status": _module_status("security"),
+            "evidence": "Security records expose risk summary, priority actions, surface/header findings and scan evidence.",
+        },
+        {
+            "claim": "Dataset quality validation",
+            "status": _module_status("dataset"),
+            "evidence": "Dataset records report quality findings and model-impact oriented remediation signals.",
+        },
+        {
+            "claim": "Image-processing based UI/UX analysis",
+            "status": _module_status("uiux"),
+            "evidence": "UI/UX actions include screenshot metrics, numeric evidence and regression suggestions.",
+        },
+        {
+            "claim": "Accessibility evidence and WCAG-oriented remediation",
+            "status": _module_status("accessibility"),
+            "evidence": "Accessibility actions expose contrast, label, focus, keyboard and component-level remediation evidence.",
+        },
+        {
+            "claim": "Mobile UX and responsive risk analysis",
+            "status": _module_status("mobile"),
+            "evidence": "Mobile records expose touch target, safe-area, keyboard overlap, density and platform-parity actions.",
+        },
+        {
+            "claim": "Cross-module correlation",
+            "status": "supported" if correlations else "observed",
+            "evidence": "Correlation cards merge signals from test, security, API, DB, performance, accessibility, UI/UX and mobile modules.",
+        },
+        {
+            "claim": "API, DB and performance evidence integration",
+            "status": "supported" if (api_actions or db_actions or performance_actions) else "pending",
+            "evidence": "Endpoint, database and performance action cards are surfaced in Full Report and project export.",
+        },
+    ]
+
+    return {
+        "status": "implementation_evidence_ready",
+        "benchmark_status": "deferred_final_phase",
+        "claims": claims,
+        "evidence_counts": {
+            "correlations": len(correlations),
+            "bug_reports": len(bug_reports),
+            "accessibility_actions": len(accessibility_actions),
+            "api_actions": len(api_actions),
+            "db_actions": len(db_actions),
+            "performance_actions": len(performance_actions),
+            "uiux_actions": len(uiux_actions),
+            "mobile_actions": len(mobile_actions),
+            "jira_drafts": len(jira_drafts),
+        },
+        "next_research_steps": [
+            "Benchmark/metrics deney dosyalarını son fazda üret.",
+            "Makale tablolarını Final Report export çıktılarıyla eşleştir.",
+            "Kalan modül kanıtlarını aynı project_id altında yeniden çalıştırarak rapor kapsamını kapat.",
+        ],
+    }
+
+
+def _ticket_draft_schema(draft: JiraTicketDraft) -> dict[str, Any]:
+    return {
+        "id": draft.id,
+        "project_id": draft.project_id,
+        "provider": draft.provider,
+        "ticket_key": draft.ticket_key,
+        "source_module": draft.source_module,
+        "source_type": draft.source_type,
+        "source_ref": draft.source_ref,
+        "title": draft.title,
+        "description": draft.description,
+        "priority": draft.priority,
+        "status": draft.status,
+        "payload": draft.payload or {},
+        "created_at": _datetime_value(draft.created_at),
+        "updated_at": _datetime_value(draft.updated_at),
+    }
+
+
 @router.get("/project/{project_id}/summary")
 def export_project_summary(project_id: int, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found.")
 
+    jira_drafts = (
+        db.query(JiraTicketDraft)
+        .filter(JiraTicketDraft.project_id == project_id)
+        .order_by(JiraTicketDraft.created_at.desc(), JiraTicketDraft.id.desc())
+        .limit(20)
+        .all()
+    )
     runs = (
         db.query(TestRun)
         .filter(TestRun.project_id == project_id)
@@ -917,12 +1704,17 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
         accessibility_query = accessibility_query.filter(AccessibilityAnalysisRecord.source_url.in_(project_urls))
     accessibility_records = accessibility_query.limit(8).all()
 
-    uiux_records = (
+    uiux_candidates = (
         db.query(UiuxAnalysisRecord)
         .order_by(UiuxAnalysisRecord.created_at.desc(), UiuxAnalysisRecord.id.desc())
-        .limit(5)
+        .limit(80)
         .all()
     )
+    uiux_records = [
+        record
+        for record in uiux_candidates
+        if _analysis_project_id(record) == project.id
+    ][:8]
     dataset_records = (
         db.query(DatasetAnalysisRecord)
         .order_by(DatasetAnalysisRecord.created_at.desc(), DatasetAnalysisRecord.id.desc())
@@ -959,14 +1751,26 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
         for record in performance_candidates
         if _analysis_project_id(record) == project.id or (project_urls and record.source_url in project_urls)
     ][:8]
+    mobile_candidates = (
+        db.query(MobileAnalysisRecord)
+        .order_by(MobileAnalysisRecord.created_at.desc(), MobileAnalysisRecord.id.desc())
+        .limit(80)
+        .all()
+    )
+    mobile_records = [
+        record
+        for record in mobile_candidates
+        if _analysis_project_id(record) == project.id
+    ][:8]
 
     security_summaries = [_security_record_summary(record) for record in security_records]
-    accessibility_summaries = [_generic_analysis_summary(record, "accessibility") for record in accessibility_records]
-    uiux_summaries = [_generic_analysis_summary(record, "uiux") for record in uiux_records]
+    accessibility_summaries = [_accessibility_analysis_summary(record) for record in accessibility_records]
+    uiux_summaries = [_uiux_analysis_summary(record) for record in uiux_records]
     dataset_summaries = [_generic_analysis_summary(record, "dataset") for record in dataset_records]
     api_summaries = [_api_analysis_summary(record) for record in api_records]
     db_summaries = [_db_analysis_summary(record) for record in db_records]
-    performance_summaries = [_generic_analysis_summary(record, "performance") for record in performance_records]
+    performance_summaries = [_performance_analysis_summary(record) for record in performance_records]
+    mobile_summaries = [_mobile_analysis_summary(record) for record in mobile_records]
     total_runs = len(runs)
     failed_runs = sum(1 for run in runs if _enum_value(run.status) == "failed")
     passed_runs = sum(1 for run in runs if _enum_value(run.status) == "completed")
@@ -982,7 +1786,12 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
         for action in record.get("priority_actions", [])
     ]
     security_actions.sort(key=lambda item: _severity_rank(item.get("severity")))
+    accessibility_actions = _accessibility_priority_actions(accessibility_summaries)
     api_actions = _api_priority_actions(api_summaries)
+    db_actions = _db_priority_actions(db_summaries)
+    performance_actions = _performance_priority_actions(performance_summaries)
+    uiux_actions = _uiux_priority_actions(uiux_summaries)
+    mobile_actions = _mobile_priority_actions(mobile_summaries)
     correlations = _correlate_project_findings(
         security_summaries,
         test_actions,
@@ -990,6 +1799,8 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
         api_summaries=api_summaries,
         db_summaries=db_summaries,
         performance_summaries=performance_summaries,
+        accessibility_summaries=accessibility_summaries,
+        uiux_summaries=uiux_summaries,
     )
     high_security = sum(
         (record.get("risk_summary") or {}).get("critical", 0) + (record.get("risk_summary") or {}).get("high", 0)
@@ -1009,8 +1820,48 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
         api_summaries=api_summaries,
         db_summaries=db_summaries,
         performance_summaries=performance_summaries,
+        mobile_summaries=mobile_summaries,
         bug_reports=bug_reports,
         total_cases=total_cases,
+    )
+    executive_summary = _build_executive_summary(
+        project=project,
+        overall_score=overall_score,
+        total_runs=total_runs,
+        failed_runs=failed_runs,
+        high_security=high_security,
+        medium_security=medium_security,
+        correlations=correlations,
+        module_breakdown=module_breakdown,
+        api_actions=api_actions,
+        bug_reports=bug_reports,
+    )
+    evidence_matrix = _build_evidence_matrix(
+        module_breakdown=module_breakdown,
+        runs=runs,
+        security_summaries=security_summaries,
+        accessibility_summaries=accessibility_summaries,
+        uiux_summaries=uiux_summaries,
+        dataset_summaries=dataset_summaries,
+        api_summaries=api_summaries,
+        db_summaries=db_summaries,
+        performance_summaries=performance_summaries,
+        mobile_summaries=mobile_summaries,
+        correlations=correlations,
+        jira_drafts=jira_drafts,
+    )
+    paper_alignment = _build_paper_alignment(
+        module_breakdown=module_breakdown,
+        evidence_matrix=evidence_matrix,
+        correlations=correlations,
+        bug_reports=bug_reports,
+        accessibility_actions=accessibility_actions,
+        api_actions=api_actions,
+        db_actions=db_actions,
+        performance_actions=performance_actions,
+        uiux_actions=uiux_actions,
+        mobile_actions=mobile_actions,
+        jira_drafts=jira_drafts,
     )
 
     return {
@@ -1023,6 +1874,7 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
         },
         "generated_at": datetime.utcnow().isoformat(),
         "overall_score": overall_score,
+        "executive_summary": executive_summary,
         "summary": {
             "total_runs": total_runs,
             "passed_runs": passed_runs,
@@ -1034,6 +1886,12 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
             "correlations": len(correlations),
             "bug_reports": len(bug_reports),
             "api_actions": len(api_actions),
+            "db_actions": len(db_actions),
+            "performance_actions": len(performance_actions),
+            "uiux_actions": len(uiux_actions),
+            "accessibility_actions": len(accessibility_actions),
+            "mobile_actions": len(mobile_actions),
+            "jira_drafts": len(jira_drafts),
         },
         "security": {
             "records": security_summaries,
@@ -1043,9 +1901,29 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
             "priority_actions": test_actions,
             "bug_reports": bug_reports[:10],
         },
+        "accessibility": {
+            "records": accessibility_summaries,
+            "priority_actions": accessibility_actions,
+        },
         "api": {
             "records": api_summaries,
             "priority_actions": api_actions,
+        },
+        "database": {
+            "records": db_summaries,
+            "priority_actions": db_actions,
+        },
+        "performance": {
+            "records": performance_summaries,
+            "priority_actions": performance_actions,
+        },
+        "uiux": {
+            "records": uiux_summaries,
+            "priority_actions": uiux_actions,
+        },
+        "mobile": {
+            "records": mobile_summaries,
+            "priority_actions": mobile_actions,
         },
         "correlation": {
             "items": correlations,
@@ -1053,8 +1931,185 @@ def export_project_summary(project_id: int, db: Session = Depends(get_db)):
         "module_breakdown": {
             "items": module_breakdown,
         },
+        "evidence_matrix": evidence_matrix,
+        "paper_alignment": paper_alignment,
+        "jira_drafts": {
+            "summary": {
+                "total": len(jira_drafts),
+                "completed_checklist_items": sum(
+                    1
+                    for draft in jira_drafts
+                    for item in ((draft.payload or {}).get("acceptance_criteria") or [])
+                    if item.get("done")
+                ),
+                "total_checklist_items": sum(
+                    len((draft.payload or {}).get("acceptance_criteria") or [])
+                    for draft in jira_drafts
+                ),
+                "modules": sorted({draft.source_module for draft in jira_drafts}),
+            },
+            "items": [_ticket_draft_schema(draft) for draft in jira_drafts],
+        },
         "runs": [_run_summary(run) for run in runs],
     }
+
+
+def _jira_acceptance_criteria_for_action(source_module: str, payload: dict[str, Any], recommendation: str | None) -> list[dict[str, Any]]:
+    module = str(source_module or "general").lower()
+    category = str(payload.get("category") or payload.get("module") or "").lower()
+    criteria_by_module: dict[str, list[str]] = {
+        "api": [
+            "Endpoint ayni request ile tekrar calistirildiginda beklenen status ve response contract saglanmali.",
+            "Schema/content-type/required field kontrolleri icin negatif ve pozitif API testleri guncellenmeli.",
+            "Final Report API aksiyon karti ayni endpoint icin tekrar uretildiginde yeni bulgu vermemeli.",
+        ],
+        "database": [
+            "Ilgili SQL/query veya schema kontrolu tekrar calistirildiginda ayni DB kalite bulgusu gorulmemeli.",
+            "Gerekiyorsa migration/model/constraint degisikligi uygulanip veri tutarliligi dogrulanmali.",
+            "API-DB etkisi varsa ilgili endpoint veya serializer testiyle regresyon kontrolu yapilmali.",
+        ],
+        "performance": [
+            "Ayni hedef icin performans analizi tekrarlandiginda sure/p95/LCP sinyali kabul edilebilir esige dusmeli.",
+            "Yavas kaynak, query, cache veya asset iyilestirmesi kanit metrikleriyle dogrulanmali.",
+            "Full Report performans aksiyon karti resolved/observed seviyesine inmeli.",
+        ],
+        "uiux": [
+            "Ayni screenshot veya ekran akisi tekrar analiz edildiginde ilgili UI/UX metriği kabul edilebilir seviyeye gelmeli.",
+            "Gorsel hiyerarsi, spacing, okunabilirlik veya renk tutarliligi screenshot regresyonuyla dogrulanmali.",
+            "Ilgili ekran icin yeni UI/UX aksiyon karti ayni bulguyu tekrar uretmemeli.",
+        ],
+        "accessibility": [
+            "Ilgili bilesen WCAG/focus/label/contrast kontrolunden gecmeli.",
+            "Keyboard navigation ve screen reader icin manuel veya otomatik accessibility kontrolu tekrar edilmeli.",
+            "Accessibility aksiyon karti ayni selector/bilesen icin tekrar uretildiginde bulgu vermemeli.",
+        ],
+        "mobile": [
+            "Ayni mobil ekran Android/iOS veya hedef cihaz viewport'unda tekrar analiz edildiginde bulgu azalmalı.",
+            "Touch target, input erisilebilirligi, tasma veya yogunluk problemi cihaz bazli kontrolle dogrulanmali.",
+            "Mobile action karti ayni ekran icin tekrar uretildiginde ilgili kategori resolved/observed seviyesine dusmeli.",
+        ],
+        "security": [
+            "Ilgili security kontrolu tekrarlandiginda ayni header/surface/hypothesis bulgusu gorulmemeli.",
+            "Gerekli hardening veya guard davranisi test ortamina uygulanip kanitlanmali.",
+            "Security aksiyon karti ayni hedef icin high/medium sinyal uretmemeli.",
+        ],
+        "correlation": [
+            "Iliskili modullerdeki kaynak bulgular birlikte incelenip ortak kok neden notu eklenmeli.",
+            "En az iki ilgili modul tekrar calistirilip correlation sinyalinin azaldigi dogrulanmali.",
+            "Final Report correlation karti ayni hedef icin tekrar uretildiginde risk seviyesi dusmeli.",
+        ],
+        "test-run": [
+            "Failed step yeniden calistirildiginda ayni selector/akis hatasi gorulmemeli.",
+            "Test protokolu veya locator stratejisi guncellenip run completed sonucuyla dogrulanmali.",
+            "Bug Analysis kaydi ayni run/case icin tekrar high severity uretmemeli.",
+        ],
+    }
+    criteria = criteria_by_module.get(module, [
+        "Ilgili modul analizi tekrar calistirildiginda ayni bulgu gorulmemeli.",
+        "Onerilen aksiyon uygulanip kanit metrikleriyle dogrulanmali.",
+        "Final Report aksiyon karti resolved/observed seviyesine dusmeli.",
+    ])
+    if module == "api" and category == "slow-response":
+        criteria[0] = "Endpoint tekrar calistirildiginda response suresi hedef esigin altinda kalmali."
+    if module == "mobile" and category == "touch-target":
+        criteria[1] = "Etkilesimli hedefler en az 44x44 px civarina getirilmeli ve cihazda dokunma testiyle dogrulanmali."
+    if module == "uiux" and category in {"hierarchy", "readability-flow"}:
+        criteria[1] = "Ana aksiyon, baslik ve destek metni gorsel hiyerarsi/regresyon screenshot'i ile dogrulanmali."
+    if recommendation:
+        criteria.append(f"Onerilen aksiyon uygulanmali: {recommendation}")
+    return [{"text": item, "done": False} for item in criteria[:4]]
+
+
+@router.post("/project/{project_id}/jira-drafts")
+def create_project_jira_draft(project_id: int, request: JiraDraftRequest, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found.")
+
+    description = request.description or (
+        f"{project.name} Final Report aksiyonundan Jira ticket taslagi olusturuldu."
+    )
+    payload = {
+        **(request.payload or {}),
+        "evidence": request.evidence,
+        "recommendation": request.recommendation,
+        "acceptance_criteria": (request.payload or {}).get("acceptance_criteria")
+        or _jira_acceptance_criteria_for_action(request.source_module, request.payload or {}, request.recommendation),
+        "project": {"id": project.id, "name": project.name},
+    }
+
+    existing_draft = (
+        db.query(JiraTicketDraft)
+        .filter(
+            JiraTicketDraft.project_id == project.id,
+            JiraTicketDraft.source_module == request.source_module,
+            JiraTicketDraft.source_type == request.source_type,
+            JiraTicketDraft.source_ref == request.source_ref,
+            JiraTicketDraft.title == request.title,
+        )
+        .order_by(JiraTicketDraft.created_at.desc(), JiraTicketDraft.id.desc())
+        .first()
+    )
+    if existing_draft:
+        return _ticket_draft_schema(existing_draft)
+
+    draft = JiraTicketDraft(
+        project_id=project.id,
+        provider="jira",
+        ticket_key="JIRA-DRAFT-PENDING",
+        source_module=request.source_module,
+        source_type=request.source_type,
+        source_ref=request.source_ref,
+        title=request.title,
+        description=description,
+        priority=request.priority,
+        status="draft",
+        payload=payload,
+    )
+    db.add(draft)
+    db.flush()
+    draft.ticket_key = f"JIRA-DRAFT-{draft.id}"
+    db.commit()
+    db.refresh(draft)
+    return _ticket_draft_schema(draft)
+
+
+@router.get("/project/{project_id}/jira-drafts")
+def list_project_jira_drafts(project_id: int, limit: int = 20, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found.")
+
+    limit = max(1, min(limit, 100))
+    drafts = (
+        db.query(JiraTicketDraft)
+        .filter(JiraTicketDraft.project_id == project_id)
+        .order_by(JiraTicketDraft.created_at.desc(), JiraTicketDraft.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [_ticket_draft_schema(draft) for draft in drafts]
+
+
+@router.patch("/jira-drafts/{draft_id}/checklist")
+def update_jira_draft_checklist(draft_id: int, request: JiraDraftChecklistUpdate, db: Session = Depends(get_db)):
+    draft = db.query(JiraTicketDraft).filter(JiraTicketDraft.id == draft_id).first()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Jira draft not found.")
+
+    normalized: list[dict[str, Any]] = []
+    for item in request.acceptance_criteria[:10]:
+        text = str(item.get("text") or "").strip()
+        if not text:
+            continue
+        normalized.append({"text": text, "done": bool(item.get("done"))})
+
+    payload = dict(draft.payload or {})
+    payload["acceptance_criteria"] = normalized
+    draft.payload = payload
+    db.commit()
+    db.refresh(draft)
+    return _ticket_draft_schema(draft)
 
 
 @router.get("/{run_id}/json")

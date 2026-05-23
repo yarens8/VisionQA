@@ -173,6 +173,11 @@ export interface AccessibilityFinding {
     bounding_box: AccessibilityBoundingBox;
     crop_image_base64: string;
     recommendation: string;
+    wcag_refs?: string[];
+    impact_score?: number;
+    affected_role?: string;
+    evidence?: Record<string, unknown>;
+    test_suggestion?: string;
 }
 
 export interface AccessibilityHeatmapRegion {
@@ -217,6 +222,15 @@ export interface AccessibilityAnalysisResponse {
         source_image_base64: string;
     };
     recommendations: string[];
+    score_breakdown?: Record<string, number>;
+    accessibility_summary?: Record<string, unknown>;
+    test_suggestions?: {
+        category: string;
+        priority?: string;
+        title?: string;
+        suggestion?: string;
+    }[];
+    keyboard_profile?: Record<string, unknown>;
 }
 
 export interface AccessibilityUrlAnalysisRequest {
@@ -268,6 +282,9 @@ export interface UiuxFinding {
     bounding_box: AccessibilityBoundingBox;
     crop_image_base64: string;
     recommendation: string;
+    numeric_evidence?: Record<string, unknown>;
+    evidence?: Record<string, unknown>;
+    test_suggestion?: string;
 }
 
 export interface UiuxScoreSummary {
@@ -288,6 +305,8 @@ export interface UiuxAttentionPrediction {
 }
 
 export interface UiuxAnalysisResponse {
+    project_id?: number;
+    project_name?: string;
     platform: string;
     image: {
         width: number;
@@ -306,6 +325,15 @@ export interface UiuxAnalysisResponse {
     focus_score: number;
     ai_critic_summary: string;
     score_summary: UiuxScoreSummary;
+    score_breakdown?: Record<string, number>;
+    image_processing_metrics?: Record<string, unknown>;
+    evidence_matrix?: Record<string, unknown>;
+    test_suggestions?: {
+        category: string;
+        priority?: string;
+        title?: string;
+        suggestion?: string;
+    }[];
     attention_prediction: UiuxAttentionPrediction;
     findings: UiuxFinding[];
     artifacts: {
@@ -318,6 +346,7 @@ export interface UiuxAnalysisResponse {
 
 export interface UiuxHistoryItem {
     id: number;
+    project_id?: number;
     platform: string;
     source_type: string;
     source_label?: string;
@@ -331,6 +360,7 @@ export interface UiuxHistoryItem {
 
 export interface UiuxHistoryDetail {
     id: number;
+    project_id?: number;
     platform: string;
     source_type: string;
     source_label?: string;
@@ -513,6 +543,27 @@ export interface SecurityHistoryUpdateRequest {
     is_favorite?: boolean;
 }
 
+export interface AnalysisJobStartResponse {
+    job_id: number;
+    status: string;
+    module_name: string;
+    target?: string;
+}
+
+export interface AnalysisJobStatusResponse {
+    job_id: number;
+    status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | string;
+    module_name: string;
+    target?: string;
+    celery_task_id?: string;
+    source_record_id?: number;
+    error_message?: string;
+    result?: any;
+    created_at: string;
+    started_at?: string;
+    completed_at?: string;
+}
+
 export interface SecurityAnalysisResponse {
     platform: string;
     image: {
@@ -564,6 +615,16 @@ export interface ProjectSummaryReport {
     };
     generated_at: string;
     overall_score: number;
+    executive_summary?: {
+        title: string;
+        risk_level: string;
+        readiness_score: number;
+        narrative: string;
+        attention_modules: string[];
+        healthy_modules: string[];
+        top_risks: string[];
+        next_actions: string[];
+    };
     summary: {
         total_runs: number;
         passed_runs: number;
@@ -575,6 +636,12 @@ export interface ProjectSummaryReport {
         correlations: number;
         bug_reports?: number;
         api_actions?: number;
+        db_actions?: number;
+        performance_actions?: number;
+        uiux_actions?: number;
+        accessibility_actions?: number;
+        mobile_actions?: number;
+        jira_drafts?: number;
     };
     security: {
         records: Array<{
@@ -613,6 +680,25 @@ export interface ProjectSummaryReport {
             bug_report?: BugAnalysisReport;
         }>;
         bug_reports?: BugAnalysisReport[];
+    };
+    accessibility?: {
+        records: Array<any>;
+        priority_actions: Array<{
+            title: string;
+            severity: string;
+            category: string;
+            source: string;
+            accessibility_record_id?: number;
+            accessibility_record_ids?: number[];
+            duplicate_count?: number;
+            summary: string;
+            evidence: string;
+            recommendation: string;
+            wcag_refs?: string[];
+            impact_score?: number | null;
+            selector?: string;
+            component?: string;
+        }>;
     };
     api?: {
         records: Array<{
@@ -653,6 +739,85 @@ export interface ProjectSummaryReport {
             evidence_summary?: ApiEvidenceSummary;
         }>;
     };
+    database?: {
+        records: Array<any>;
+        priority_actions: Array<{
+            title: string;
+            severity: string;
+            category: string;
+            source: string;
+            db_record_id?: number;
+            db_record_ids?: number[];
+            duplicate_count?: number;
+            table_name?: string;
+            query?: string;
+            summary: string;
+            evidence: string;
+            recommendation: string;
+            score?: number | null;
+            detected_columns?: string[];
+        }>;
+    };
+    performance?: {
+        records: Array<any>;
+        priority_actions: Array<{
+            title: string;
+            severity: string;
+            category: string;
+            source: string;
+            performance_record_id?: number;
+            performance_record_ids?: number[];
+            duplicate_count?: number;
+            target?: string;
+            summary: string;
+            evidence: string;
+            recommendation: string;
+            score?: number | null;
+            grade?: string | null;
+            technical_score?: number | null;
+            perceived_score?: number | null;
+            api_duration_ms?: number | null;
+        }>;
+    };
+    uiux?: {
+        records: Array<any>;
+        priority_actions: Array<{
+            title: string;
+            severity: string;
+            category: string;
+            source: string;
+            uiux_record_id?: number;
+            uiux_record_ids?: number[];
+            duplicate_count?: number;
+            summary: string;
+            evidence: string;
+            recommendation: string;
+            score?: number | null;
+            metric?: string;
+            metric_value?: string | number | null;
+            test_suggestion?: string;
+        }>;
+    };
+    mobile?: {
+        records: Array<any>;
+        priority_actions: Array<{
+            title: string;
+            severity: string;
+            category: string;
+            source: string;
+            mobile_record_id?: number;
+            mobile_record_ids?: number[];
+            duplicate_count?: number;
+            platform?: string;
+            screen_type?: string;
+            summary: string;
+            evidence: string;
+            recommendation: string;
+            score?: number | null;
+            task_completion_friction?: number | null;
+            cross_platform_parity_summary?: string | null;
+        }>;
+    };
     correlation: {
         items: Array<{
             title: string;
@@ -680,6 +845,9 @@ export interface ProjectSummaryReport {
             records: number;
             findings: number;
             summary: string;
+            interpretation?: string;
+            recommended_action?: string;
+            evidence_level?: string;
             latest: Array<{
                 id?: number;
                 module?: string;
@@ -692,6 +860,37 @@ export interface ProjectSummaryReport {
                 created_at?: string;
             } | BugAnalysisReport | any>;
         }>;
+    };
+    evidence_matrix?: {
+        coverage: {
+            connected_modules: number;
+            total_modules: number;
+            actionable_modules: number;
+            evidence_coverage_percent: number;
+        };
+        artifacts: Record<string, number>;
+        paper_evidence: string[];
+        limitations: string[];
+    };
+    paper_alignment?: {
+        status: string;
+        benchmark_status: string;
+        claims: Array<{
+            claim: string;
+            status: string;
+            evidence: string;
+        }>;
+        evidence_counts: Record<string, number>;
+        next_research_steps: string[];
+    };
+    jira_drafts?: {
+        summary: {
+            total: number;
+            completed_checklist_items: number;
+            total_checklist_items: number;
+            modules: string[];
+        };
+        items: JiraTicketDraft[];
     };
     runs: Array<{
         id: number;
@@ -778,6 +977,40 @@ export interface ApiScoreBreakdown {
     security: number;
     performance: number;
     contract: number;
+}
+
+export interface JiraDraftRequest {
+    source_module: string;
+    source_type?: string;
+    source_ref?: string;
+    title: string;
+    description?: string;
+    priority?: string;
+    evidence?: string;
+    recommendation?: string;
+    payload?: Record<string, unknown>;
+}
+
+export interface JiraTicketDraft {
+    id: number;
+    project_id: number;
+    provider: string;
+    ticket_key: string;
+    source_module: string;
+    source_type: string;
+    source_ref?: string;
+    title: string;
+    description: string;
+    priority: string;
+    status: string;
+    payload: Record<string, unknown>;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface JiraChecklistItem {
+    text: string;
+    done: boolean;
 }
 
 export interface ApiEvidenceSummary {
@@ -1241,6 +1474,7 @@ export interface MobileElementMetadata {
 
 export interface MobileAnalyzeRequest {
     platform?: string;
+    project_id?: number;
     screen_name?: string;
     image_base64?: string;
     element_metadata?: MobileElementMetadata[];
@@ -1277,6 +1511,9 @@ export interface MobileScoreBreakdown {
 }
 
 export interface MobileAnalysisResponse {
+    record_id?: number;
+    project_id?: number;
+    image_base64?: string;
     platform: string;
     overall_score: number;
     overview: string;
@@ -1298,11 +1535,36 @@ export interface MobileAnalysisResponse {
     recommendations: string[];
 }
 
+export interface MobileHistoryItem {
+    id: number;
+    project_id?: number;
+    platform: string;
+    source_type: string;
+    source_label?: string;
+    overall_score: number;
+    findings_count: number;
+    overview: string;
+    screen_type?: string;
+    created_at: string;
+}
+
+export interface MobileHistoryDetail {
+    id: number;
+    project_id?: number;
+    platform: string;
+    source_type: string;
+    source_label?: string;
+    created_at: string;
+    analysis: MobileAnalysisResponse & { image_base64?: string };
+}
+
 // 🛠️ API Servis Fonksiyonları
 export const api = {
     // --- Projects ---
     getProjects: async (): Promise<Project[]> => {
-        const response = await apiClient.get<Project[]>('/projects');
+        const response = await apiClient.get<Project[]>('/projects', {
+            params: { limit: 500 },
+        });
         return response.data;
     },
 
@@ -1419,6 +1681,14 @@ export const api = {
         return response.data;
     },
 
+    startAccessibilityImageJob: async (imageBase64: string, platform = 'web'): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/accessibility/analyze-image-job', {
+            platform,
+            image_base64: imageBase64,
+        });
+        return response.data;
+    },
+
     analyzeAccessibilityUrl: async (data: AccessibilityUrlAnalysisRequest): Promise<AccessibilityAnalysisResponse> => {
         const response = await apiClient.post<AccessibilityAnalysisResponse>('/accessibility/analyze-url', {
             url: data.url,
@@ -1429,17 +1699,47 @@ export const api = {
         return response.data;
     },
 
-    analyzeUiuxImage: async (imageBase64: string, platform = 'web'): Promise<UiuxAnalysisResponse> => {
-        const response = await apiClient.post<UiuxAnalysisResponse>('/uiux/analyze-image', {
-            platform,
-            image_base64: imageBase64,
+    startAccessibilityUrlJob: async (data: AccessibilityUrlAnalysisRequest): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/accessibility/analyze-url-job', {
+            url: data.url,
+            platform: data.platform ?? 'web',
+            headless: data.headless ?? true,
+            full_page: data.full_page ?? true,
         });
         return response.data;
     },
 
-    getUiuxHistory: async (limit = 8): Promise<UiuxHistoryItem[]> => {
+    getAccessibilityJobStatus: async (jobId: number): Promise<AnalysisJobStatusResponse> => {
+        const response = await apiClient.get<AnalysisJobStatusResponse>(`/accessibility/jobs/${jobId}`);
+        return response.data;
+    },
+
+    analyzeUiuxImage: async (imageBase64: string, platform = 'web', projectId?: number): Promise<UiuxAnalysisResponse> => {
+        const response = await apiClient.post<UiuxAnalysisResponse>('/uiux/analyze-image', {
+            platform,
+            image_base64: imageBase64,
+            project_id: projectId,
+        });
+        return response.data;
+    },
+
+    startUiuxImageJob: async (imageBase64: string, platform = 'web', projectId?: number): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/uiux/analyze-image-job', {
+            platform,
+            image_base64: imageBase64,
+            project_id: projectId,
+        });
+        return response.data;
+    },
+
+    getUiuxJobStatus: async (jobId: number): Promise<AnalysisJobStatusResponse> => {
+        const response = await apiClient.get<AnalysisJobStatusResponse>(`/uiux/jobs/${jobId}`);
+        return response.data;
+    },
+
+    getUiuxHistory: async (limit = 8, projectId?: number): Promise<UiuxHistoryItem[]> => {
         const response = await apiClient.get<UiuxHistoryItem[]>('/uiux/history', {
-            params: { limit },
+            params: { limit, project_id: projectId },
         });
         return response.data;
     },
@@ -1476,6 +1776,21 @@ export const api = {
         return response.data;
     },
 
+    startSecurityUrlJob: async (data: SecurityUrlAnalysisRequest): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/security/analyze-url-job', {
+            url: data.url,
+            platform: data.platform ?? 'web',
+            headless: data.headless ?? true,
+            full_page: data.full_page ?? true,
+        });
+        return response.data;
+    },
+
+    getSecurityJobStatus: async (jobId: number): Promise<AnalysisJobStatusResponse> => {
+        const response = await apiClient.get<AnalysisJobStatusResponse>(`/security/jobs/${jobId}`);
+        return response.data;
+    },
+
     simulateSecurityUrl: async (data: SecuritySimulationRequest): Promise<SecuritySimulationResponse> => {
         const response = await apiClient.post<SecuritySimulationResponse>('/security/simulate-url', {
             url: data.url,
@@ -1508,6 +1823,25 @@ export const api = {
 
     getProjectSummaryReport: async (projectId: number): Promise<ProjectSummaryReport> => {
         const response = await apiClient.get<ProjectSummaryReport>(`/reports/project/${projectId}/summary`);
+        return response.data;
+    },
+
+    createProjectJiraDraft: async (projectId: number, data: JiraDraftRequest): Promise<JiraTicketDraft> => {
+        const response = await apiClient.post<JiraTicketDraft>(`/reports/project/${projectId}/jira-drafts`, data);
+        return response.data;
+    },
+
+    getProjectJiraDrafts: async (projectId: number, limit = 20): Promise<JiraTicketDraft[]> => {
+        const response = await apiClient.get<JiraTicketDraft[]>(`/reports/project/${projectId}/jira-drafts`, {
+            params: { limit },
+        });
+        return response.data;
+    },
+
+    updateJiraDraftChecklist: async (draftId: number, acceptanceCriteria: JiraChecklistItem[]): Promise<JiraTicketDraft> => {
+        const response = await apiClient.patch<JiraTicketDraft>(`/reports/jira-drafts/${draftId}/checklist`, {
+            acceptance_criteria: acceptanceCriteria,
+        });
         return response.data;
     },
 
@@ -1548,6 +1882,27 @@ export const api = {
         return response.data;
     },
 
+    startApiAnalysisJob: async (data: ApiTestAnalyzeRequest): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/api-test/analyze-job', {
+            method: data.method,
+            url: data.url,
+            project_id: data.project_id,
+            headers: data.headers ?? {},
+            body: data.body ?? null,
+            params: data.params ?? null,
+            expected_status: data.expected_status,
+            expected_fields: data.expected_fields ?? [],
+            expected_response_type: data.expected_response_type,
+            run_negative_checks: data.run_negative_checks ?? true,
+        });
+        return response.data;
+    },
+
+    getApiJobStatus: async (jobId: number): Promise<AnalysisJobStatusResponse> => {
+        const response = await apiClient.get<AnalysisJobStatusResponse>(`/api-test/jobs/${jobId}`);
+        return response.data;
+    },
+
     getApiHistory: async (limit = 12): Promise<ApiHistoryItem[]> => {
         const response = await apiClient.get<ApiHistoryItem[]>('/api-test/history', {
             params: { limit },
@@ -1569,6 +1924,23 @@ export const api = {
             api_expected_fields: data.api_expected_fields ?? [],
             sample_limit: data.sample_limit ?? 50,
         });
+        return response.data;
+    },
+
+    startDbQualityJob: async (data: DbQualityRequest): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/db-test/quality-audit-job', {
+            connection_string: data.connection_string,
+            query: data.query,
+            table_name: data.table_name,
+            expected_columns: data.expected_columns ?? [],
+            api_expected_fields: data.api_expected_fields ?? [],
+            sample_limit: data.sample_limit ?? 50,
+        });
+        return response.data;
+    },
+
+    getDbJobStatus: async (jobId: number): Promise<AnalysisJobStatusResponse> => {
+        const response = await apiClient.get<AnalysisJobStatusResponse>(`/db-test/jobs/${jobId}`);
         return response.data;
     },
 
@@ -1598,6 +1970,25 @@ export const api = {
         return response.data;
     },
 
+    startPerformanceJob: async (data: PerformanceAnalyzeRequest): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/performance/analyze-job', {
+            url: data.url,
+            api_url: data.api_url,
+            project_id: data.project_id,
+            api_method: data.api_method ?? 'GET',
+            db_connection_string: data.db_connection_string,
+            db_query: data.db_query,
+            sample_api_runs: data.sample_api_runs ?? 5,
+            platform: data.platform ?? 'web',
+        });
+        return response.data;
+    },
+
+    getPerformanceJobStatus: async (jobId: number): Promise<AnalysisJobStatusResponse> => {
+        const response = await apiClient.get<AnalysisJobStatusResponse>(`/performance/jobs/${jobId}`);
+        return response.data;
+    },
+
     getPerformanceHistory: async (limit = 12): Promise<PerformanceHistoryItem[]> => {
         const response = await apiClient.get<PerformanceHistoryItem[]>('/performance/history', {
             params: { limit },
@@ -1612,6 +2003,16 @@ export const api = {
 
     analyzeDataset: async (data: DatasetAnalyzePayload): Promise<DatasetAnalysisResponse> => {
         const response = await apiClient.post<DatasetAnalysisResponse>('/dataset/analyze', data);
+        return response.data;
+    },
+
+    startDatasetAnalysisJob: async (data: DatasetAnalyzePayload): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/dataset/analyze-job', data);
+        return response.data;
+    },
+
+    getDatasetJobStatus: async (jobId: number): Promise<AnalysisJobStatusResponse> => {
+        const response = await apiClient.get<AnalysisJobStatusResponse>(`/dataset/jobs/${jobId}`);
         return response.data;
     },
 
@@ -1647,10 +2048,39 @@ export const api = {
     analyzeMobile: async (data: MobileAnalyzeRequest): Promise<MobileAnalysisResponse> => {
         const response = await apiClient.post<MobileAnalysisResponse>('/mobile/analyze', {
             platform: data.platform ?? 'android',
+            project_id: data.project_id,
             screen_name: data.screen_name,
             image_base64: data.image_base64,
             element_metadata: data.element_metadata ?? [],
         });
+        return response.data;
+    },
+
+    startMobileAnalysisJob: async (data: MobileAnalyzeRequest): Promise<AnalysisJobStartResponse> => {
+        const response = await apiClient.post<AnalysisJobStartResponse>('/mobile/analyze-job', {
+            platform: data.platform ?? 'android',
+            project_id: data.project_id,
+            screen_name: data.screen_name,
+            image_base64: data.image_base64,
+            element_metadata: data.element_metadata ?? [],
+        });
+        return response.data;
+    },
+
+    getMobileJobStatus: async (jobId: number): Promise<AnalysisJobStatusResponse> => {
+        const response = await apiClient.get<AnalysisJobStatusResponse>(`/mobile/jobs/${jobId}`);
+        return response.data;
+    },
+
+    getMobileHistory: async (projectId?: number, limit = 20): Promise<MobileHistoryItem[]> => {
+        const response = await apiClient.get<MobileHistoryItem[]>('/mobile/history', {
+            params: { project_id: projectId, limit },
+        });
+        return response.data;
+    },
+
+    getMobileHistoryDetail: async (recordId: number): Promise<MobileHistoryDetail> => {
+        const response = await apiClient.get<MobileHistoryDetail>(`/mobile/history/${recordId}`);
         return response.data;
     },
 };

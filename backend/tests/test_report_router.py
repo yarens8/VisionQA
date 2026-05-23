@@ -216,7 +216,27 @@ def test_project_summary_report_includes_security_records_for_project_pages():
             overall_score=84,
             findings_count=2,
             overview="Accessibility summary test",
-            analysis_payload={"overall_score": 84, "findings": [{"severity": "medium"}, {"severity": "low"}]},
+            analysis_payload={
+                "overall_score": 84,
+                "findings": [
+                    {
+                        "title": "Form alaninda label eksik",
+                        "severity": "medium",
+                        "category": "form-label",
+                        "description": "Email input alaninda iliskili label yok.",
+                        "recommendation": "Input alanini label veya aria-label ile eslestir.",
+                        "wcag_refs": ["1.3.1", "3.3.2"],
+                        "impact_score": 70,
+                        "evidence": {
+                            "selector": "input#email",
+                            "why_flagged": "Label veya accessible name bulunamadi.",
+                        },
+                    },
+                    {"severity": "low", "category": "contrast"},
+                ],
+                "score_breakdown": {"form_accessibility": 70},
+                "accessibility_summary": {"risk_level": "medium"},
+            },
         )
         db.add(accessibility)
         uiux = db_models.UiuxAnalysisRecord(
@@ -226,7 +246,27 @@ def test_project_summary_report_includes_security_records_for_project_pages():
             overall_score=91,
             findings_count=1,
             overview="UIUX summary test",
-            analysis_payload={"overall_score": 91, "findings": [{"severity": "low"}]},
+            analysis_payload={
+                "project_id": project.id,
+                "overall_score": 91,
+                "findings": [
+                    {
+                        "title": "Metin okunabilirligi riskli",
+                        "severity": "medium",
+                        "category": "readability-flow",
+                        "description": "Kucuk metin bolgesi algilandi.",
+                        "recommendation": "Metin boyutunu ve satir uzunlugunu kontrol et.",
+                        "numeric_evidence": {
+                            "metric": "readability_risk_score",
+                            "value": 52,
+                            "source": "image-processing",
+                        },
+                        "test_suggestion": "Okunabilirlik metriğini screenshot regresyon testine ekle.",
+                    }
+                ],
+                "evidence_matrix": {"readability_risk_score": 52},
+                "score_breakdown": {"readability_flow": 68},
+            },
         )
         db.add(uiux)
         api_record = db_models.ApiAnalysisRecord(
@@ -261,6 +301,34 @@ def test_project_summary_report_includes_security_records_for_project_pages():
             analysis_payload={"overall_score": 68, "findings": [{"severity": "high"}]},
         )
         db.add(performance_record)
+        mobile_record = db_models.MobileAnalysisRecord(
+            platform="android",
+            source_type="metadata",
+            source_label="Login mobile",
+            overall_score=74,
+            findings_count=2,
+            overview="Mobile summary test",
+            analysis_payload={
+                "project_id": project.id,
+                "overall_score": 74,
+                "task_completion_friction": 62,
+                "cross_platform_parity_summary": "Android/iOS parity kontrol edilmeli.",
+                "context_profile": {"screen_type": "auth", "detected_patterns": ["form"], "cross_platform_consistency_signal": "Review parity."},
+                "score_breakdown": {"mobile_ux": 74, "touch_target": 60, "readability": 80, "layout": 76, "interaction_readiness": 70},
+                "findings": [
+                    {
+                        "title": "Kucuk touch target",
+                        "severity": "high",
+                        "category": "touch-target",
+                        "description": "Buton dokunma hedefi cok kucuk.",
+                        "evidence": "38x36 px",
+                        "recommendation": "Dokunma hedefini 44px uzerine cikar.",
+                    },
+                    {"severity": "low", "category": "density"},
+                ],
+            },
+        )
+        db.add(mobile_record)
         db.commit()
         project_id = project.id
     finally:
@@ -278,8 +346,26 @@ def test_project_summary_report_includes_security_records_for_project_pages():
     assert payload["summary"]["correlations"] >= 1
     assert payload["summary"]["bug_reports"] == 1
     assert payload["summary"]["api_actions"] == 1
+    assert payload["summary"]["db_actions"] >= 1
+    assert payload["summary"]["performance_actions"] >= 1
+    assert payload["summary"]["uiux_actions"] >= 1
+    assert payload["summary"]["accessibility_actions"] >= 1
+    assert payload["summary"]["mobile_actions"] >= 1
+    assert payload["executive_summary"]["readiness_score"] == payload["overall_score"]
+    assert payload["executive_summary"]["risk_level"] in {"medium", "high"}
+    assert payload["executive_summary"]["top_risks"]
+    assert payload["evidence_matrix"]["coverage"]["connected_modules"] >= 6
+    assert "module_breakdown" in payload["evidence_matrix"]["paper_evidence"]
+    assert payload["paper_alignment"]["benchmark_status"] == "deferred_final_phase"
+    claim_statuses = {claim["claim"]: claim["status"] for claim in payload["paper_alignment"]["claims"]}
+    assert claim_statuses["Unified multi-module QA framework"] == "supported"
+    assert claim_statuses["Cross-module correlation"] == "supported"
+    assert payload["paper_alignment"]["evidence_counts"]["bug_reports"] == 1
     modules = {item["module"]: item for item in payload["module_breakdown"]["items"]}
     assert modules["security"]["records"] == 1
+    assert modules["security"]["interpretation"]
+    assert modules["security"]["recommended_action"]
+    assert modules["security"]["evidence_level"] == "actionable"
     assert modules["accessibility"]["records"] == 1
     assert modules["accessibility"]["findings"] == 2
     assert modules["uiux"]["records"] >= 1
@@ -287,9 +373,21 @@ def test_project_summary_report_includes_security_records_for_project_pages():
     assert modules["api"]["records"] == 1
     assert modules["database"]["findings"] >= 2
     assert modules["performance"]["score"] == 68
+    assert modules["mobile"]["records"] == 1
+    assert modules["mobile"]["findings"] == 2
+
     assert payload["security"]["priority_actions"][0]["title"] == "Missing CSP"
     assert payload["api"]["priority_actions"][0]["source"] == "api"
     assert payload["api"]["priority_actions"][0]["api_record_id"]
+    assert payload["database"]["priority_actions"][0]["source"] == "database"
+    assert payload["performance"]["priority_actions"][0]["source"] == "performance"
+    assert payload["accessibility"]["records"][0]["module"] == "accessibility"
+    assert payload["accessibility"]["priority_actions"][0]["source"] == "accessibility"
+    assert payload["accessibility"]["priority_actions"][0]["selector"] == "input#email"
+    assert payload["uiux"]["priority_actions"][0]["source"] == "uiux"
+    assert any(action["metric"] == "readability_risk_score" for action in payload["uiux"]["priority_actions"])
+    assert payload["mobile"]["priority_actions"][0]["source"] == "mobile"
+    assert payload["mobile"]["priority_actions"][0]["category"] == "touch-target"
     assert payload["tests"]["priority_actions"][0]["source"] == "test-run"
     assert payload["tests"]["priority_actions"][0]["bug_report"]["category"] == "selector_issue"
     assert payload["tests"]["bug_reports"][0]["target"] == "#login"
@@ -301,6 +399,136 @@ def test_project_summary_report_includes_security_records_for_project_pages():
     assert test_security_correlation["target"] == unique_url
     assert test_security_correlation["evidence"]["bug_categories"] == ["selector_issue"]
     assert "selector" in test_security_correlation["title"].lower()
+    uiux_accessibility_correlation = next(
+        item for item in payload["correlation"]["items"]
+        if item["related_modules"] == ["uiux", "accessibility"]
+    )
+    assert "UI" in uiux_accessibility_correlation["title"]
+
+
+def test_project_jira_draft_is_saved_for_final_report_action():
+    client = TestClient(main.app)
+    db = SessionLocal()
+    try:
+        project = db_models.Project(
+            name="Jira Draft Project",
+            description="Ticket draft test",
+            platforms=["web"],
+        )
+        db.add(project)
+        db.commit()
+        project_id = project.id
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/reports/project/{project_id}/jira-drafts",
+        json={
+            "source_module": "api",
+            "source_type": "final_report_action",
+            "source_ref": "api-1",
+            "title": "API contract drift",
+            "description": "Response schema mismatch should become a ticket.",
+            "priority": "high",
+            "evidence": "Missing field: status",
+            "recommendation": "Serializer contract testlerini guncelle.",
+            "payload": {"category": "schema-mismatch"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["project_id"] == project_id
+    assert payload["ticket_key"] == f"JIRA-DRAFT-{payload['id']}"
+    assert payload["status"] == "draft"
+    assert payload["payload"]["evidence"] == "Missing field: status"
+    assert payload["payload"]["acceptance_criteria"][0]["done"] is False
+    assert "Endpoint" in payload["payload"]["acceptance_criteria"][0]["text"]
+    assert "API" in payload["payload"]["acceptance_criteria"][1]["text"]
+
+    update_response = client.patch(
+        f"/reports/jira-drafts/{payload['id']}/checklist",
+        json={
+            "acceptance_criteria": [
+                {"text": payload["payload"]["acceptance_criteria"][0]["text"], "done": True},
+                {"text": payload["payload"]["acceptance_criteria"][1]["text"], "done": False},
+            ]
+        },
+    )
+    assert update_response.status_code == 200
+    updated = update_response.json()
+    assert updated["payload"]["acceptance_criteria"][0]["done"] is True
+
+    duplicate_response = client.post(
+        f"/reports/project/{project_id}/jira-drafts",
+        json={
+            "source_module": "api",
+            "source_type": "final_report_action",
+            "source_ref": "api-1",
+            "title": "API contract drift",
+            "description": "Response schema mismatch should become a ticket.",
+            "priority": "high",
+            "evidence": "Missing field: status",
+            "recommendation": "Serializer contract testlerini guncelle.",
+            "payload": {"category": "schema-mismatch"},
+        },
+    )
+    assert duplicate_response.status_code == 200
+    duplicate = duplicate_response.json()
+    assert duplicate["id"] == payload["id"]
+    assert duplicate["payload"]["acceptance_criteria"][0]["done"] is True
+
+    list_response = client.get(f"/reports/project/{project_id}/jira-drafts")
+    assert list_response.status_code == 200
+    drafts = list_response.json()
+    assert drafts[0]["id"] == payload["id"]
+    assert drafts[0]["payload"]["acceptance_criteria"][0]["done"] is True
+
+    summary_response = client.get(f"/reports/project/{project_id}/summary")
+    assert summary_response.status_code == 200
+    summary = summary_response.json()
+    assert summary["summary"]["jira_drafts"] == 1
+    assert summary["jira_drafts"]["summary"]["total"] == 1
+    assert summary["jira_drafts"]["summary"]["completed_checklist_items"] == 1
+    assert summary["jira_drafts"]["items"][0]["id"] == payload["id"]
+
+
+def test_project_jira_draft_uses_mobile_specific_acceptance_criteria():
+    client = TestClient(main.app)
+    db = SessionLocal()
+    try:
+        project = db_models.Project(
+            name="Mobile Jira Draft Project",
+            description="Mobile ticket draft test",
+            platforms=["mobile_android"],
+        )
+        db.add(project)
+        db.commit()
+        project_id = project.id
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/reports/project/{project_id}/jira-drafts",
+        json={
+            "source_module": "mobile",
+            "source_type": "final_report_action",
+            "source_ref": "mobile-1",
+            "title": "Dokunma alani kucuk",
+            "description": "Mobil ekranda button size 40x38.",
+            "priority": "high",
+            "evidence": "button size=40x38",
+            "recommendation": "Tap hedeflerini 44x44 px civarina yaklastir.",
+            "payload": {"category": "touch-target"},
+        },
+    )
+
+    assert response.status_code == 200
+    criteria = response.json()["payload"]["acceptance_criteria"]
+    criteria_text = " ".join(item["text"] for item in criteria)
+    assert "Android/iOS" in criteria_text
+    assert "44x44" in criteria_text
+    assert "Tap hedeflerini" in criteria_text
 
 
 def test_bug_analysis_classifies_common_failure_patterns():
@@ -652,7 +880,8 @@ def test_project_summary_correlates_api_latency_with_performance_record_by_proje
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["module_breakdown"]["items"][-1]["module"] == "performance"
+    modules = {item["module"]: item for item in payload["module_breakdown"]["items"]}
+    assert modules["performance"]["records"] == 1
     correlation = next(
         item for item in payload["correlation"]["items"]
         if item["related_modules"] == ["api", "performance"]

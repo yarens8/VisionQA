@@ -5,6 +5,7 @@ import { api, ProjectCreate } from "@/services/api"
 import { ArrowLeft, Save, Loader2, Monitor, Smartphone, Globe, Database, Terminal } from "lucide-react"
 import { Link } from "react-router-dom"
 import { cn } from "@/lib/utils"
+import { readableErrorMessage } from "@/utils/errors"
 
 const PLATFORMS = [
     { id: "web", name: "Web Application", icon: Globe },
@@ -34,7 +35,7 @@ export function CreateProjectPage() {
             navigate(`/projects/${createdProject.id}/pages`) // Oluşan projeyi direkt aç
         },
         onError: (error) => {
-            alert("Failed to create project: " + error)
+            alert(readableErrorMessage(error, "Proje olusturulamadi."))
         }
     })
 
@@ -42,7 +43,7 @@ export function CreateProjectPage() {
         e.preventDefault()
         if (!formData.name) return
         if (formData.platforms.length === 0) {
-            alert("Please select at least one target platform.")
+            alert("En az bir hedef platform secmelisin.")
             return
         }
         mutation.mutate(formData)

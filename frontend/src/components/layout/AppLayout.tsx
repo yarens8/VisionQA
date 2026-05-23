@@ -1,8 +1,11 @@
 
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 
 export function AppLayout() {
+    const location = useLocation();
+    const isWideWorkspace = location.pathname === "/uiux";
+
     return (
         <div className="flex h-screen overflow-hidden bg-slate-950 text-slate-200">
 
@@ -30,8 +33,8 @@ export function AppLayout() {
                 </header>
 
                 {/* 🔴 Page Content (Değişken Alan) */}
-                <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-8 scroll-smooth">
-                    <div className="mx-auto w-full max-w-7xl min-w-0">
+                <main className={`min-w-0 flex-1 overflow-x-hidden overflow-y-auto scroll-smooth ${isWideWorkspace ? "p-6" : "p-8"}`}>
+                    <div className={`w-full min-w-0 ${isWideWorkspace ? "max-w-none" : "mx-auto max-w-7xl"}`}>
                         <Outlet />
                     </div>
                 </main>

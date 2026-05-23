@@ -146,6 +146,12 @@ Su an platform icinde moduller ayni olgunluk seviyesinde degildir; bazilari akti
 
 Sonraki fazlarda moduller history/trend, deeper telemetry, live execution parity ve cross-module chain analiziyle daha da derinlestirilecektir.
 
+## Implementation Evidence Note
+
+Uygulama icinde uretilen analizler proje ile iliskilendirildiginde `View Full Report` ekraninda ortak rapora baglanir. Final Report; module breakdown, priority action kartlari, cross-module correlation, failed-step evidence, Jira draft kayitlari ve JSON export ciktisini tek yerde toplar. UI/UX, Accessibility, Mobile, API, Database, Performance, Security, Dataset ve Autonomous kayitlari ayni proje altinda calistirildiginda rapor kapsami genisler.
+
+Benchmark ve deney/metrics dosyalari final faza birakilmistir. Bu fazda amac, tamamlanan modullerin ayni proje uzerinde tekrar calistirilmasi, JSON export ciktisinin saklanmasi ve makaledeki claim tablosu ile uygulama kanitlarinin eslestirilmesidir.
+
 ## Vision Providers
 
 SAM3 ve Grounding DINO opsiyonel runtime provider olarak kullanilir. Varsayilan akista `VISION_MODEL_PROVIDER=sam3`, `VISION_MODEL_FALLBACK=dinox` seklindedir; SAM3 yuklenemezse veya sonuc uretmezse Grounding DINO denenir. CI yalnizca import ve fallback davranisini test eder, gercek model indirme/inference calistirmaz.

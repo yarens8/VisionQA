@@ -1,6 +1,8 @@
 import base64
 import io
 import re
+import asyncio
+from datetime import datetime
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx
@@ -9,9 +11,12 @@ from PIL import Image
 from sqlalchemy.orm import Session
 
 import schemas
+from core.job_payload import to_json_payload
+from core.security.job_runner import run_security_url_analysis, save_security_analysis_record, update_job_status
+from core.tasks import run_security_url_analysis_task
 from core.security.engine_v2 import SecurityEngineV2 as SecurityEngine
-from database import get_db
-from database.models import SecurityAnalysisRecord
+from database import SessionLocal, get_db
+from database.models import AnalysisJob, SecurityAnalysisRecord
 from executors.web.web_executor import WebExecutor
 
 
@@ -83,6 +88,47 @@ def _history_item_schema(record: SecurityAnalysisRecord) -> schemas.SecurityHist
         thumbnail_base64=_build_thumbnail_base64(source_image_base64),
         created_at=record.created_at,
     )
+
+
+def _job_status_schema(job: AnalysisJob) -> schemas.AnalysisJobStatusResponse:
+    return schemas.AnalysisJobStatusResponse(
+        job_id=job.id,
+        status=job.status,
+        module_name=job.module_name,
+        target=job.target,
+        celery_task_id=job.celery_task_id,
+        source_record_id=job.source_record_id,
+        error_message=job.error_message,
+        result=job.result_payload,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+    )
+
+
+async def _run_security_job_inline_if_still_queued(job_id: int, delay_seconds: float = 3.0) -> None:
+    """Local development fallback when a Celery worker is not consuming jobs."""
+    await asyncio.sleep(delay_seconds)
+    db = SessionLocal()
+    try:
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
+        if not job or job.status != "queued":
+            return
+        update_job_status(db, job, "running")
+        try:
+            result = await run_security_url_analysis(job.request_payload or {})
+            record_id = save_security_analysis_record(
+                db,
+                result,
+                source_type="url",
+                source_label="Canli security URL analizi",
+                source_url=(job.request_payload or {}).get("url"),
+            )
+            update_job_status(db, job, "completed", result_payload=to_json_payload(result), source_record_id=record_id)
+        except Exception as exc:
+            update_job_status(db, job, "failed", error_message=str(exc))
+    finally:
+        db.close()
 
 
 @router.post("/analyze-image", response_model=schemas.SecurityAnalysisResponse)
@@ -162,6 +208,45 @@ async def analyze_security_url(request: schemas.SecurityUrlAnalysisRequest, db: 
             await executor.stop()
         except Exception:
             pass
+
+
+@router.post("/analyze-url-job", response_model=schemas.AnalysisJobStartResponse)
+async def start_security_url_job(request: schemas.SecurityUrlAnalysisRequest, db: Session = Depends(get_db)):
+    if request.platform != "web":
+        raise HTTPException(status_code=400, detail="URL-based security analysis is currently supported only for web.")
+
+    job = AnalysisJob(
+        job_type="security_url_analysis",
+        module_name="security",
+        status="queued",
+        target=request.url,
+        request_payload=request.model_dump(),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    async_result = run_security_url_analysis_task.delay(job.id)
+    job.celery_task_id = async_result.id
+    db.commit()
+    asyncio.create_task(_run_security_job_inline_if_still_queued(job.id))
+
+    return schemas.AnalysisJobStartResponse(
+        job_id=job.id,
+        status=job.status,
+        module_name=job.module_name,
+        target=job.target,
+    )
+
+
+@router.get("/jobs/{job_id}", response_model=schemas.AnalysisJobStatusResponse)
+def get_security_job_status(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id, AnalysisJob.module_name == "security").first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Security analysis job not found.")
+    return _job_status_schema(job)
 
 
 @router.post("/simulate-url", response_model=schemas.SecuritySimulationResponse)

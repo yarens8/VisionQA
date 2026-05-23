@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Layers, Plus, Play, Trash2, ChevronDown, ChevronUp, Save, Loader2, CheckCircle2, XCircle, Clock, Zap, Globe, Database, FlaskConical } from 'lucide-react';
 import axios from 'axios';
+import { readableErrorMessage } from '@/utils/errors';
 
 interface Step {
     id: string;
@@ -60,7 +61,7 @@ export function ScenarioPage() {
             setResults(response.data);
         } catch (error: any) {
 
-            alert("Scenario execution failed: " + error.message);
+            alert(readableErrorMessage(error, 'Scenario kosusu tamamlanamadi.'));
         } finally {
             setLoading(false);
         }

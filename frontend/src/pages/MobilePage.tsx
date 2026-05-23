@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Loader2, Smartphone, Sparkles, Wand2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Clock, Loader2, RefreshCw, Smartphone, Sparkles, Wand2 } from 'lucide-react';
 
-import { api, MobileAnalysisResponse } from '../services/api';
+import { api, AnalysisJobStatusResponse, MobileAnalysisResponse, MobileHistoryItem, Project } from '../services/api';
+import { readableErrorMessage } from '../utils/errors';
 
 const severityClasses: Record<string, string> = {
     high: 'border-red-500/40 bg-red-500/10 text-red-200',
@@ -31,6 +32,39 @@ export function MobilePage() {
     const [preview, setPreview] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<MobileAnalysisResponse | null>(null);
+    const [jobStatus, setJobStatus] = useState<AnalysisJobStatusResponse | null>(null);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState('');
+    const [historyItems, setHistoryItems] = useState<MobileHistoryItem[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const activeJobRef = useRef<number | null>(null);
+    const selectedProject = projects.find((project) => String(project.id) === selectedProjectId);
+
+    const loadHistory = async (projectId = selectedProjectId) => {
+        setHistoryLoading(true);
+        try {
+            const items = await api.getMobileHistory(projectId ? Number(projectId) : undefined, 12);
+            setHistoryItems(items);
+        } catch (error) {
+            console.warn('Mobile history could not be loaded', error);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        api.getProjects()
+            .then(setProjects)
+            .catch((error) => console.warn('Projects could not be loaded for mobile module', error));
+        loadHistory('');
+        return () => {
+            activeJobRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        loadHistory(selectedProjectId);
+    }, [selectedProjectId]);
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -51,38 +85,114 @@ export function MobilePage() {
 
     const handleAnalyze = async () => {
         setLoading(true);
+        setJobStatus(null);
         try {
             const parsedMetadata = metadata.trim() ? JSON.parse(metadata) : [];
-            const response = await api.analyzeMobile({
+            const job = await api.startMobileAnalysisJob({
                 platform,
+                project_id: selectedProjectId ? Number(selectedProjectId) : undefined,
                 screen_name: screenName,
                 image_base64: imageBase64,
                 element_metadata: parsedMetadata,
             });
-            setResult(response);
+            setJobStatus({ ...job, job_id: job.job_id, celery_task_id: undefined, error_message: undefined, result: undefined, created_at: new Date().toISOString() });
+            activeJobRef.current = job.job_id;
+
+            for (let attempt = 0; attempt < 60; attempt += 1) {
+                const status = await api.getMobileJobStatus(job.job_id);
+                if (activeJobRef.current !== job.job_id) return;
+                setJobStatus(status);
+
+                if (status.status === 'completed') {
+                    setResult(status.result as MobileAnalysisResponse);
+                    await loadHistory();
+                    return;
+                }
+
+                if (status.status === 'failed') {
+                    throw new Error(status.error_message || 'Mobile job basarisiz oldu.');
+                }
+
+                await new Promise((resolve) => window.setTimeout(resolve, 1200));
+            }
+            throw new Error('Mobile job zaman asimina ugradi.');
         } catch (error: any) {
             setResult(null);
-            alert(error.response?.data?.detail || error.message);
+            alert(readableErrorMessage(error, 'Mobil analizi tamamlanamadi.'));
         } finally {
             setLoading(false);
         }
     };
 
+    const openHistoryItem = async (recordId: number) => {
+        try {
+            const detail = await api.getMobileHistoryDetail(recordId);
+            setResult(detail.analysis);
+            if (detail.project_id) {
+                setSelectedProjectId(String(detail.project_id));
+            }
+            if (detail.analysis.image_base64) {
+                setImageBase64(detail.analysis.image_base64);
+                setPreview(`data:image/png;base64,${detail.analysis.image_base64}`);
+            }
+            if (detail.analysis.platform) {
+                setPlatform(detail.analysis.platform);
+            }
+        } catch (error) {
+            alert(readableErrorMessage(error, 'Mobile history kaydi acilamadi.'));
+        }
+    };
+
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                    <Smartphone className="h-8 w-8 text-sky-400" />
-                    Mobil Test Modulu
-                </h1>
-                <p className="mt-2 text-slate-400">
-                    Screenshot + metadata tabanli mobil UX, responsive risk ve capability analizi.
-                </p>
+        <div className="mx-auto max-w-7xl space-y-6">
+            <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-6">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-sky-400/25 bg-sky-500/10">
+                            <Smartphone className="h-7 w-7 text-sky-300" />
+                        </div>
+                        <div>
+                            <p className="text-[11px] uppercase tracking-[0.28em] text-sky-300">Mobile Intelligence</p>
+                            <h1 className="mt-1 text-3xl font-bold text-white">Mobil Test Modulu</h1>
+                            <p className="mt-2 max-w-2xl text-sm text-slate-400">
+                                Screenshot ve element metadata bilgisini birlikte yorumlayarak mobil UX, touch target,
+                                responsive risk ve platform uyumlulugu sinyalleri uretir.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[420px]">
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Project</p>
+                            <p className="mt-2 truncate text-sm font-semibold text-white">{selectedProject?.name || 'Global'}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">History</p>
+                            <p className="mt-2 text-sm font-semibold text-white">{historyItems.length} kayıt</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Last Score</p>
+                            <p className="mt-2 text-sm font-semibold text-white">{result ? result.overall_score : '--'}</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] items-start">
-                <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 space-y-5">
-                    <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(380px,0.88fr)] items-start">
+                <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl shadow-slate-950/40">
+                    <div>
+                        <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-cyan-300">Project Binding</p>
+                        <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none">
+                            <option value="">Global mobile analysis</option>
+                            {projects.map((project) => (
+                                <option key={project.id} value={project.id}>{project.name}</option>
+                            ))}
+                        </select>
+                        <p className="mt-2 text-xs text-slate-500">
+                            Proje seçersen kayıt Full Report içindeki Mobile kartına bağlanır.
+                        </p>
+                    </div>
+
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
                         <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none">
                             <option value="android">Android</option>
                             <option value="ios">iOS</option>
@@ -90,41 +200,68 @@ export function MobilePage() {
                         <input value={screenName} onChange={(e) => setScreenName(e.target.value)} placeholder="Screen name" className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none" />
                     </div>
 
-                    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
-                        <p className="text-sm font-semibold text-white">Mobil Screenshot</p>
-                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p className="text-sm font-semibold text-white">Mobil Screenshot</p>
+                                <p className="mt-1 text-xs text-slate-500">Ekran goruntusu varsa gorsel kanit olarak saklanir.</p>
+                            </div>
                             <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:border-sky-400/50 hover:text-sky-300">
                                 <Wand2 className="h-4 w-4" />
                                 Screenshot Sec
                                 <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                             </label>
-                            {preview && <span className="text-xs text-slate-400">Screenshot yüklendi</span>}
                         </div>
                         {preview && (
                             <div className="mt-4 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-                                <img src={preview} alt="Mobile preview" className="max-h-[360px] w-full object-contain" />
+                                <img src={preview} alt="Mobile preview" className="max-h-[320px] w-full object-contain" />
                             </div>
                         )}
                     </div>
 
-                    <div>
+                    <div className="mt-5">
                         <p className="mb-3 text-sm font-semibold text-white">Element Metadata</p>
                         <textarea
                             value={metadata}
                             onChange={(e) => setMetadata(e.target.value)}
-                            rows={14}
+                            rows={12}
                             className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 font-mono text-sm text-cyan-300 outline-none"
                         />
                     </div>
 
-                    <button onClick={handleAnalyze} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:opacity-50">
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                        Mobil Analizini Baslat
-                    </button>
+                    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <button onClick={handleAnalyze} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:opacity-50">
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                            Mobil Analizini Baslat
+                        </button>
+                        {jobStatus && (
+                            <div className="rounded-2xl border border-sky-400/25 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
+                                Job #{jobStatus.job_id} · {jobStatus.status}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {result && (
-                    <div className="space-y-6">
+                <aside className="space-y-6">
+                    <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5">
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-300">Live Result</p>
+                                <p className="mt-1 text-lg font-semibold text-white">{result ? 'Son analiz sonucu' : 'Analiz bekleniyor'}</p>
+                            </div>
+                            {result && (
+                                <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-sm font-semibold text-cyan-100">
+                                    {result.overall_score}
+                                </span>
+                            )}
+                        </div>
+
+                        {!result ? (
+                            <div className="mt-4 rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-5 text-sm text-slate-400">
+                                Mobil analiz calistirildiginda skorlar, AI yorumu ve risk ozeti burada gorunur.
+                            </div>
+                        ) : (
+                            <div className="mt-4 space-y-4">
                         <div className="grid gap-4 sm:grid-cols-3">
                             <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
                                 <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Overall</p>
@@ -151,7 +288,7 @@ export function MobilePage() {
                             </div>
                         </div>
 
-                        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
+                        <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5">
                             <p className="text-white font-semibold">AI Mobile Interpretation</p>
                             <p className="mt-3 text-sm text-slate-300">{result.ai_interpretation}</p>
                             <div className="mt-4 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4">
@@ -167,8 +304,45 @@ export function MobilePage() {
                                 <p className="mt-2 text-sm text-cyan-100">{result.context_profile.cross_platform_consistency_signal}</p>
                             </div>
                         </div>
+                            </div>
+                        )}
                     </div>
-                )}
+
+                    <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 text-white font-semibold">
+                                <Clock className="h-4 w-4 text-cyan-400" />
+                                Mobile History
+                            </div>
+                            <button onClick={() => loadHistory()} className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-700 text-slate-300 hover:border-cyan-400/50 hover:text-cyan-200">
+                                <RefreshCw className={`h-4 w-4 ${historyLoading ? 'animate-spin' : ''}`} />
+                            </button>
+                        </div>
+                        <div className="mt-4 max-h-[520px] space-y-3 overflow-y-auto pr-2">
+                            {historyItems.length === 0 ? (
+                                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-4 text-sm text-slate-400">
+                                    Kayıtlı mobil analiz yok. Proje seçip mobil analiz çalıştırınca burada görünür.
+                                </div>
+                            ) : historyItems.map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => openHistoryItem(item.id)}
+                                    className="w-full rounded-2xl border border-slate-800 bg-slate-950 p-4 text-left transition hover:border-cyan-400/50"
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="font-semibold text-white">{item.source_label || 'Mobile analysis'}</p>
+                                            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-500">{item.platform} / {item.screen_type || item.source_type}</p>
+                                        </div>
+                                        <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-cyan-100">{item.overall_score}</span>
+                                    </div>
+                                    <p className="mt-3 line-clamp-2 text-sm text-slate-300">{item.overview}</p>
+                                    <p className="mt-3 text-xs text-slate-500">{item.findings_count} finding · {new Date(item.created_at).toLocaleString('tr-TR')}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </aside>
             </div>
 
             {result && (

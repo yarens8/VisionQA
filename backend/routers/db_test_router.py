@@ -1,5 +1,7 @@
 import re
+import asyncio
 import time
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,8 +9,11 @@ from pydantic import BaseModel
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
-from database import get_db
-from database.models import DbAnalysisRecord
+from core.job_payload import to_json_payload
+from core.security.job_runner import update_job_status
+from core.tasks import run_db_quality_task
+from database import SessionLocal, get_db
+from database.models import AnalysisJob, DbAnalysisRecord
 from executors.database.db_executor import DatabaseExecutor
 from schemas import (
     DbConstraintSummary,
@@ -36,7 +41,7 @@ class DBSchemaValidationSchema(BaseModel):
 
 def _save_db_record(db: Session, result: DbQualityResponse, request_data: DbQualityRequest) -> None:
     try:
-        payload = result.model_dump(mode="json")
+        payload = to_json_payload(result)
         source_label = result.table_name or (request_data.query or "DB quality audit")[:120]
         record = DbAnalysisRecord(
             platform="database",
@@ -72,6 +77,22 @@ def _db_history_item(record: DbAnalysisRecord) -> Dict[str, Any]:
         "duration_ms": payload.get("duration_ms"),
         "detected_columns_count": len(payload.get("detected_columns") or []),
         "created_at": record.created_at.isoformat() if record.created_at else None,
+    }
+
+
+def _job_status_schema(job: AnalysisJob) -> Dict[str, Any]:
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "module_name": job.module_name,
+        "target": job.target,
+        "celery_task_id": job.celery_task_id,
+        "source_record_id": job.source_record_id,
+        "error_message": job.error_message,
+        "result": job.result_payload,
+        "created_at": job.created_at,
+        "started_at": job.started_at,
+        "completed_at": job.completed_at,
     }
 
 
@@ -407,8 +428,7 @@ def get_db_history_detail(record_id: int, db: Session = Depends(get_db)):
     return item
 
 
-@router.post("/quality-audit", response_model=DbQualityResponse)
-def run_db_quality_audit(data: DbQualityRequest, db: Session = Depends(get_db)):
+def _run_db_quality_impl(data: DbQualityRequest, db: Session) -> DbQualityResponse:
     start_time = time.time()
     executor = DatabaseExecutor(data.connection_string)
     findings: List[DbQualityFinding] = []
@@ -545,6 +565,59 @@ def run_db_quality_audit(data: DbQualityRequest, db: Session = Depends(get_db)):
     )
     _save_db_record(db, result, data)
     return result
+
+
+async def _run_db_job_inline_if_still_queued(job_id: int, delay_seconds: float = 3.0) -> None:
+    await asyncio.sleep(delay_seconds)
+    db = SessionLocal()
+    try:
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
+        if not job or job.status != "queued":
+            return
+        update_job_status(db, job, "running")
+        try:
+            request_data = DbQualityRequest(**(job.request_payload or {}))
+            result = _run_db_quality_impl(request_data, db)
+            update_job_status(db, job, "completed", result_payload=to_json_payload(result))
+        except Exception as exc:
+            update_job_status(db, job, "failed", error_message=str(exc))
+    finally:
+        db.close()
+
+
+@router.post("/quality-audit", response_model=DbQualityResponse)
+def run_db_quality_audit(data: DbQualityRequest, db: Session = Depends(get_db)):
+    return _run_db_quality_impl(data, db)
+
+
+@router.post("/quality-audit-job", response_model=dict)
+async def start_db_quality_job(data: DbQualityRequest, db: Session = Depends(get_db)):
+    target = data.table_name or (data.query or "DB quality audit")[:120]
+    job = AnalysisJob(
+        job_type="db_quality_audit",
+        module_name="database",
+        status="queued",
+        target=target,
+        request_payload=data.model_dump(mode="json"),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+    async_result = run_db_quality_task.delay(job.id)
+    job.celery_task_id = async_result.id
+    db.commit()
+    asyncio.create_task(_run_db_job_inline_if_still_queued(job.id))
+    return {"job_id": job.id, "status": job.status, "module_name": job.module_name, "target": job.target}
+
+
+@router.get("/jobs/{job_id}", response_model=dict)
+def get_db_job_status(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id, AnalysisJob.module_name == "database").first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Database analysis job not found")
+    return _job_status_schema(job)
 
 
 @router.post("/validate-schema")

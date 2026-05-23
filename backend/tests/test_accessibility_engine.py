@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core.accessibility.engine import (
     AccessibilityEngine,
     _build_dino_candidates,
+    _build_candidate,
     ComponentCandidate,
     _apply_metadata_hints,
     _apply_detected_labels,
@@ -25,6 +26,9 @@ from core.accessibility.engine import (
     contrast_ratio,
 )
 import main
+from database import SessionLocal
+from database.models import AnalysisJob
+from routers import accessibility_router
 
 
 def _sample_image_base64() -> str:
@@ -89,7 +93,46 @@ def test_accessibility_endpoint_works():
     payload = response.json()
     assert "findings" in payload
     assert "overall_score" in payload
+    assert "score_breakdown" in payload
+    assert "test_suggestions" in payload
     assert payload["artifacts"]["source_image_base64"]
+
+
+def test_accessibility_image_job_starts_and_exposes_status(monkeypatch):
+    class _FakeAsyncResult:
+        id = "accessibility-image-task"
+
+    monkeypatch.setattr(accessibility_router.run_accessibility_image_task, "delay", lambda job_id: _FakeAsyncResult())
+
+    client = TestClient(main.app)
+    response = client.post(
+        "/accessibility/analyze-image-job",
+        json={
+            "platform": "web",
+            "image_base64": _sample_image_base64(),
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "queued"
+    assert payload["module_name"] == "accessibility"
+
+    status_response = client.get(f"/accessibility/jobs/{payload['job_id']}")
+    assert status_response.status_code == 200
+    status_payload = status_response.json()
+    assert status_payload["job_id"] == payload["job_id"]
+    assert status_payload["status"] == "queued"
+    assert status_payload["celery_task_id"] == "accessibility-image-task"
+
+    db = SessionLocal()
+    try:
+        job = db.query(AnalysisJob).filter(AnalysisJob.id == payload["job_id"]).first()
+        assert job is not None
+        db.delete(job)
+        db.commit()
+    finally:
+        db.close()
 
 
 def test_crop_to_base64_handles_offscreen_metadata_boxes():
@@ -104,6 +147,24 @@ def test_crop_to_base64_handles_offscreen_metadata_boxes():
     )
 
     assert cropped
+
+
+def test_build_candidate_clamps_offscreen_boxes():
+    image = Image.new("RGB", (120, 80), "#ffffff")
+
+    candidate = _build_candidate(
+        image=image,
+        x=160,
+        y=120,
+        width=40,
+        height=24,
+        foreground_pixels=10,
+    )
+
+    assert candidate.x == 119
+    assert candidate.y == 79
+    assert candidate.width >= 1
+    assert candidate.height >= 1
 
 
 def test_accessibility_url_endpoint_works_with_web_metadata(monkeypatch):
@@ -364,6 +425,77 @@ def test_alt_text_and_keyboard_findings_are_reported_from_metadata():
     categories = {item["category"] for item in result["findings"]}
     assert "alt-text" in categories
     assert "keyboard-navigation" in categories
+
+
+def test_accessibility_enriches_findings_with_wcag_and_score_breakdown():
+    engine = AccessibilityEngine()
+    result = engine.analyze_image(_sample_image_base64())
+
+    assert result["score_breakdown"]["visual_contrast"] <= 100
+    assert result["accessibility_summary"]["risk_level"] in {"low", "medium", "high"}
+    assert result["test_suggestions"]
+    assert result["findings"][0]["wcag_refs"]
+    assert result["findings"][0]["impact_score"] >= 0
+    assert result["findings"][0]["evidence"]["validation_steps"]
+
+
+def test_accessibility_reports_form_name_aria_and_heading_findings_from_metadata():
+    image = Image.new("RGB", (320, 220), "#ffffff")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((20, 20, 220, 52), fill="#eeeeee")
+    draw.rectangle((20, 72, 70, 112), fill="#dddddd")
+    draw.text((20, 140), "Subsection", fill="#111111")
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+    engine = AccessibilityEngine()
+    result = engine.analyze_image(
+        image_base64,
+        element_metadata=[
+            {
+                "element_type": "input",
+                "x": 20,
+                "y": 20,
+                "width": 200,
+                "height": 32,
+                "input_type": "email",
+                "placeholder": "Email",
+                "css_selector": "input#email",
+            },
+            {
+                "element_type": "button",
+                "x": 20,
+                "y": 72,
+                "width": 50,
+                "height": 40,
+                "role": "button",
+                "keyboard_focusable": False,
+                "css_selector": "div[role='button']",
+            },
+            {
+                "element_type": "heading",
+                "x": 20,
+                "y": 140,
+                "width": 120,
+                "height": 28,
+                "heading_level": 3,
+                "text_content": "Subsection",
+            },
+        ],
+    )
+
+    categories = {item["category"] for item in result["findings"]}
+    assert "form-label" in categories
+    assert "form-autocomplete" in categories
+    assert "accessible-name" in categories
+    assert "aria-quality" in categories
+    assert "heading-order" in categories
+    assert result["keyboard_profile"]["keyboard_findings"] >= 1
+    form_finding = next(item for item in result["findings"] if item["category"] == "form-label")
+    assert form_finding["evidence"]["selector"] == "input#email"
+    assert form_finding["evidence"]["source"] == "dom-metadata"
 
 
 def test_dino_labels_can_upgrade_component_classification():

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, GenerateCasesResponse, TestCase } from '../services/api';
+import { readableErrorMessage } from '../utils/errors';
 import {
     Trash2, Play, Sparkles, X, Shield,
     AlertCircle, CheckCircle, Zap, ChevronDown,
@@ -107,7 +108,7 @@ const TestResultModal: React.FC<{ result: ExecutionResult; onClose: () => void }
                 <div className="flex items-center justify-between px-8 py-6 border-b border-slate-800">
                     <div>
                         <h2 className="text-lg font-bold text-white tracking-tight">Intelligence Report</h2>
-                        <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mt-0.5">{passed}/{total} Steps Secured</p>
+                        <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mt-0.5">{passed}/{total} Steps Completed</p>
                     </div>
                     <div className="flex items-center gap-2">
                         {result.run_id && (
@@ -141,7 +142,7 @@ const TestResultModal: React.FC<{ result: ExecutionResult; onClose: () => void }
                                 </div>
                                 <div className="flex items-center gap-2 mb-3">
                                     <Zap className="h-4 w-4 text-indigo-500 fill-current" />
-                                    <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">Executive AI Summary</h3>
+                                    <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">Run Summary</h3>
                                 </div>
                                 <p className="text-slate-200 text-sm leading-relaxed font-medium italic relative z-10">
                                     "{result.summary}"
@@ -389,8 +390,8 @@ export function TestLibraryPage() {
                 summary: parsed.summary || '',
                 bug_analysis: parsed.bug_analysis || [],
             });
-        } catch {
-            alert('Kaydedilmiş rapor okunamadı.');
+        } catch (error) {
+            alert(readableErrorMessage(error, 'Kaydedilmis rapor okunamadi.'));
         }
     };
 
@@ -443,7 +444,7 @@ export function TestLibraryPage() {
         },
         onError: (error: any) => {
             setIsGenerating(false);
-            const msg = error.response?.data?.detail || error.message || "Hata: Lütfen analiz edilecek sayfanın URL'sini doğru girdiğinizden emin olun.";
+            const msg = readableErrorMessage(error, "Lutfen analiz edilecek sayfanin URL'sini kontrol edin.");
             alert(msg);
         }
     });
@@ -489,10 +490,7 @@ const runMutation = useMutation({
             queryClient.invalidateQueries({ queryKey: ['test-runs', projectId] });
         },
         onError: (error: any) => {
-            const msg =
-                error?.response?.data?.detail ||
-                error?.message ||
-                "Deploy sırasında beklenmeyen bir hata oluştu.";
+            const msg = readableErrorMessage(error, 'Test kosusu tamamlanamadi.');
             alert(msg);
         },
         onSettled: () => {
@@ -540,7 +538,7 @@ const runMutation = useMutation({
                         className={`h-12 px-8 rounded-xl flex items-center gap-3 transition-all active:scale-95 disabled:opacity-30 bg-indigo-600 text-white shadow-xl shadow-indigo-900/20 font-black text-xs uppercase tracking-widest hover:bg-indigo-500`}
                     >
                         {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Command className="h-4 w-4" />}
-                        {isGenerating ? 'AI Syncing...' : 'Generate Protocols'}
+                        {isGenerating ? 'Analiz hazirlaniyor...' : 'Test Senaryosu Uret'}
                     </button>
                 </div>
             </div>
@@ -636,14 +634,14 @@ const runMutation = useMutation({
                         <div className="p-5 bg-slate-900 rounded-full mb-6 border border-slate-800">
                             <Layers className="h-8 w-8 text-slate-700" />
                         </div>
-                        <h2 className="text-xl font-bold text-slate-400 uppercase tracking-tighter">Station Offline</h2>
-                        <p className="text-xs text-slate-600 mt-2 max-w-xs mx-auto font-medium">Click Generate Protocols to initialize the AI analysis for this target.</p>
+                        <h2 className="text-xl font-bold text-slate-400 uppercase tracking-tighter">Henüz senaryo yok</h2>
+                        <p className="text-xs text-slate-600 mt-2 max-w-xs mx-auto font-medium">Bu hedef için test senaryosu üretince liste burada görünecek.</p>
                         <button
                             onClick={() => generateMutation.mutate()}
                             disabled={!hasValidPageUrl}
                             className="mt-8 text-[10px] font-black text-indigo-500 hover:text-indigo-400 uppercase tracking-widest disabled:opacity-30"
                         >
-                            Initialize Startup
+                            Senaryo Üret
                         </button>
                     </div>
                 )}

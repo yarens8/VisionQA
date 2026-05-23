@@ -27,7 +27,7 @@ def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)
 
 @router.get("/", response_model=List[schemas.Project])
 @router.get("", response_model=List[schemas.Project])
-def get_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def get_projects(skip: int = 0, limit: int = 500, db: Session = Depends(get_db)):
     """Projeleri listele"""
     projects = (
         db.query(Project)

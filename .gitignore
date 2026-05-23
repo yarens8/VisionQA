@@ -87,3 +87,9 @@ credentials.json
 
 # Local benchmark data
 benchmark_dataset/
+benchmark_results/**/screenshots/
+
+# Local agent/browser artifacts
+.agent/
+.playwright-mcp/
+backend/storage/

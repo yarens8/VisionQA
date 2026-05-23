@@ -165,6 +165,11 @@ class AccessibilityFinding(BaseModel):
     bounding_box: BoundingBox
     crop_image_base64: str
     recommendation: str
+    wcag_refs: List[str] = Field(default_factory=list)
+    impact_score: Optional[int] = None
+    affected_role: Optional[str] = None
+    evidence: Dict[str, Any] = Field(default_factory=dict)
+    test_suggestion: Optional[str] = None
 
 
 class AccessibilityHeatmapRegion(BaseModel):
@@ -220,6 +225,17 @@ class AccessibilityElementMetadata(BaseModel):
     value: Optional[str] = None
     name: Optional[str] = None
     input_type: Optional[str] = None
+    role: Optional[str] = None
+    aria_hidden: Optional[bool] = None
+    aria_describedby: Optional[str] = None
+    aria_controls: Optional[str] = None
+    aria_invalid: Optional[bool] = None
+    required: Optional[bool] = None
+    autocomplete: Optional[str] = None
+    label_text: Optional[str] = None
+    heading_level: Optional[int] = None
+    css_selector: Optional[str] = None
+    tab_order_index: Optional[int] = None
     keyboard_focusable: Optional[bool] = None
     focus_visible: Optional[bool] = None
     tab_index: Optional[int] = None
@@ -251,6 +267,10 @@ class AccessibilityAnalysisResponse(BaseModel):
     heatmap: List[AccessibilityHeatmapRegion]
     artifacts: AccessibilityArtifacts
     recommendations: List[str]
+    score_breakdown: Dict[str, int] = Field(default_factory=dict)
+    accessibility_summary: Dict[str, Any] = Field(default_factory=dict)
+    test_suggestions: List[Dict[str, Any]] = Field(default_factory=list)
+    keyboard_profile: Dict[str, Any] = Field(default_factory=dict)
 
 
 class AccessibilityHistoryItem(BaseModel):
@@ -299,6 +319,9 @@ class UiuxFinding(BaseModel):
     bounding_box: BoundingBox
     crop_image_base64: str
     recommendation: str
+    numeric_evidence: Dict[str, Any] = Field(default_factory=dict)
+    evidence: Dict[str, Any] = Field(default_factory=dict)
+    test_suggestion: Optional[str] = None
 
 
 class UiuxScoreSummary(BaseModel):
@@ -327,9 +350,12 @@ class UiuxArtifacts(BaseModel):
 class UiuxAnalysisRequest(BaseModel):
     platform: str = "web"
     image_base64: str
+    project_id: Optional[int] = None
 
 
 class UiuxAnalysisResponse(BaseModel):
+    project_id: Optional[int] = None
+    project_name: Optional[str] = None
     platform: str
     image: AccessibilityImageMeta
     overall_score: int
@@ -345,6 +371,10 @@ class UiuxAnalysisResponse(BaseModel):
     focus_score: int
     ai_critic_summary: str
     score_summary: UiuxScoreSummary
+    score_breakdown: Dict[str, int] = Field(default_factory=dict)
+    image_processing_metrics: Dict[str, Any] = Field(default_factory=dict)
+    evidence_matrix: Dict[str, Any] = Field(default_factory=dict)
+    test_suggestions: List[Dict[str, Any]] = Field(default_factory=list)
     attention_prediction: UiuxAttentionPrediction
     findings: List[UiuxFinding]
     artifacts: UiuxArtifacts
@@ -353,6 +383,7 @@ class UiuxAnalysisResponse(BaseModel):
 
 class UiuxHistoryItem(BaseModel):
     id: int
+    project_id: Optional[int] = None
     platform: str
     source_type: str
     source_label: Optional[str] = None
@@ -366,6 +397,7 @@ class UiuxHistoryItem(BaseModel):
 
 class UiuxHistoryDetail(BaseModel):
     id: int
+    project_id: Optional[int] = None
     platform: str
     source_type: str
     source_label: Optional[str] = None
@@ -542,6 +574,27 @@ class SecurityUrlAnalysisRequest(BaseModel):
     platform: str = "web"
     headless: bool = True
     full_page: bool = True
+
+
+class AnalysisJobStartResponse(BaseModel):
+    job_id: int
+    status: str
+    module_name: str
+    target: Optional[str] = None
+
+
+class AnalysisJobStatusResponse(BaseModel):
+    job_id: int
+    status: str
+    module_name: str
+    target: Optional[str] = None
+    celery_task_id: Optional[str] = None
+    source_record_id: Optional[int] = None
+    error_message: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
 
 
 class SecurityAnalysisResponse(BaseModel):
@@ -1010,6 +1063,7 @@ class MobileElementMetadata(BaseModel):
 
 class MobileAnalysisRequest(BaseModel):
     platform: str = "android"
+    project_id: Optional[int] = None
     screen_name: Optional[str] = None
     image_base64: Optional[str] = None
     element_metadata: List[MobileElementMetadata] = []
@@ -1046,6 +1100,9 @@ class MobileScoreBreakdown(BaseModel):
 
 
 class MobileAnalysisResponse(BaseModel):
+    record_id: Optional[int] = None
+    project_id: Optional[int] = None
+    image_base64: Optional[str] = None
     platform: str
     overall_score: int
     overview: str
@@ -1065,3 +1122,26 @@ class MobileAnalysisResponse(BaseModel):
     supported_now: List[MobileCapabilityItem]
     next_phase: List[MobileCapabilityItem]
     recommendations: List[str]
+
+
+class MobileHistoryItem(BaseModel):
+    id: int
+    project_id: Optional[int] = None
+    platform: str
+    source_type: str
+    source_label: Optional[str] = None
+    overall_score: int
+    findings_count: int
+    overview: str
+    screen_type: Optional[str] = None
+    created_at: datetime
+
+
+class MobileHistoryDetail(BaseModel):
+    id: int
+    project_id: Optional[int] = None
+    platform: str
+    source_type: str
+    source_label: Optional[str] = None
+    created_at: datetime
+    analysis: MobileAnalysisResponse

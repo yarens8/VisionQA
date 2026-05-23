@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Clock, Download, FlaskConical, List as ListIcon, Loader2, RefreshCw, Send, ShieldAlert, Zap } from 'lucide-react';
 
-import { api, ApiHistoryItem, ApiTestAnalyzeResponse, Project } from '../services/api';
+import { api, AnalysisJobStatusResponse, ApiHistoryItem, ApiTestAnalyzeResponse, Project } from '../services/api';
+import { readableErrorMessage } from '../utils/errors';
 
 const severityClasses: Record<string, string> = {
     high: 'border-red-500/40 bg-red-500/10 text-red-200',
@@ -26,6 +27,8 @@ export function TestLabPage() {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [projects, setProjects] = useState<Project[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState('');
+    const [jobStatus, setJobStatus] = useState<AnalysisJobStatusResponse | null>(null);
+    const activeJobRef = useRef<number | null>(null);
 
     const normalizeUrl = (value: string) => {
         const trimmed = value.trim();
@@ -55,11 +58,36 @@ export function TestLabPage() {
         api.getProjects()
             .then(setProjects)
             .catch((error) => console.warn('Projects could not be loaded for API lab', error));
+        return () => {
+            activeJobRef.current = null;
+        };
     }, []);
+
+    const pollApiJob = async (jobId: number) => {
+        activeJobRef.current = jobId;
+        for (let attempt = 0; attempt < 120; attempt += 1) {
+            if (activeJobRef.current !== jobId) return;
+            const status = await api.getApiJobStatus(jobId);
+            setJobStatus(status);
+            if (status.status === 'completed') {
+                if (status.result) {
+                    setResult(status.result as ApiTestAnalyzeResponse);
+                    await loadHistory();
+                }
+                return;
+            }
+            if (status.status === 'failed' || status.status === 'cancelled') {
+                throw new Error(status.error_message || 'API job tamamlanamadi.');
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 1200));
+        }
+        throw new Error('API job zaman asimina ugradi.');
+    };
 
     const handleRunTest = async () => {
         setLoading(true);
         setResult(null);
+        setJobStatus(null);
         const requestUrl = normalizeUrl(url);
         if (requestUrl !== url) {
             setUrl(requestUrl);
@@ -136,7 +164,7 @@ export function TestLabPage() {
                 });
             } else {
                 const parsedBody = body ? JSON.parse(body) : null;
-                const analysis = await api.analyzeApiRequest({
+                const job = await api.startApiAnalysisJob({
                     method,
                     url: requestUrl,
                     project_id: selectedProjectId ? Number(selectedProjectId) : undefined,
@@ -146,10 +174,17 @@ export function TestLabPage() {
                     expected_response_type: expectedResponseType || undefined,
                     run_negative_checks: true,
                 });
-                setResult(analysis);
-                loadHistory();
+                setJobStatus({
+                    job_id: job.job_id,
+                    status: job.status,
+                    module_name: job.module_name,
+                    target: job.target,
+                    created_at: new Date().toISOString(),
+                });
+                await pollApiJob(job.job_id);
             }
         } catch (error: any) {
+            const summary = readableErrorMessage(error, 'API analizi tamamlanamadi.');
             setResult({
                 method,
                 url: requestUrl,
@@ -157,7 +192,7 @@ export function TestLabPage() {
                 status_code: undefined,
                 duration_ms: 0,
                 overall_score: 0,
-                summary: error.response?.data?.detail || error.message,
+                summary,
                 endpoint_risk_score: 0,
                 ai_failure_explanation: 'Analiz calistirilamadi.',
                 ai_test_summary: '',
@@ -180,9 +215,10 @@ export function TestLabPage() {
                 negative_checks: [],
                 generated_tests: [],
                 cross_module_correlation: [],
-                raw_result: { error: error.response?.data || error.message },
+                raw_result: { error: summary },
             });
         } finally {
+            activeJobRef.current = null;
             setLoading(false);
         }
     };
@@ -198,8 +234,8 @@ export function TestLabPage() {
                     setSelectedProjectId(String(detail.analysis_payload.project_id));
                 }
             }
-        } catch {
-            alert('API history kaydi acilamadi.');
+        } catch (error) {
+            alert(readableErrorMessage(error, 'API history kaydi acilamadi.'));
         }
     };
 
@@ -209,8 +245,8 @@ export function TestLabPage() {
             const response = await fetch(`/api/api-test/import-swagger?url=${encodeURIComponent(swaggerUrl)}`);
             const data = await response.json();
             setEndpoints(data);
-        } catch {
-            alert('Swagger import hatasi!');
+        } catch (error) {
+            alert(readableErrorMessage(error, 'Swagger import tamamlanamadi.'));
         } finally {
             setLoading(false);
         }
@@ -344,6 +380,13 @@ export function TestLabPage() {
                         </div>
                     </div>
 
+                    {jobStatus && !isLoadTest && (
+                        <div className="rounded-xl border border-cyan-500/25 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+                            Job #{jobStatus.job_id} · {jobStatus.status}
+                            {jobStatus.celery_task_id ? <span className="text-cyan-200/80"> · Celery {jobStatus.celery_task_id.slice(0, 8)}</span> : null}
+                        </div>
+                    )}
+
                     {result && (
                         <>
                             <div className="grid gap-4 sm:grid-cols-4">
@@ -357,7 +400,7 @@ export function TestLabPage() {
                                 </div>
                                 <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
                                     <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Status</p>
-                                    <p className="mt-3 text-3xl font-semibold text-white">{result.status_code ?? 'n/a'}</p>
+                                    <p className="mt-3 text-3xl font-semibold text-white">{result.status_code ?? '--'}</p>
                                 </div>
                                 <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4">
                                     <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Duration</p>
@@ -609,7 +652,7 @@ export function TestLabPage() {
                                         </span>
                                     </div>
                                     <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
-                                        <span className="rounded-full border border-slate-700 px-2 py-1">{item.status_code ?? 'n/a'}</span>
+                                        <span className="rounded-full border border-slate-700 px-2 py-1">{item.status_code ?? '--'}</span>
                                         <span className="rounded-full border border-slate-700 px-2 py-1">{Math.round(Number(item.duration_ms || 0))} ms</span>
                                         <span className="rounded-full border border-slate-700 px-2 py-1">{item.findings_count} finding</span>
                                     </div>

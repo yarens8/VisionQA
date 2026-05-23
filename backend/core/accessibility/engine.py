@@ -12,7 +12,7 @@ import os
 import shutil
 import tempfile
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from PIL import Image, ImageDraw, ImageStat
 
@@ -55,6 +55,27 @@ SEVERITY_COLORS = {
     "medium": (245, 158, 11, 28),
     "low": (59, 130, 246, 24),
     "pass": (16, 185, 129, 10),
+}
+
+WCAG_RULES = {
+    "component-contrast": ["1.4.3 Contrast (Minimum)"],
+    "contrast": ["1.4.3 Contrast (Minimum)"],
+    "touch-target": ["2.5.8 Target Size", "2.5.5 Target Size (Enhanced)"],
+    "focus-visibility": ["2.4.7 Focus Visible"],
+    "alt-text": ["1.1.1 Non-text Content"],
+    "keyboard-navigation": ["2.1.1 Keyboard", "2.4.7 Focus Visible"],
+    "form-label": ["1.3.1 Info and Relationships", "2.4.6 Headings and Labels", "3.3.2 Labels or Instructions"],
+    "accessible-name": ["4.1.2 Name, Role, Value", "2.4.4 Link Purpose"],
+    "aria-quality": ["4.1.2 Name, Role, Value"],
+    "heading-order": ["1.3.1 Info and Relationships", "2.4.6 Headings and Labels"],
+}
+
+SEVERITY_IMPACT = {
+    "critical": 100,
+    "high": 85,
+    "medium": 62,
+    "low": 35,
+    "pass": 0,
 }
 
 DEFAULT_TESSERACT_PATHS = [
@@ -261,9 +282,15 @@ def _build_candidate(
     cluster_size: int = 1,
 ) -> ComponentCandidate:
     image_width, image_height = image.size
-    bounded_width = min(image_width - x, max(1, width))
-    bounded_height = min(image_height - y, max(1, height))
-    crop = image.crop((x, y, min(image_width, x + bounded_width), min(image_height, y + bounded_height)))
+    safe_x = max(0, min(max(0, image_width - 1), int(x)))
+    safe_y = max(0, min(max(0, image_height - 1), int(y)))
+    raw_right = max(int(x), int(x) + max(1, int(width)))
+    raw_bottom = max(int(y), int(y) + max(1, int(height)))
+    right = max(safe_x + 1, min(image_width, raw_right))
+    bottom = max(safe_y + 1, min(image_height, raw_bottom))
+    bounded_width = max(1, right - safe_x)
+    bounded_height = max(1, bottom - safe_y)
+    crop = image.crop((safe_x, safe_y, right, bottom))
     darkest, lightest = _quantized_extremes(crop)
     ratio = round(contrast_ratio(darkest, lightest), 2)
     distance = round(color_distance(darkest, lightest), 2)
@@ -271,8 +298,8 @@ def _build_candidate(
     description = _description_for_ratio(ratio, distance)
     pixel_density = round(foreground_pixels / max(bounded_width * bounded_height, 1), 3)
     label, confidence = _classify_component(
-        x=x,
-        y=y,
+        x=safe_x,
+        y=safe_y,
         width=bounded_width,
         height=bounded_height,
         ratio=ratio,
@@ -283,8 +310,8 @@ def _build_candidate(
         image_height=image_height,
     )
     return ComponentCandidate(
-        x=x,
-        y=y,
+        x=safe_x,
+        y=safe_y,
         width=bounded_width,
         height=bounded_height,
         label=label,
@@ -1378,6 +1405,443 @@ def _keyboard_navigation_findings(
     return findings
 
 
+INTERACTIVE_ACCESSIBLE_NAME_TYPES = {"button", "link", "checkbox", "radio", "editable"}
+FORM_ELEMENT_TYPES = {"input", "textarea", "select"}
+
+
+WCAG_REFS_BY_CATEGORY = {
+    "component-contrast": ["1.4.3 Contrast (Minimum)"],
+    "contrast": ["1.4.3 Contrast (Minimum)"],
+    "touch-target": ["2.5.5 Target Size"],
+    "focus-visibility": ["2.4.7 Focus Visible"],
+    "alt-text": ["1.1.1 Non-text Content"],
+    "keyboard-navigation": ["2.1.1 Keyboard", "2.4.3 Focus Order"],
+    "form-label": ["1.3.1 Info and Relationships", "3.3.2 Labels or Instructions", "4.1.2 Name, Role, Value"],
+    "form-autocomplete": ["1.3.5 Identify Input Purpose"],
+    "form-error-message": ["3.3.1 Error Identification", "3.3.3 Error Suggestion"],
+    "accessible-name": ["2.4.4 Link Purpose", "4.1.2 Name, Role, Value"],
+    "aria-quality": ["4.1.2 Name, Role, Value"],
+    "heading-order": ["1.3.1 Info and Relationships", "2.4.6 Headings and Labels"],
+}
+
+
+TEST_SUGGESTION_BY_CATEGORY = {
+    "component-contrast": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula.",
+    "contrast": "Sayfa screenshot'i uzerinden WCAG AA kontrast regresyon testi ekle.",
+    "touch-target": "Mobile viewport'ta hedef alanin en az 44px civarinda tiklanabilir oldugunu dogrula.",
+    "focus-visibility": "Tab ile gezinip focus ring'in gorunur kaldigini kontrol et.",
+    "alt-text": "Gorselin screen reader tarafinda anlamli accessible name verdigini kontrol et.",
+    "keyboard-navigation": "Tab/Shift+Tab sirasinda bilesenin odaklanabilir ve mantikli sirada oldugunu test et.",
+    "form-label": "Form alaninin label veya aria-labelledby ile okunabilir isme sahip oldugunu dogrula.",
+    "form-autocomplete": "Login/iletisim gibi formlarda autocomplete token'larinin dogru verildigini kontrol et.",
+    "form-error-message": "Hata durumunda alanin hata metnine aria-describedby ile baglandigini test et.",
+    "accessible-name": "Buton/link gibi kontrollerin bos olmayan accessible name urettigini dogrula.",
+    "aria-quality": "ARIA attribute'lerinin native davranisi bozmadigini ve name/role/value bilgisini korudugunu kontrol et.",
+    "heading-order": "Baslik seviyelerinin h1'den baslayip sirali ilerledigini dogrula.",
+}
+
+
+def _normalized_metadata_type(element: Dict) -> str:
+    return str(element.get("element_type") or "").strip().lower()
+
+
+def _metadata_role(element: Dict) -> str:
+    role = str(element.get("role") or "").strip().lower()
+    return role or _normalized_metadata_type(element) or "element"
+
+
+def _metadata_accessible_name(element: Dict, allow_placeholder: bool = False) -> str:
+    candidates = [
+        element.get("aria_label"),
+        element.get("label_text"),
+        element.get("alt_text"),
+        element.get("text_content"),
+        element.get("title"),
+        element.get("value"),
+    ]
+    if allow_placeholder:
+        candidates.append(element.get("placeholder"))
+
+    for value in candidates:
+        normalized = _truncate_text_hint(str(value or "").strip(), max_len=80)
+        if normalized:
+            return normalized
+    return ""
+
+
+def _metadata_selector(element: Dict) -> str:
+    return str(element.get("css_selector") or element.get("name") or _metadata_role(element) or "").strip()
+
+
+def _empty_metadata_finding(
+    *,
+    element: Dict,
+    image: Image.Image,
+    finding_id: int,
+    title: str,
+    severity: str,
+    category: str,
+    description: str,
+    wcag_status: str,
+    recommendation: str,
+) -> Dict:
+    return {
+        "id": finding_id,
+        "title": title,
+        "severity": severity,
+        "category": category,
+        "description": description,
+        "wcag_status": wcag_status,
+        "contrast_ratio": 0.0,
+        "dominant_dark": "#000000",
+        "dominant_light": "#ffffff",
+        "bounding_box": _metadata_bounding_box(element),
+        "crop_image_base64": _metadata_crop(image, element),
+        "recommendation": recommendation,
+        "evidence_source": "dom-metadata",
+        "selector": _metadata_selector(element),
+        "element_type": _normalized_metadata_type(element),
+        "role": _metadata_role(element),
+    }
+
+
+def _form_accessibility_findings(element_metadata: List[Dict], image: Image.Image, start_id: int) -> List[Dict]:
+    findings: List[Dict] = []
+
+    for element in element_metadata:
+        element_type = _normalized_metadata_type(element)
+        if element_type not in FORM_ELEMENT_TYPES:
+            continue
+
+        input_type = str(element.get("input_type") or "").lower()
+        if input_type in {"hidden", "submit", "button", "reset"}:
+            continue
+
+        strong_name = _metadata_accessible_name(element, allow_placeholder=False)
+        placeholder = str(element.get("placeholder") or "").strip()
+        selector = _metadata_selector(element)
+
+        if not strong_name:
+            if placeholder:
+                findings.append(
+                    _empty_metadata_finding(
+                        element=element,
+                        image=image,
+                        finding_id=start_id + len(findings),
+                        title="form alani placeholder ile etiketlenmis",
+                        severity="medium",
+                        category="form-label",
+                        description=(
+                            f"{selector or 'Form alani'} icin kalici label bulunamadi; placeholder tek basina "
+                            "screen reader ve hata durumlari icin zayif kalabilir."
+                        ),
+                        wcag_status="form-label-risk",
+                        recommendation="Alanda gorunur label, aria-label veya aria-labelledby kullan; placeholder'i sadece ipucu olarak birak.",
+                    )
+                )
+            else:
+                findings.append(
+                    _empty_metadata_finding(
+                        element=element,
+                        image=image,
+                        finding_id=start_id + len(findings),
+                        title="form alani icin erisilebilir label eksik",
+                        severity="high",
+                        category="form-label",
+                        description=f"{selector or 'Form alani'} icin label, aria-label veya aria-labelledby bulunamadi.",
+                        wcag_status="form-label-missing",
+                        recommendation="Form alanini gorunur label veya aria-labelledby ile acikca adlandir.",
+                    )
+                )
+
+        if input_type in {"email", "password", "tel", "url", "search"} and not element.get("autocomplete"):
+            findings.append(
+                _empty_metadata_finding(
+                    element=element,
+                    image=image,
+                    finding_id=start_id + len(findings),
+                    title="form alani icin autocomplete amaci belirsiz",
+                    severity="low",
+                    category="form-autocomplete",
+                    description=f"{input_type or element_type} alani kullanici verisi topluyor ama autocomplete token'i yok.",
+                    wcag_status="input-purpose-risk",
+                    recommendation="Alan amacina gore email, username, current-password, tel veya url gibi autocomplete token'i ekle.",
+                )
+            )
+
+        if element.get("aria_invalid") is True and not element.get("aria_describedby"):
+            findings.append(
+                _empty_metadata_finding(
+                    element=element,
+                    image=image,
+                    finding_id=start_id + len(findings),
+                    title="form hata mesaji alanla iliskili degil",
+                    severity="medium",
+                    category="form-error-message",
+                    description="Alan hatali isaretlenmis ancak hata metnine aria-describedby ile baglanmiyor.",
+                    wcag_status="error-message-link-missing",
+                    recommendation="Hata mesajinin id'sini aria-describedby ile ilgili input'a bagla.",
+                )
+            )
+
+        if len(findings) >= 6:
+            break
+
+    return findings
+
+
+def _accessible_name_findings(element_metadata: List[Dict], image: Image.Image, start_id: int) -> List[Dict]:
+    findings: List[Dict] = []
+
+    for element in element_metadata:
+        element_type = _normalized_metadata_type(element)
+        if element_type not in INTERACTIVE_ACCESSIBLE_NAME_TYPES:
+            continue
+        if element_type in {"checkbox", "radio"} and _metadata_accessible_name(element, allow_placeholder=True):
+            continue
+        if _metadata_accessible_name(element, allow_placeholder=False):
+            continue
+
+        findings.append(
+            _empty_metadata_finding(
+                element=element,
+                image=image,
+                finding_id=start_id + len(findings),
+                title="etkilesimli bilesen icin accessible name eksik",
+                severity="high",
+                category="accessible-name",
+                description=f"{_metadata_selector(element) or element_type} kontrolu screen reader tarafinda net isim uretmiyor.",
+                wcag_status="accessible-name-missing",
+                recommendation="Buton/link icine anlamli metin ekle veya aria-label/aria-labelledby ile amacini belirt.",
+            )
+        )
+
+        if len(findings) >= 5:
+            break
+
+    return findings
+
+
+def _aria_quality_findings(element_metadata: List[Dict], image: Image.Image, start_id: int) -> List[Dict]:
+    findings: List[Dict] = []
+
+    for element in element_metadata:
+        role = _metadata_role(element)
+        element_type = _normalized_metadata_type(element)
+        tab_index = element.get("tab_index")
+
+        if element.get("aria_hidden") is True and element.get("keyboard_focusable") is True:
+            findings.append(
+                _empty_metadata_finding(
+                    element=element,
+                    image=image,
+                    finding_id=start_id + len(findings),
+                    title="aria-hidden olan bilesen odaklanabilir",
+                    severity="high",
+                    category="aria-quality",
+                    description="Screen reader'dan gizlenen bir bilesen klavye ile odaklanabilir gorunuyor.",
+                    wcag_status="aria-hidden-focusable",
+                    recommendation="aria-hidden bileseni tab sirasindan cikar veya gizleme davranisini kaldir.",
+                )
+            )
+
+        if role in {"button", "link"} and element.get("keyboard_focusable") is False:
+            findings.append(
+                _empty_metadata_finding(
+                    element=element,
+                    image=image,
+                    finding_id=start_id + len(findings),
+                    title="ARIA rolu native klavye davranisini tasimiyor",
+                    severity="high",
+                    category="aria-quality",
+                    description=f"{role} rolu verilmis bilesen klavye ile odaklanabilir degil.",
+                    wcag_status="role-keyboard-mismatch",
+                    recommendation="Mumkunse native button/link kullan; degilse tabindex ve keyboard event davranisini ekle.",
+                )
+            )
+
+        if isinstance(tab_index, int) and tab_index > 0:
+            findings.append(
+                _empty_metadata_finding(
+                    element=element,
+                    image=image,
+                    finding_id=start_id + len(findings),
+                    title="pozitif tabindex odak sirasini bozabilir",
+                    severity="medium",
+                    category="keyboard-navigation",
+                    description=f"{element_type or role} bileseninde pozitif tabindex kullanimi dogal odak sirasini bozabilir.",
+                    wcag_status="positive-tabindex-risk",
+                    recommendation="Pozitif tabindex yerine DOM sirasi ve tabindex=0 kullan.",
+                )
+            )
+
+        if len(findings) >= 5:
+            break
+
+    return findings
+
+
+def _heading_order_findings(element_metadata: List[Dict], image: Image.Image, start_id: int) -> List[Dict]:
+    headings = [
+        element for element in element_metadata
+        if _normalized_metadata_type(element) == "heading" and isinstance(element.get("heading_level"), int)
+    ]
+    headings.sort(key=lambda item: (int(item.get("y") or 0), int(item.get("x") or 0)))
+    findings: List[Dict] = []
+
+    if not headings:
+        return findings
+
+    first_level = int(headings[0].get("heading_level") or 0)
+    if first_level > 1:
+        findings.append(
+            _empty_metadata_finding(
+                element=headings[0],
+                image=image,
+                finding_id=start_id + len(findings),
+                title="sayfa ilk basligi h1 ile baslamiyor",
+                severity="medium",
+                category="heading-order",
+                description=f"Ilk tespit edilen heading h{first_level}; sayfa yapisi screen reader icin eksik hiyerarsi verebilir.",
+                wcag_status="heading-start-risk",
+                recommendation="Sayfanin ana basligini h1 yap ve alt basliklari mantikli hiyerarsiyle ilerlet.",
+            )
+        )
+
+    previous_level = first_level
+    for element in headings[1:]:
+        current_level = int(element.get("heading_level") or previous_level)
+        if current_level - previous_level > 1:
+            findings.append(
+                _empty_metadata_finding(
+                    element=element,
+                    image=image,
+                    finding_id=start_id + len(findings),
+                    title="heading seviyeleri sirali ilerlemiyor",
+                    severity="medium",
+                    category="heading-order",
+                    description=f"Heading h{previous_level} seviyesinden h{current_level} seviyesine atliyor.",
+                    wcag_status="heading-skip-risk",
+                    recommendation="Baslik seviyelerini h1, h2, h3 gibi atlamadan hiyerarsik kullan.",
+                )
+            )
+            break
+        previous_level = current_level
+
+    return findings
+
+
+def _impact_score_for_finding(finding: Dict) -> int:
+    severity_base = {"high": 85, "medium": 62, "low": 34, "pass": 0}.get(str(finding.get("severity") or "").lower(), 45)
+    category_bonus = {
+        "form-label": 7,
+        "accessible-name": 8,
+        "keyboard-navigation": 8,
+        "aria-quality": 7,
+        "alt-text": 5,
+        "heading-order": 3,
+    }.get(str(finding.get("category") or ""), 0)
+    return max(0, min(100, severity_base + category_bonus))
+
+
+def _enrich_accessibility_findings(findings: List[Dict]) -> List[Dict]:
+    enriched = []
+    for index, finding in enumerate(findings, start=1):
+        category = str(finding.get("category") or "")
+        selector = finding.get("selector") or finding.get("element_type") or finding.get("affected_role")
+        source = finding.get("evidence_source") or ("visual-analysis" if category in {"contrast", "component-contrast", "touch-target", "focus-visibility"} else "rule-check")
+        finding["id"] = index
+        finding["wcag_refs"] = WCAG_REFS_BY_CATEGORY.get(category, ["WCAG review required"])
+        finding["impact_score"] = _impact_score_for_finding(finding)
+        finding["affected_role"] = str(finding.get("role") or finding.get("element_type") or category.replace("-", " ") or "accessibility")
+        finding["test_suggestion"] = TEST_SUGGESTION_BY_CATEGORY.get(category, "Bu bulgu icin manuel ve otomatik regresyon kontrolu ekle.")
+        finding["evidence"] = {
+            "source": source,
+            "selector": selector,
+            "element_type": finding.get("element_type"),
+            "role": finding.get("role"),
+            "category": category,
+            "wcag_status": finding.get("wcag_status"),
+            "wcag_refs": finding["wcag_refs"],
+            "contrast_ratio": finding.get("contrast_ratio"),
+            "bounding_box": finding.get("bounding_box"),
+            "why_flagged": finding.get("description"),
+            "recommended_action": finding.get("recommendation"),
+            "validation_steps": [
+                "Bulgu crop/overlay alanini ekranda kontrol et.",
+                "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+                "WCAG referansindaki kural ile davranisi karsilastir.",
+            ],
+        }
+        enriched.append(finding)
+    return enriched
+
+
+def _accessibility_score_breakdown(findings: List[Dict], wcag_summary: Dict, element_metadata: List[Dict]) -> Dict[str, int]:
+    categories = {str(item.get("category") or "") for item in findings}
+    visual_penalty = min(55, wcag_summary.get("fail", 0) * 8 + sum(1 for item in findings if item.get("category") in {"contrast", "component-contrast"}) * 6)
+    semantic_penalty = min(55, sum(1 for item in findings if item.get("category") in {"alt-text", "accessible-name", "heading-order"}) * 14)
+    keyboard_penalty = min(60, sum(1 for item in findings if item.get("category") in {"keyboard-navigation", "focus-visibility", "touch-target"}) * 12)
+    form_penalty = min(65, sum(1 for item in findings if str(item.get("category") or "").startswith("form-")) * 16)
+    aria_penalty = min(60, sum(1 for item in findings if item.get("category") == "aria-quality") * 18)
+
+    if element_metadata and not any(category in categories for category in {"form-label", "accessible-name", "aria-quality", "heading-order"}):
+        semantic_penalty = max(0, semantic_penalty - 4)
+
+    return {
+        "visual_contrast": max(0, 100 - visual_penalty),
+        "semantic_structure": max(0, 100 - semantic_penalty),
+        "keyboard_support": max(0, 100 - keyboard_penalty),
+        "form_accessibility": max(0, 100 - form_penalty),
+        "aria_quality": max(0, 100 - aria_penalty),
+    }
+
+
+def _accessibility_summary(score_breakdown: Dict[str, int], findings: List[Dict]) -> Dict[str, Any]:
+    high = sum(1 for item in findings if item.get("severity") == "high")
+    medium = sum(1 for item in findings if item.get("severity") == "medium")
+    weakest = min(score_breakdown.items(), key=lambda item: item[1])[0] if score_breakdown else "visual_contrast"
+    return {
+        "risk_level": "high" if high else ("medium" if medium else "low"),
+        "high": high,
+        "medium": medium,
+        "weakest_area": weakest,
+        "summary": f"{len(findings)} accessibility bulgusu var; en zayif alan {weakest.replace('_', ' ')}.",
+    }
+
+
+def _accessibility_test_suggestions(findings: List[Dict]) -> List[Dict[str, Any]]:
+    suggestions = []
+    seen = set()
+    for finding in sorted(findings, key=lambda item: item.get("impact_score", 0), reverse=True):
+        category = str(finding.get("category") or "")
+        if category in seen:
+            continue
+        seen.add(category)
+        suggestions.append(
+            {
+                "category": category,
+                "priority": finding.get("severity"),
+                "title": finding.get("title"),
+                "suggestion": finding.get("test_suggestion"),
+            }
+        )
+        if len(suggestions) >= 8:
+            break
+    return suggestions
+
+
+def _keyboard_profile(element_metadata: List[Dict], findings: List[Dict]) -> Dict[str, Any]:
+    focusable = [item for item in element_metadata if item.get("keyboard_focusable") is True]
+    positive_tabindex = [item for item in element_metadata if isinstance(item.get("tab_index"), int) and item.get("tab_index") > 0]
+    return {
+        "focusable_count": len(focusable),
+        "positive_tabindex_count": len(positive_tabindex),
+        "keyboard_findings": sum(1 for item in findings if item.get("category") in {"keyboard-navigation", "focus-visibility", "touch-target"}),
+        "first_focusable": _metadata_selector(focusable[0]) if focusable else None,
+    }
+
+
 def _intersection_ratio(a: ComponentCandidate, b: ComponentCandidate) -> float:
     intersect_x = max(0, min(a.x + a.width, b.x + b.width) - max(a.x, b.x))
     intersect_y = max(0, min(a.y + a.height, b.y + b.height) - max(a.y, b.y))
@@ -2081,6 +2545,34 @@ class AccessibilityEngine:
         )
         findings.extend(keyboard_navigation_findings)
 
+        form_accessibility_findings = _form_accessibility_findings(
+            element_metadata=element_metadata,
+            image=image,
+            start_id=len(findings) + 1,
+        )
+        findings.extend(form_accessibility_findings)
+
+        accessible_name_findings = _accessible_name_findings(
+            element_metadata=element_metadata,
+            image=image,
+            start_id=len(findings) + 1,
+        )
+        findings.extend(accessible_name_findings)
+
+        aria_quality_findings = _aria_quality_findings(
+            element_metadata=element_metadata,
+            image=image,
+            start_id=len(findings) + 1,
+        )
+        findings.extend(aria_quality_findings)
+
+        heading_order_findings = _heading_order_findings(
+            element_metadata=element_metadata,
+            image=image,
+            start_id=len(findings) + 1,
+        )
+        findings.extend(heading_order_findings)
+
         if not findings:
             weak_tiles = [tile for tile in tiles if tile.severity != "pass"]
             weak_tiles.sort(key=lambda tile: tile.contrast_ratio)
@@ -2115,6 +2607,8 @@ class AccessibilityEngine:
                         ),
                     }
                 )
+
+        findings = _enrich_accessibility_findings(findings)
 
         total_tiles = len(tiles)
         score = max(0, min(100, round((passing_tiles / total_tiles) * 100)))
@@ -2164,6 +2658,19 @@ class AccessibilityEngine:
             recommendations.append("Gorseller icin anlamli alt-text veya aria-label ekle.")
         if keyboard_navigation_findings:
             recommendations.append("Etkilesimli bilesenleri klavye ile erisilebilir ve gorunur focus durumuna sahip hale getir.")
+        if form_accessibility_findings:
+            recommendations.append("Form alanlari icin kalici label, hata mesaji iliskisi ve uygun autocomplete tokenlarini tamamla.")
+        if accessible_name_findings:
+            recommendations.append("Buton ve link gibi kontrollerin screen reader tarafinda net isim urettigini dogrula.")
+        if aria_quality_findings:
+            recommendations.append("ARIA rollerini native davranisla uyumlu kullan; gizli bilesenleri tab sirasindan cikar.")
+        if heading_order_findings:
+            recommendations.append("Sayfa baslik hiyerarsisini h1'den baslayip seviyeleri atlamadan ilerleyecek sekilde duzenle.")
+
+        score_breakdown = _accessibility_score_breakdown(findings, wcag_summary, element_metadata)
+        accessibility_summary = _accessibility_summary(score_breakdown, findings)
+        test_suggestions = _accessibility_test_suggestions(findings)
+        keyboard_profile = _keyboard_profile(element_metadata, findings)
 
         return {
             "platform": platform,
@@ -2181,4 +2688,8 @@ class AccessibilityEngine:
                 "source_image_base64": image_base64.split(",", 1)[1] if image_base64.strip().startswith("data:") and "," in image_base64 else image_base64,
             },
             "recommendations": recommendations,
+            "score_breakdown": score_breakdown,
+            "accessibility_summary": accessibility_summary,
+            "test_suggestions": test_suggestions,
+            "keyboard_profile": keyboard_profile,
         }
