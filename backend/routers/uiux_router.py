@@ -67,6 +67,118 @@ def _save_uiux_record(db: Session, result: dict, *, source_label: str | None = N
         print(f"UI/UX history save failed: {exc}")
 
 
+def _latest_project_uiux_record(db: Session, project_id: int) -> UiuxAnalysisRecord | None:
+    records = (
+        db.query(UiuxAnalysisRecord)
+        .order_by(UiuxAnalysisRecord.created_at.desc(), UiuxAnalysisRecord.id.desc())
+        .limit(80)
+        .all()
+    )
+    for record in records:
+        if _payload_project_id(record.analysis_payload) == project_id:
+            return record
+    return None
+
+
+def _image_difference_percent(current_base64: str | None, previous_base64: str | None) -> float | None:
+    if not current_base64 or not previous_base64:
+        return None
+    try:
+        current = Image.open(io.BytesIO(base64.b64decode(current_base64))).convert("RGB").resize((96, 96))
+        previous = Image.open(io.BytesIO(base64.b64decode(previous_base64))).convert("RGB").resize((96, 96))
+        current_pixels = list(current.getdata())
+        previous_pixels = list(previous.getdata())
+        total = 0
+        for current_rgb, previous_rgb in zip(current_pixels, previous_pixels):
+            total += sum(abs(a - b) for a, b in zip(current_rgb, previous_rgb)) / 3
+        return round((total / max(len(current_pixels), 1)) / 255 * 100, 2)
+    except Exception:
+        return None
+
+
+def _compare_uiux_with_baseline(current: dict, baseline_record: UiuxAnalysisRecord | None) -> dict:
+    if not baseline_record:
+        return {
+            "status": "no_baseline",
+            "summary": "Bu proje icin onceki UI/UX kaydi bulunamadigi icin regression karsilastirmasi yapilmadi.",
+            "baseline_record_id": None,
+            "current_score": int(current.get("overall_score") or 0),
+            "previous_score": None,
+            "score_delta": None,
+            "pixel_change_percent": None,
+            "regressions": [],
+            "improvements": [],
+            "recommendation": "Ayni proje altinda ikinci bir screenshot analizi calistirildiginda UX metrik farklari raporlanir.",
+        }
+
+    previous = _normalize_uiux_payload(baseline_record.analysis_payload or {})
+    current_breakdown = current.get("score_breakdown") or {}
+    previous_breakdown = previous.get("score_breakdown") or {}
+    current_artifacts = current.get("artifacts") or {}
+    previous_artifacts = previous.get("artifacts") or {}
+
+    metrics = [
+        ("overall_score", "Overall UX", int(current.get("overall_score") or 0), int(previous.get("overall_score") or 0), "higher_better"),
+        ("task_completion_score", "Task completion", int(current_breakdown.get("task_completion_score") or current.get("overall_score") or 0), int(previous_breakdown.get("task_completion_score") or previous.get("overall_score") or 0), "higher_better"),
+        ("color_consistency", "Color consistency", int(current_breakdown.get("color_consistency") or 0), int(previous_breakdown.get("color_consistency") or 0), "higher_better"),
+        ("design_token_consistency", "Design token consistency", int(current_breakdown.get("design_token_consistency") or 0), int(previous_breakdown.get("design_token_consistency") or 0), "higher_better"),
+        ("spacing_consistency", "Spacing consistency", int(current_breakdown.get("spacing_consistency") or 0), int(previous_breakdown.get("spacing_consistency") or 0), "higher_better"),
+        ("persona_risk_score", "Persona risk", int(current_breakdown.get("persona_risk_score") or 0), int(previous_breakdown.get("persona_risk_score") or 0), "lower_better"),
+        ("task_friction_score", "Task friction", int(current_breakdown.get("task_friction_score") or 0), int(previous_breakdown.get("task_friction_score") or 0), "lower_better"),
+    ]
+
+    regressions = []
+    improvements = []
+    for key, label, current_value, previous_value, direction in metrics:
+        delta = current_value - previous_value
+        regressed = delta <= -8 if direction == "higher_better" else delta >= 8
+        improved = delta >= 8 if direction == "higher_better" else delta <= -8
+        item = {
+            "metric": key,
+            "label": label,
+            "previous": previous_value,
+            "current": current_value,
+            "delta": delta,
+            "direction": direction,
+        }
+        if regressed:
+            regressions.append(item)
+        elif improved:
+            improvements.append(item)
+
+    pixel_change = _image_difference_percent(
+        current_artifacts.get("source_image_base64"),
+        previous_artifacts.get("source_image_base64"),
+    )
+    status = "regressed" if regressions else "improved" if improvements else "stable"
+    if pixel_change is not None and pixel_change >= 18 and not regressions:
+        status = "changed"
+
+    if regressions:
+        summary = f"{len(regressions)} UX metriğinde gerileme bulundu; en belirgin sinyal {regressions[0]['label']}."
+        recommendation = "Gerileyen metrikleri ilgili UI/UX action kartlariyla birlikte incele ve onceki screenshot ile yeni tasarimi karsilastir."
+    elif improvements:
+        summary = f"{len(improvements)} UX metriğinde iyilesme bulundu; kalite sinyali olumlu."
+        recommendation = "Iyilesen metrikleri koru; regression testini sonraki tasarim degisikliklerinde tekrar calistir."
+    else:
+        summary = "Onceki UI/UX kaydina gore belirgin metrik gerilemesi bulunmadi."
+        recommendation = "Ayni ekran icin daha buyuk gorsel degisikliklerde regression kontrolunu tekrar calistir."
+
+    return {
+        "status": status,
+        "summary": summary,
+        "baseline_record_id": baseline_record.id,
+        "baseline_created_at": baseline_record.created_at.isoformat() if baseline_record.created_at else None,
+        "current_score": int(current.get("overall_score") or 0),
+        "previous_score": int(previous.get("overall_score") or 0),
+        "score_delta": int(current.get("overall_score") or 0) - int(previous.get("overall_score") or 0),
+        "pixel_change_percent": pixel_change,
+        "regressions": regressions,
+        "improvements": improvements,
+        "recommendation": recommendation,
+    }
+
+
 def _normalize_uiux_payload(payload: dict) -> dict:
     normalized = dict(payload or {})
     overall_score = int(normalized.get("overall_score") or 100)
@@ -76,6 +188,15 @@ def _normalize_uiux_payload(payload: dict) -> dict:
     normalized.setdefault("consistency_score", int(normalized.get("layout_balance_score") or overall_score))
     normalized.setdefault("friction_score", overall_score)
     normalized.setdefault("focus_score", overall_score)
+    normalized.setdefault("requested_platform", normalized.get("platform", "web"))
+    normalized.setdefault("detected_platform", normalized.get("platform", "web"))
+    normalized.setdefault("platform_profile", f"{normalized.get('platform', 'web')}-legacy")
+    normalized.setdefault("platform_confidence", 60)
+    normalized.setdefault("platform_reason", "Kayit eski UI/UX analiz formatindan geldigi icin platform bilgisi varsayilan olarak tamamlandi.")
+    normalized.setdefault("platform_rules_applied", [])
+    normalized.setdefault("color_intelligence", (normalized.get("image_processing_metrics") or {}).get("color_intelligence") or {})
+    normalized.setdefault("design_tokens", (normalized.get("image_processing_metrics") or {}).get("design_tokens") or {})
+    normalized.setdefault("visual_regression", {})
     normalized.setdefault("ai_critic_summary", "Kayit eski bir UI/UX analizinden geldigi icin AI critic ozeti varsayilan olarak dolduruldu.")
     normalized.setdefault(
         "score_summary",
@@ -157,6 +278,10 @@ def _run_uiux_image_impl(request: schemas.UiuxAnalysisRequest, db: Session) -> d
     if request.project_id is not None:
         result["project_id"] = request.project_id
         result["project_name"] = project.name if project else None
+        baseline_record = _latest_project_uiux_record(db, request.project_id)
+        result["visual_regression"] = _compare_uiux_with_baseline(result, baseline_record)
+    else:
+        result["visual_regression"] = _compare_uiux_with_baseline(result, None)
     source_label = f"{project.name} UI/UX screenshot analizi" if project else "Manuel screenshot analizi"
     _save_uiux_record(db, result, source_label=source_label)
     return result

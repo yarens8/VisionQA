@@ -1,0 +1,78 @@
+[
+  {
+    "id": "final_report_module_breakdown",
+    "module": "final_report",
+    "feature": "Aggregate module evidence into Module Breakdown",
+    "input": {
+      "project_name": "DEMOQA",
+      "requires_project_bound_records": true
+    },
+    "expected": {
+      "must_include_modules": ["autonomous", "security", "accessibility", "uiux", "api", "database", "performance", "mobile", "dataset"],
+      "minimum_modules_with_records": 6
+    },
+    "metrics": ["module_count", "records_count", "findings_count", "overall_score"],
+    "screenshot": {
+      "required": true,
+      "route": "/projects",
+      "filename": "final_report_module_breakdown.png"
+    }
+  },
+  {
+    "id": "final_report_cross_module_correlation",
+    "module": "final_report",
+    "feature": "Show cross-module correlations across shared targets",
+    "input": {
+      "project_name": "DEMOQA",
+      "requires_project_bound_records": true
+    },
+    "expected": {
+      "minimum_correlations": 1,
+      "must_include_correlation_types_any": ["security-test", "api-db", "api-performance", "accessibility-uiux"]
+    },
+    "metrics": ["correlation_count", "correlation_types", "action_count"],
+    "screenshot": {
+      "required": true,
+      "route": "/projects",
+      "filename": "final_report_correlation.png"
+    }
+  },
+  {
+    "id": "final_report_jira_drafts",
+    "module": "final_report",
+    "feature": "Persist Jira-like drafts with module-specific acceptance criteria",
+    "input": {
+      "project_name": "DEMOQA",
+      "requires_existing_actions": true
+    },
+    "expected": {
+      "minimum_jira_drafts": 1,
+      "checklist_persists": true
+    },
+    "metrics": ["jira_draft_count", "checklist_items", "completed_checklist_items"],
+    "screenshot": {
+      "required": true,
+      "route": "/projects",
+      "filename": "final_report_jira_drafts.png"
+    }
+  },
+  {
+    "id": "final_report_export_json",
+    "module": "final_report",
+    "feature": "Export full project report as structured JSON",
+    "input": {
+      "project_name": "DEMOQA",
+      "export": "json"
+    },
+    "expected": {
+      "must_include_top_level_keys": ["project", "summary", "module_breakdown", "evidence_matrix", "paper_alignment", "jira_drafts"],
+      "must_include_module_keys": ["api", "database", "performance", "accessibility", "uiux", "mobile"]
+    },
+    "metrics": ["json_key_coverage", "export_success", "record_counts"],
+    "screenshot": {
+      "required": true,
+      "route": "/projects",
+      "filename": "final_report_export_json.png"
+    }
+  }
+]

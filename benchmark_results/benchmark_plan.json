@@ -1,0 +1,621 @@
+{
+  "generated_at": "2026-05-23T22:01:06.752146+00:00",
+  "total_modules": 10,
+  "total_cases": 33,
+  "modules": {
+    "accessibility": {
+      "case_count": 3,
+      "features": [
+        "Detect accessible name, contrast, focus, and structure issues from URL",
+        "Detect form label and keyboard focus risks on a login form",
+        "Detect visual contrast issues from a screenshot"
+      ],
+      "cases": [
+        {
+          "case_id": "accessibility_demoqa_url_scan",
+          "feature": "Detect accessible name, contrast, focus, and structure issues from URL",
+          "metrics": [
+            "overall_score",
+            "findings_count",
+            "keyboard_profile",
+            "score_breakdown"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/accessibility",
+            "filename": "accessibility_demoqa_result.png"
+          },
+          "source_file": "accessibility_cases.json"
+        },
+        {
+          "case_id": "accessibility_login_form_labels",
+          "feature": "Detect form label and keyboard focus risks on a login form",
+          "metrics": [
+            "form_accessibility",
+            "keyboard_navigation",
+            "findings_count"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/accessibility",
+            "filename": "accessibility_saucedemo_form_result.png"
+          },
+          "source_file": "accessibility_cases.json"
+        },
+        {
+          "case_id": "accessibility_visual_contrast_screenshot",
+          "feature": "Detect visual contrast issues from a screenshot",
+          "metrics": [
+            "contrast_score",
+            "priority_findings",
+            "component_summary"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/accessibility",
+            "filename": "accessibility_visual_contrast_result.png"
+          },
+          "source_file": "accessibility_cases.json"
+        }
+      ]
+    },
+    "api": {
+      "case_count": 4,
+      "features": [
+        "Validate successful endpoint contract",
+        "Detect missing expected response fields",
+        "Detect response content-type mismatch",
+        "Detect slow API response"
+      ],
+      "cases": [
+        {
+          "case_id": "api_happy_path_contract",
+          "feature": "Validate successful endpoint contract",
+          "metrics": [
+            "status_code",
+            "duration_ms",
+            "overall_score",
+            "findings_count"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/test-lab",
+            "filename": "api_happy_path_contract_result.png"
+          },
+          "source_file": "api_cases.json"
+        },
+        {
+          "case_id": "api_schema_mismatch_detection",
+          "feature": "Detect missing expected response fields",
+          "metrics": [
+            "findings_count",
+            "schema_mismatch_detected",
+            "overall_score",
+            "api_actions"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/test-lab",
+            "filename": "api_schema_mismatch_result.png"
+          },
+          "source_file": "api_cases.json"
+        },
+        {
+          "case_id": "api_response_type_mismatch_detection",
+          "feature": "Detect response content-type mismatch",
+          "metrics": [
+            "response_type",
+            "findings_count",
+            "contract_signals"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/test-lab",
+            "filename": "api_response_type_mismatch_result.png"
+          },
+          "source_file": "api_cases.json"
+        },
+        {
+          "case_id": "api_slow_response_detection",
+          "feature": "Detect slow API response",
+          "metrics": [
+            "duration_ms",
+            "performance_signals",
+            "api_actions"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/test-lab",
+            "filename": "api_slow_response_result.png"
+          },
+          "source_file": "api_cases.json"
+        }
+      ]
+    },
+    "autonomous": {
+      "case_count": 4,
+      "features": [
+        "Generate login-specific cases on a real login page",
+        "Avoid login-only cases on a non-login landing page",
+        "Generate form input and validation protocols",
+        "Convert XSS or SQL ideas into security review when no input exists"
+      ],
+      "cases": [
+        {
+          "case_id": "autonomous_login_page_case_generation",
+          "feature": "Generate login-specific cases on a real login page",
+          "metrics": [
+            "case_count",
+            "url_relevance",
+            "protocol_quality",
+            "visual_provider_used"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/projects",
+            "filename": "autonomous_saucedemo_cases.png"
+          },
+          "source_file": "autonomous_cases.json"
+        },
+        {
+          "case_id": "autonomous_non_login_page_no_login_selectors",
+          "feature": "Avoid login-only cases on a non-login landing page",
+          "metrics": [
+            "invalid_case_count",
+            "url_relevance",
+            "click_case_count",
+            "protocol_quality"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/projects",
+            "filename": "autonomous_demoqa_navigation_cases.png"
+          },
+          "source_file": "autonomous_cases.json"
+        },
+        {
+          "case_id": "autonomous_form_page_input_protocols",
+          "feature": "Generate form input and validation protocols",
+          "metrics": [
+            "input_case_count",
+            "protocol_quality",
+            "selector_quality",
+            "case_count"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/projects",
+            "filename": "autonomous_textbox_form_cases.png"
+          },
+          "source_file": "autonomous_cases.json"
+        },
+        {
+          "case_id": "autonomous_input_absent_security_review",
+          "feature": "Convert XSS or SQL ideas into security review when no input exists",
+          "metrics": [
+            "unsafe_payload_case_count",
+            "security_review_count",
+            "protocol_quality"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/projects",
+            "filename": "autonomous_security_review_cases.png"
+          },
+          "source_file": "autonomous_cases.json"
+        }
+      ]
+    },
+    "database": {
+      "case_count": 3,
+      "features": [
+        "Detect SELECT star query-shape risk",
+        "Validate expected DB columns",
+        "Produce DB/API consistency signal"
+      ],
+      "cases": [
+        {
+          "case_id": "database_select_star_query_shape",
+          "feature": "Detect SELECT star query-shape risk",
+          "metrics": [
+            "overall_score",
+            "findings_count",
+            "schema_smells",
+            "db_actions"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/database",
+            "filename": "database_select_star_result.png"
+          },
+          "source_file": "database_cases.json"
+        },
+        {
+          "case_id": "database_expected_column_check",
+          "feature": "Validate expected DB columns",
+          "metrics": [
+            "overall_score",
+            "detected_columns",
+            "findings_count"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/database",
+            "filename": "database_expected_columns_result.png"
+          },
+          "source_file": "database_cases.json"
+        },
+        {
+          "case_id": "database_api_db_contract_signal",
+          "feature": "Produce DB/API consistency signal",
+          "metrics": [
+            "contract_signals",
+            "findings_count",
+            "db_actions"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/database",
+            "filename": "database_api_db_contract_result.png"
+          },
+          "source_file": "database_cases.json"
+        }
+      ]
+    },
+    "dataset": {
+      "case_count": 3,
+      "features": [
+        "Detect records without usable labels or annotations",
+        "Detect inconsistent labels for the same semantic text",
+        "Detect duplicate images and split leakage"
+      ],
+      "cases": [
+        {
+          "case_id": "dataset_missing_annotations",
+          "feature": "Detect records without usable labels or annotations",
+          "metrics": [
+            "overall_score",
+            "findings_count",
+            "grade",
+            "records_count"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/dataset",
+            "filename": "dataset_missing_annotations_result.png"
+          },
+          "source_file": "dataset_cases.json"
+        },
+        {
+          "case_id": "dataset_label_consistency",
+          "feature": "Detect inconsistent labels for the same semantic text",
+          "metrics": [
+            "label_consistency",
+            "findings_count",
+            "model_impact"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/dataset",
+            "filename": "dataset_label_consistency_result.png"
+          },
+          "source_file": "dataset_cases.json"
+        },
+        {
+          "case_id": "dataset_duplicate_and_split_balance",
+          "feature": "Detect duplicate images and split leakage",
+          "metrics": [
+            "duplicate_count",
+            "split_balance_score",
+            "findings_count"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/dataset",
+            "filename": "dataset_duplicate_split_result.png"
+          },
+          "source_file": "dataset_cases.json"
+        }
+      ]
+    },
+    "final_report": {
+      "case_count": 4,
+      "features": [
+        "Aggregate module evidence into Module Breakdown",
+        "Show cross-module correlations across shared targets",
+        "Persist Jira-like drafts with module-specific acceptance criteria",
+        "Export full project report as structured JSON"
+      ],
+      "cases": [
+        {
+          "case_id": "final_report_module_breakdown",
+          "feature": "Aggregate module evidence into Module Breakdown",
+          "metrics": [
+            "module_count",
+            "records_count",
+            "findings_count",
+            "overall_score"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/projects",
+            "filename": "final_report_module_breakdown.png"
+          },
+          "source_file": "final_report_cases.json"
+        },
+        {
+          "case_id": "final_report_cross_module_correlation",
+          "feature": "Show cross-module correlations across shared targets",
+          "metrics": [
+            "correlation_count",
+            "correlation_types",
+            "action_count"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/projects",
+            "filename": "final_report_correlation.png"
+          },
+          "source_file": "final_report_cases.json"
+        },
+        {
+          "case_id": "final_report_jira_drafts",
+          "feature": "Persist Jira-like drafts with module-specific acceptance criteria",
+          "metrics": [
+            "jira_draft_count",
+            "checklist_items",
+            "completed_checklist_items"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/projects",
+            "filename": "final_report_jira_drafts.png"
+          },
+          "source_file": "final_report_cases.json"
+        },
+        {
+          "case_id": "final_report_export_json",
+          "feature": "Export full project report as structured JSON",
+          "metrics": [
+            "json_key_coverage",
+            "export_success",
+            "record_counts"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/projects",
+            "filename": "final_report_export_json.png"
+          },
+          "source_file": "final_report_cases.json"
+        }
+      ]
+    },
+    "mobile": {
+      "case_count": 3,
+      "features": [
+        "Detect small touch target",
+        "Detect primary CTA outside comfortable thumb zone",
+        "Detect dense upper screen and input accessibility risk"
+      ],
+      "cases": [
+        {
+          "case_id": "mobile_touch_target_risk",
+          "feature": "Detect small touch target",
+          "metrics": [
+            "overall_score",
+            "touch_target_findings",
+            "task_completion_friction"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/mobile",
+            "filename": "mobile_touch_target_result.png"
+          },
+          "source_file": "mobile_cases.json"
+        },
+        {
+          "case_id": "mobile_thumb_zone_risk",
+          "feature": "Detect primary CTA outside comfortable thumb zone",
+          "metrics": [
+            "thumb_zone_summary",
+            "findings_count",
+            "recommendations"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/mobile",
+            "filename": "mobile_thumb_zone_result.png"
+          },
+          "source_file": "mobile_cases.json"
+        },
+        {
+          "case_id": "mobile_density_and_input_accessibility",
+          "feature": "Detect dense upper screen and input accessibility risk",
+          "metrics": [
+            "density_score",
+            "input_accessibility",
+            "cross_platform_parity"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/mobile",
+            "filename": "mobile_density_input_result.png"
+          },
+          "source_file": "mobile_cases.json"
+        }
+      ]
+    },
+    "performance": {
+      "case_count": 3,
+      "features": [
+        "Analyze web page performance and perceived quality",
+        "Detect slow API latency as performance action",
+        "Include DB query shape and latency in performance summary"
+      ],
+      "cases": [
+        {
+          "case_id": "performance_web_page_score",
+          "feature": "Analyze web page performance and perceived quality",
+          "metrics": [
+            "overall_score",
+            "technical_score",
+            "perceived_score",
+            "findings_count"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/performance",
+            "filename": "performance_web_page_result.png"
+          },
+          "source_file": "performance_cases.json"
+        },
+        {
+          "case_id": "performance_slow_api_signal",
+          "feature": "Detect slow API latency as performance action",
+          "metrics": [
+            "api_duration_ms",
+            "performance_actions",
+            "overall_score",
+            "grade"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/performance",
+            "filename": "performance_slow_api_result.png"
+          },
+          "source_file": "performance_cases.json"
+        },
+        {
+          "case_id": "performance_db_query_signal",
+          "feature": "Include DB query shape and latency in performance summary",
+          "metrics": [
+            "db_signal_present",
+            "performance_actions",
+            "sample_api_runs"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/performance",
+            "filename": "performance_db_signal_result.png"
+          },
+          "source_file": "performance_cases.json"
+        }
+      ]
+    },
+    "security": {
+      "case_count": 3,
+      "features": [
+        "Detect missing or weak browser security headers",
+        "Detect clickjacking or frame protection risk",
+        "Run controlled active simulation probes"
+      ],
+      "cases": [
+        {
+          "case_id": "security_header_surface_demoqa",
+          "feature": "Detect missing or weak browser security headers",
+          "metrics": [
+            "findings_count",
+            "risk_summary",
+            "headers_observed",
+            "evidence_coverage"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/security",
+            "filename": "security_demoqa_result.png"
+          },
+          "source_file": "security_cases.json"
+        },
+        {
+          "case_id": "security_clickjacking_detection",
+          "feature": "Detect clickjacking or frame protection risk",
+          "metrics": [
+            "findings_count",
+            "priority_actions",
+            "risk_level"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/security",
+            "filename": "security_clickjacking_result.png"
+          },
+          "source_file": "security_cases.json"
+        },
+        {
+          "case_id": "security_active_simulation_signals",
+          "feature": "Run controlled active simulation probes",
+          "metrics": [
+            "executed_count",
+            "blocked_count",
+            "overall_signal",
+            "recommendations"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/security",
+            "filename": "security_active_simulation_result.png"
+          },
+          "source_file": "security_cases.json"
+        }
+      ]
+    },
+    "uiux": {
+      "case_count": 3,
+      "features": [
+        "Measure layout alignment and spacing consistency",
+        "Measure visual clutter, readability, and density",
+        "Predict primary visual focus and CTA dominance"
+      ],
+      "cases": [
+        {
+          "case_id": "uiux_layout_spacing_toolsqa",
+          "feature": "Measure layout alignment and spacing consistency",
+          "metrics": [
+            "layout_alignment",
+            "spacing_consistency",
+            "visual_hierarchy",
+            "evidence_matrix"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/uiux",
+            "filename": "uiux_toolsqa_layout_result.png"
+          },
+          "source_file": "uiux_cases.json"
+        },
+        {
+          "case_id": "uiux_clutter_readability_dense_screen",
+          "feature": "Measure visual clutter, readability, and density",
+          "metrics": [
+            "visual_clutter_score",
+            "readability_score",
+            "responsive_risk",
+            "test_suggestions"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/uiux",
+            "filename": "uiux_dense_screen_result.png"
+          },
+          "source_file": "uiux_cases.json"
+        },
+        {
+          "case_id": "uiux_attention_focus_prediction",
+          "feature": "Predict primary visual focus and CTA dominance",
+          "metrics": [
+            "attention_prediction",
+            "primary_dominance",
+            "focus_path",
+            "numeric_evidence"
+          ],
+          "screenshot": {
+            "required": true,
+            "route": "/uiux",
+            "filename": "uiux_attention_focus_result.png"
+          },
+          "source_file": "uiux_cases.json"
+        }
+      ]
+    }
+  }
+}

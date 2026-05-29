@@ -1,0 +1,64 @@
+[
+  {
+    "id": "security_header_surface_demoqa",
+    "module": "security",
+    "feature": "Detect missing or weak browser security headers",
+    "input": {
+      "url": "https://demoqa.com/",
+      "platform": "web",
+      "headless": true,
+      "full_page": true
+    },
+    "expected": {
+      "must_include_categories": ["header-hardening"],
+      "minimum_findings": 1
+    },
+    "metrics": ["findings_count", "risk_summary", "headers_observed", "evidence_coverage"],
+    "screenshot": {
+      "required": true,
+      "route": "/security",
+      "filename": "security_demoqa_result.png"
+    }
+  },
+  {
+    "id": "security_clickjacking_detection",
+    "module": "security",
+    "feature": "Detect clickjacking or frame protection risk",
+    "input": {
+      "url": "https://the-internet.herokuapp.com/",
+      "platform": "web",
+      "headless": true,
+      "full_page": true
+    },
+    "expected": {
+      "must_include_terms": ["clickjacking", "frame", "X-Frame-Options"],
+      "minimum_findings": 1
+    },
+    "metrics": ["findings_count", "priority_actions", "risk_level"],
+    "screenshot": {
+      "required": true,
+      "route": "/security",
+      "filename": "security_clickjacking_result.png"
+    }
+  },
+  {
+    "id": "security_active_simulation_signals",
+    "module": "security",
+    "feature": "Run controlled active simulation probes",
+    "input": {
+      "url": "https://httpbin.org/get",
+      "platform": "web",
+      "hypotheses": ["xss", "sql-injection", "authorization-bypass"]
+    },
+    "expected": {
+      "minimum_probes": 2,
+      "must_include_probe_types": ["reflection-probe", "sqli-probe"]
+    },
+    "metrics": ["executed_count", "blocked_count", "overall_signal", "recommendations"],
+    "screenshot": {
+      "required": true,
+      "route": "/security",
+      "filename": "security_active_simulation_result.png"
+    }
+  }
+]

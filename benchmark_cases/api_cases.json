@@ -1,0 +1,96 @@
+[
+  {
+    "id": "api_happy_path_contract",
+    "module": "api",
+    "feature": "Validate successful endpoint contract",
+    "input": {
+      "method": "GET",
+      "url": "https://jsonplaceholder.typicode.com/todos/1",
+      "expected_status": 200,
+      "expected_fields": ["userId", "id", "title", "completed"],
+      "expected_response_type": "application/json",
+      "run_negative_checks": true
+    },
+    "expected": {
+      "status_code": 200,
+      "maximum_findings": 0,
+      "minimum_score": 90
+    },
+    "metrics": ["status_code", "duration_ms", "overall_score", "findings_count"],
+    "screenshot": {
+      "required": true,
+      "route": "/test-lab",
+      "filename": "api_happy_path_contract_result.png"
+    }
+  },
+  {
+    "id": "api_schema_mismatch_detection",
+    "module": "api",
+    "feature": "Detect missing expected response fields",
+    "input": {
+      "method": "GET",
+      "url": "https://jsonplaceholder.typicode.com/todos/1",
+      "expected_status": 200,
+      "expected_fields": ["notExistingField"],
+      "expected_response_type": "application/json",
+      "run_negative_checks": true
+    },
+    "expected": {
+      "must_include_categories": ["schema-mismatch"],
+      "minimum_findings": 1
+    },
+    "metrics": ["findings_count", "schema_mismatch_detected", "overall_score", "api_actions"],
+    "screenshot": {
+      "required": true,
+      "route": "/test-lab",
+      "filename": "api_schema_mismatch_result.png"
+    }
+  },
+  {
+    "id": "api_response_type_mismatch_detection",
+    "module": "api",
+    "feature": "Detect response content-type mismatch",
+    "input": {
+      "method": "GET",
+      "url": "https://demoqa.com/",
+      "expected_status": 200,
+      "expected_fields": [],
+      "expected_response_type": "application/json",
+      "run_negative_checks": false
+    },
+    "expected": {
+      "must_include_categories": ["response-type"],
+      "minimum_findings": 1
+    },
+    "metrics": ["response_type", "findings_count", "contract_signals"],
+    "screenshot": {
+      "required": true,
+      "route": "/test-lab",
+      "filename": "api_response_type_mismatch_result.png"
+    }
+  },
+  {
+    "id": "api_slow_response_detection",
+    "module": "api",
+    "feature": "Detect slow API response",
+    "input": {
+      "method": "GET",
+      "url": "https://httpbin.org/delay/2",
+      "expected_status": 200,
+      "expected_fields": [],
+      "expected_response_type": "application/json",
+      "run_negative_checks": false
+    },
+    "expected": {
+      "must_include_categories": ["slow-response"],
+      "minimum_findings": 1
+    },
+    "metrics": ["duration_ms", "performance_signals", "api_actions"],
+    "screenshot": {
+      "required": true,
+      "route": "/test-lab",
+      "filename": "api_slow_response_result.png"
+    }
+  }
+]
+

@@ -1,0 +1,454 @@
+[
+  {
+    "case_id": "mobile_touch_target_risk",
+    "module": "mobile",
+    "feature": "Detect small touch target",
+    "status": "passed",
+    "duration_ms": 4065.28,
+    "error": "",
+    "checks": [
+      "findings=2 minimum=1",
+      "categories=['thumb-zone', 'touch-target'] required=['touch-target']"
+    ],
+    "metrics": {
+      "overall_score": 90,
+      "touch_target_findings": null,
+      "task_completion_friction": 56
+    },
+    "screenshot_route": "/mobile",
+    "screenshot_file": "mobile_touch_target_result.png",
+    "result": {
+      "platform": "android",
+      "overall_score": 90,
+      "overview": "Mobil analiz 2 bulgu uretti. Screen type 'auth' olarak yorumlandi ve mobile UX odakli sinyaller cikarildi.",
+      "ai_interpretation": "En guclu mobil risk dokunma alanlarinda. Kucuk hedefler ozellikle tek elle kullanimda gorev tamamlama hizini dusurur.",
+      "ai_mobile_critic": "Arayuzun ana problemi parmak erisimi ve tap ergonomisi. Kullanici dogru aksiyonu gorup yine de rahat secemeyebilir.",
+      "root_cause_summary": "En baskin kok neden desktop veya genel tasarim tokenlerinin mobile tap hedeflerine uygun olmamasi.",
+      "task_completion_friction": 56,
+      "thumb_zone_summary": "Birincil aksiyon tek elle kullanimin rahat alt erisim bandindan uzak gorunuyor.",
+      "keyboard_overlap_signal": "Bu kosumda klavye cakismasi icin belirgin bir sinyal yok; yine de canli cihazda dogrulama faydali olur.",
+      "safe_area_signal": "Safe-area tarafinda belirgin bir cihaz kenari riski okunmadi.",
+      "gesture_friction_summary": "Bu ekranda gesture friction sinyali sinirli; esas risk dokunma ve yerlesim ergonomisinde toplaniyor.",
+      "context_playbook": [
+        "Primary CTA'nin klavye acildiginda hala gorunur ve erisilebilir kaldigini kontrol et.",
+        "Yardimci aksiyonlarin login gorevini golgelemediginden emin ol.",
+        "OTP / sifre / e-posta alanlarinin tek elle duzgun tamamlandigini test et."
+      ],
+      "cross_platform_parity_summary": "Web'de mantikli olan CTA konumu mobilde erisim acisindan geriye dusuyor; parity ergonomik olarak bozuluyor.",
+      "score_breakdown": {
+        "mobile_ux": 90,
+        "touch_target": 82,
+        "readability": 100,
+        "layout": 100,
+        "interaction_readiness": 78
+      },
+      "context_profile": {
+        "screen_type": "auth",
+        "detected_patterns": [
+          "visual-only"
+        ],
+        "cross_platform_consistency_signal": "Auth ekrani web-mobil aksiyon hiyerarsisi acisindan karsilastirilmali."
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "Dokunma alani kucuk",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Mobil ekranda bu interaktif alan parmak hedefi icin yetersiz olabilir.",
+          "evidence": "button size=40x38",
+          "recommendation": "Tap hedeflerini en az 44x44 px civarina yaklastir ve bosluklarini ac."
+        },
+        {
+          "id": 2,
+          "title": "Birincil aksiyon tek elle erisim bolgesinden uzakta",
+          "severity": "medium",
+          "category": "thumb-zone",
+          "description": "Ana CTA ust bolgede kaldigi icin tek elle kullanimda erisim ve tamamlama hizi zayiflayabilir.",
+          "evidence": "Primary CTA center_y=103 / height=640",
+          "recommendation": "Ana aksiyonu alt erisim bolgesine biraz daha yakinlastir veya destekleyici ikinci CTA'lari yukari tasima."
+        }
+      ],
+      "supported_now": [
+        {
+          "title": "Screenshot analysis",
+          "status": "active",
+          "description": "Mobil ekran goruntusu uzerinden UI/UX ve readability sinyalleri yorumlanir."
+        },
+        {
+          "title": "Metadata-aware analysis",
+          "status": "active",
+          "description": "Appium veya benzeri executor'lardan gelen element metadata'si ile touch target ve context tespiti yapilir."
+        },
+        {
+          "title": "Action readiness",
+          "status": "active",
+          "description": "Tap/swipe gibi mevcut mobile executor aksiyonlari capability katmaninda konumlandirilir."
+        },
+        {
+          "title": "Context-aware mobile UX",
+          "status": "active",
+          "description": "Login, form, feed veya detail benzeri ekran tiplerine gore yorum uretilir."
+        },
+        {
+          "title": "Thumb-zone and keyboard heuristics",
+          "status": "active",
+          "description": "Tek elle erisim, klavye cakismasi ve alt bolge CTA riski icin mobil-ozel sinyaller uretilir."
+        },
+        {
+          "title": "Cross-platform parity hints",
+          "status": "active",
+          "description": "Web ve mobil hiyerarsi/yerlesim farklari icin ilk parity yorumlari sunulur."
+        }
+      ],
+      "next_phase": [
+        {
+          "title": "Live emulator/device farm",
+          "status": "next",
+          "description": "Gercek emulator ve cihaz matrisi ile canli kosum, replay ve oturum yonetimi."
+        },
+        {
+          "title": "Battery/FPS telemetry",
+          "status": "next",
+          "description": "Gercek kaynak tuketimi, frame drop ve startup telemetry katmani."
+        },
+        {
+          "title": "Network shaping",
+          "status": "next",
+          "description": "3G/4G/zayif baglanti ve offline senaryolarinin aktif simulasyonu."
+        },
+        {
+          "title": "Gesture replay intelligence",
+          "status": "next",
+          "description": "Gercek swipe/scroll/tap akisini kaydedip friction ve replay tabanli analiz katmani."
+        }
+      ],
+      "recommendations": [
+        "Button ve link hedeflerini mobil tap standardina gore buyut.",
+        "Ana CTA'yi thumb-friendly alt erisim bandina yaklastir ve tek elle ulasilabilir tut.",
+        "Mobil auth ekraninda primary aksiyonu erken ve baskin konumda tut."
+      ],
+      "project_id": 113,
+      "record_id": 32,
+      "_benchmark_job": {
+        "job_id": 191,
+        "status": "completed",
+        "module_name": "mobile",
+        "target": "Login Screen",
+        "celery_task_id": "c9f83f82-bd8b-40b6-b74f-7eb487795008",
+        "source_record_id": 32,
+        "error_message": null,
+        "created_at": "2026-05-23T21:59:07.774399",
+        "started_at": "2026-05-23T21:59:10.793187",
+        "completed_at": "2026-05-23T21:59:10.809041"
+      }
+    }
+  },
+  {
+    "case_id": "mobile_thumb_zone_risk",
+    "module": "mobile",
+    "feature": "Detect primary CTA outside comfortable thumb zone",
+    "status": "passed",
+    "duration_ms": 4064.42,
+    "error": "",
+    "checks": [
+      "findings=1 minimum=1",
+      "categories=['thumb-zone'] required=['thumb-zone']"
+    ],
+    "metrics": {
+      "thumb_zone_summary": "Birincil aksiyon tek elle kullanimin rahat alt erisim bandindan uzak gorunuyor.",
+      "findings_count": 1,
+      "recommendations": [
+        "Ana CTA'yi thumb-friendly alt erisim bandina yaklastir ve tek elle ulasilabilir tut."
+      ]
+    },
+    "screenshot_route": "/mobile",
+    "screenshot_file": "mobile_thumb_zone_result.png",
+    "result": {
+      "platform": "android",
+      "overall_score": 97,
+      "overview": "Mobil analiz 1 bulgu uretti. Screen type 'checkout' olarak yorumlandi ve mobile UX odakli sinyaller cikarildi.",
+      "ai_interpretation": "checkout tipindeki bu ekran mobilde okunabilirlik ve akis acisindan optimize edilmeye aday gorunuyor.",
+      "ai_mobile_critic": "Arayuzun ana problemi parmak erisimi ve tap ergonomisi. Kullanici dogru aksiyonu gorup yine de rahat secemeyebilir.",
+      "root_cause_summary": "Belirgin tekil bir kok neden yerine mobil density, touch ve readability katmanlari birlikte gozden gecirilmeli.",
+      "task_completion_friction": 30,
+      "thumb_zone_summary": "Birincil aksiyon tek elle kullanimin rahat alt erisim bandindan uzak gorunuyor.",
+      "keyboard_overlap_signal": "Bu ekran form merkezli olmadigi icin klavye cakismasi ana risk olarak gorunmuyor.",
+      "safe_area_signal": "Safe-area tarafinda belirgin bir cihaz kenari riski okunmadi.",
+      "gesture_friction_summary": "Bu ekranda gesture friction sinyali sinirli; esas risk dokunma ve yerlesim ergonomisinde toplaniyor.",
+      "context_playbook": [
+        "Odeme CTA'sinin thumb zone icinde kaldigini kontrol et.",
+        "Toplam, teslimat ve odeme bilgilerinin alt bolgede karmasiklasmadigini incele.",
+        "Klavye odagi ile form/odeme aksiyonunun cakismadigini dogrula."
+      ],
+      "cross_platform_parity_summary": "Web'de mantikli olan CTA konumu mobilde erisim acisindan geriye dusuyor; parity ergonomik olarak bozuluyor.",
+      "score_breakdown": {
+        "mobile_ux": 97,
+        "touch_target": 100,
+        "readability": 100,
+        "layout": 100,
+        "interaction_readiness": 88
+      },
+      "context_profile": {
+        "screen_type": "checkout",
+        "detected_patterns": [
+          "visual-only"
+        ],
+        "cross_platform_consistency_signal": "Temel mobil-web tutarlilik sinyali kabul edilebilir; detayli parity sonraki fazda derinlestirilebilir."
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "Birincil aksiyon tek elle erisim bolgesinden uzakta",
+          "severity": "medium",
+          "category": "thumb-zone",
+          "description": "Ana CTA ust bolgede kaldigi icin tek elle kullanimda erisim ve tamamlama hizi zayiflayabilir.",
+          "evidence": "Primary CTA center_y=102 / height=640",
+          "recommendation": "Ana aksiyonu alt erisim bolgesine biraz daha yakinlastir veya destekleyici ikinci CTA'lari yukari tasima."
+        }
+      ],
+      "supported_now": [
+        {
+          "title": "Screenshot analysis",
+          "status": "active",
+          "description": "Mobil ekran goruntusu uzerinden UI/UX ve readability sinyalleri yorumlanir."
+        },
+        {
+          "title": "Metadata-aware analysis",
+          "status": "active",
+          "description": "Appium veya benzeri executor'lardan gelen element metadata'si ile touch target ve context tespiti yapilir."
+        },
+        {
+          "title": "Action readiness",
+          "status": "active",
+          "description": "Tap/swipe gibi mevcut mobile executor aksiyonlari capability katmaninda konumlandirilir."
+        },
+        {
+          "title": "Context-aware mobile UX",
+          "status": "active",
+          "description": "Login, form, feed veya detail benzeri ekran tiplerine gore yorum uretilir."
+        },
+        {
+          "title": "Thumb-zone and keyboard heuristics",
+          "status": "active",
+          "description": "Tek elle erisim, klavye cakismasi ve alt bolge CTA riski icin mobil-ozel sinyaller uretilir."
+        },
+        {
+          "title": "Cross-platform parity hints",
+          "status": "active",
+          "description": "Web ve mobil hiyerarsi/yerlesim farklari icin ilk parity yorumlari sunulur."
+        }
+      ],
+      "next_phase": [
+        {
+          "title": "Live emulator/device farm",
+          "status": "next",
+          "description": "Gercek emulator ve cihaz matrisi ile canli kosum, replay ve oturum yonetimi."
+        },
+        {
+          "title": "Battery/FPS telemetry",
+          "status": "next",
+          "description": "Gercek kaynak tuketimi, frame drop ve startup telemetry katmani."
+        },
+        {
+          "title": "Network shaping",
+          "status": "next",
+          "description": "3G/4G/zayif baglanti ve offline senaryolarinin aktif simulasyonu."
+        },
+        {
+          "title": "Gesture replay intelligence",
+          "status": "next",
+          "description": "Gercek swipe/scroll/tap akisini kaydedip friction ve replay tabanli analiz katmani."
+        }
+      ],
+      "recommendations": [
+        "Ana CTA'yi thumb-friendly alt erisim bandina yaklastir ve tek elle ulasilabilir tut."
+      ],
+      "project_id": 113,
+      "record_id": 33,
+      "_benchmark_job": {
+        "job_id": 192,
+        "status": "completed",
+        "module_name": "mobile",
+        "target": "Checkout Screen",
+        "celery_task_id": "ffb0a4b9-2bc3-4e1a-8485-92124fe24e59",
+        "source_record_id": 33,
+        "error_message": null,
+        "created_at": "2026-05-23T21:59:11.843162",
+        "started_at": "2026-05-23T21:59:14.854056",
+        "completed_at": "2026-05-23T21:59:14.874055"
+      }
+    }
+  },
+  {
+    "case_id": "mobile_density_and_input_accessibility",
+    "module": "mobile",
+    "feature": "Detect dense upper screen and input accessibility risk",
+    "status": "passed",
+    "duration_ms": 4073.63,
+    "error": "",
+    "checks": [
+      "findings=5 minimum=1",
+      "categories=['thumb-zone', 'touch-target'] any=['density', 'input-accessibility', 'touch-target']"
+    ],
+    "metrics": {
+      "density_score": null,
+      "input_accessibility": null,
+      "cross_platform_parity": null
+    },
+    "screenshot_route": "/mobile",
+    "screenshot_file": "mobile_density_input_result.png",
+    "result": {
+      "platform": "ios",
+      "overall_score": 79,
+      "overview": "Mobil analiz 5 bulgu uretti. Screen type 'search' olarak yorumlandi ve mobile UX odakli sinyaller cikarildi.",
+      "ai_interpretation": "En guclu mobil risk dokunma alanlarinda. Kucuk hedefler ozellikle tek elle kullanimda gorev tamamlama hizini dusurur.",
+      "ai_mobile_critic": "Arayuzun ana problemi parmak erisimi ve tap ergonomisi. Kullanici dogru aksiyonu gorup yine de rahat secemeyebilir.",
+      "root_cause_summary": "En baskin kok neden desktop veya genel tasarim tokenlerinin mobile tap hedeflerine uygun olmamasi.",
+      "task_completion_friction": 100,
+      "thumb_zone_summary": "Birincil aksiyon tek elle kullanimin rahat alt erisim bandindan uzak gorunuyor.",
+      "keyboard_overlap_signal": "Bu ekran form merkezli olmadigi icin klavye cakismasi ana risk olarak gorunmuyor.",
+      "safe_area_signal": "Safe-area tarafinda belirgin bir cihaz kenari riski okunmadi.",
+      "gesture_friction_summary": "Bu ekranda gesture friction sinyali sinirli; esas risk dokunma ve yerlesim ergonomisinde toplaniyor.",
+      "context_playbook": [
+        "Kritik aksiyonlarin alt erisim bolgesinde kalip kalmadigini kontrol et.",
+        "Responsive spacing ve safe-area marjinlerini cihazlar arasi karsilastir.",
+        "Mobilde okunabilirlik ile aksiyon yogunlugunun dengeli oldugunu dogrula."
+      ],
+      "cross_platform_parity_summary": "Web'de mantikli olan CTA konumu mobilde erisim acisindan geriye dusuyor; parity ergonomik olarak bozuluyor.",
+      "score_breakdown": {
+        "mobile_ux": 79,
+        "touch_target": 28,
+        "readability": 100,
+        "layout": 100,
+        "interaction_readiness": 88
+      },
+      "context_profile": {
+        "screen_type": "search",
+        "detected_patterns": [
+          "action-dense"
+        ],
+        "cross_platform_consistency_signal": "Temel mobil-web tutarlilik sinyali kabul edilebilir; detayli parity sonraki fazda derinlestirilebilir."
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "Dokunma alani kucuk",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Mobil ekranda bu interaktif alan parmak hedefi icin yetersiz olabilir.",
+          "evidence": "button size=36x32",
+          "recommendation": "Tap hedeflerini en az 44x44 px civarina yaklastir ve bosluklarini ac."
+        },
+        {
+          "id": 2,
+          "title": "Dokunma alani kucuk",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Mobil ekranda bu interaktif alan parmak hedefi icin yetersiz olabilir.",
+          "evidence": "button size=84x36",
+          "recommendation": "Tap hedeflerini en az 44x44 px civarina yaklastir ve bosluklarini ac."
+        },
+        {
+          "id": 3,
+          "title": "Dokunma alani kucuk",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Mobil ekranda bu interaktif alan parmak hedefi icin yetersiz olabilir.",
+          "evidence": "button size=84x36",
+          "recommendation": "Tap hedeflerini en az 44x44 px civarina yaklastir ve bosluklarini ac."
+        },
+        {
+          "id": 4,
+          "title": "Dokunma alani kucuk",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Mobil ekranda bu interaktif alan parmak hedefi icin yetersiz olabilir.",
+          "evidence": "button size=84x36",
+          "recommendation": "Tap hedeflerini en az 44x44 px civarina yaklastir ve bosluklarini ac."
+        },
+        {
+          "id": 5,
+          "title": "Birincil aksiyon tek elle erisim bolgesinden uzakta",
+          "severity": "medium",
+          "category": "thumb-zone",
+          "description": "Ana CTA ust bolgede kaldigi icin tek elle kullanimda erisim ve tamamlama hizi zayiflayabilir.",
+          "evidence": "Primary CTA center_y=134 / height=640",
+          "recommendation": "Ana aksiyonu alt erisim bolgesine biraz daha yakinlastir veya destekleyici ikinci CTA'lari yukari tasima."
+        }
+      ],
+      "supported_now": [
+        {
+          "title": "Screenshot analysis",
+          "status": "active",
+          "description": "Mobil ekran goruntusu uzerinden UI/UX ve readability sinyalleri yorumlanir."
+        },
+        {
+          "title": "Metadata-aware analysis",
+          "status": "active",
+          "description": "Appium veya benzeri executor'lardan gelen element metadata'si ile touch target ve context tespiti yapilir."
+        },
+        {
+          "title": "Action readiness",
+          "status": "active",
+          "description": "Tap/swipe gibi mevcut mobile executor aksiyonlari capability katmaninda konumlandirilir."
+        },
+        {
+          "title": "Context-aware mobile UX",
+          "status": "active",
+          "description": "Login, form, feed veya detail benzeri ekran tiplerine gore yorum uretilir."
+        },
+        {
+          "title": "Thumb-zone and keyboard heuristics",
+          "status": "active",
+          "description": "Tek elle erisim, klavye cakismasi ve alt bolge CTA riski icin mobil-ozel sinyaller uretilir."
+        },
+        {
+          "title": "Cross-platform parity hints",
+          "status": "active",
+          "description": "Web ve mobil hiyerarsi/yerlesim farklari icin ilk parity yorumlari sunulur."
+        }
+      ],
+      "next_phase": [
+        {
+          "title": "Live emulator/device farm",
+          "status": "next",
+          "description": "Gercek emulator ve cihaz matrisi ile canli kosum, replay ve oturum yonetimi."
+        },
+        {
+          "title": "Battery/FPS telemetry",
+          "status": "next",
+          "description": "Gercek kaynak tuketimi, frame drop ve startup telemetry katmani."
+        },
+        {
+          "title": "Network shaping",
+          "status": "next",
+          "description": "3G/4G/zayif baglanti ve offline senaryolarinin aktif simulasyonu."
+        },
+        {
+          "title": "Gesture replay intelligence",
+          "status": "next",
+          "description": "Gercek swipe/scroll/tap akisini kaydedip friction ve replay tabanli analiz katmani."
+        }
+      ],
+      "recommendations": [
+        "Button ve link hedeflerini mobil tap standardina gore buyut.",
+        "Ana CTA'yi thumb-friendly alt erisim bandina yaklastir ve tek elle ulasilabilir tut."
+      ],
+      "project_id": 113,
+      "record_id": 34,
+      "_benchmark_job": {
+        "job_id": 193,
+        "status": "completed",
+        "module_name": "mobile",
+        "target": "Search Screen",
+        "celery_task_id": "a75c6179-70f9-41ad-b959-8114d60a36e0",
+        "source_record_id": 34,
+        "error_message": null,
+        "created_at": "2026-05-23T21:59:15.907269",
+        "started_at": "2026-05-23T21:59:18.922961",
+        "completed_at": "2026-05-23T21:59:18.930340"
+      }
+    }
+  }
+]

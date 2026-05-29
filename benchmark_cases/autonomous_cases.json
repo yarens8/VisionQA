@@ -1,0 +1,86 @@
+[
+  {
+    "id": "autonomous_login_page_case_generation",
+    "module": "autonomous",
+    "feature": "Generate login-specific cases on a real login page",
+    "input": {
+      "url": "https://www.saucedemo.com/",
+      "platform": "web",
+      "use_screenshot": true
+    },
+    "expected": {
+      "must_include_terms": ["login", "username", "password"],
+      "must_include_step_actions": ["navigate", "type", "click", "verify"],
+      "minimum_cases": 4
+    },
+    "metrics": ["case_count", "url_relevance", "protocol_quality", "visual_provider_used"],
+    "screenshot": {
+      "required": true,
+      "route": "/projects",
+      "filename": "autonomous_saucedemo_cases.png"
+    }
+  },
+  {
+    "id": "autonomous_non_login_page_no_login_selectors",
+    "module": "autonomous",
+    "feature": "Avoid login-only cases on a non-login landing page",
+    "input": {
+      "url": "https://demoqa.com/",
+      "platform": "web",
+      "use_screenshot": true
+    },
+    "expected": {
+      "must_include_terms": ["Elements", "Forms", "Book Store", "navigation"],
+      "must_not_include_terms": ["#user-name", "#password", "#login-button"],
+      "minimum_cases": 4
+    },
+    "metrics": ["invalid_case_count", "url_relevance", "click_case_count", "protocol_quality"],
+    "screenshot": {
+      "required": true,
+      "route": "/projects",
+      "filename": "autonomous_demoqa_navigation_cases.png"
+    }
+  },
+  {
+    "id": "autonomous_form_page_input_protocols",
+    "module": "autonomous",
+    "feature": "Generate form input and validation protocols",
+    "input": {
+      "url": "https://demoqa.com/text-box",
+      "platform": "web",
+      "use_screenshot": true
+    },
+    "expected": {
+      "must_include_step_actions": ["navigate", "type", "click", "verify"],
+      "must_include_terms": ["input", "submit", "validation"],
+      "minimum_cases": 4
+    },
+    "metrics": ["input_case_count", "protocol_quality", "selector_quality", "case_count"],
+    "screenshot": {
+      "required": true,
+      "route": "/projects",
+      "filename": "autonomous_textbox_form_cases.png"
+    }
+  },
+  {
+    "id": "autonomous_input_absent_security_review",
+    "module": "autonomous",
+    "feature": "Convert XSS or SQL ideas into security review when no input exists",
+    "input": {
+      "url": "https://demoqa.com/",
+      "platform": "web",
+      "use_screenshot": true
+    },
+    "expected": {
+      "must_include_terms": ["review", "surface"],
+      "must_not_include_terms": ["<script>", "' OR '1'='1", "input[type='text']"],
+      "minimum_cases": 4
+    },
+    "metrics": ["unsafe_payload_case_count", "security_review_count", "protocol_quality"],
+    "screenshot": {
+      "required": true,
+      "route": "/projects",
+      "filename": "autonomous_security_review_cases.png"
+    }
+  }
+]

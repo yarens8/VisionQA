@@ -1,0 +1,65 @@
+[
+  {
+    "id": "database_select_star_query_shape",
+    "module": "database",
+    "feature": "Detect SELECT star query-shape risk",
+    "input": {
+      "connection_string": "postgresql://visionqa:visionqa_dev_password@localhost:5432/visionqa_db",
+      "query": "SELECT * FROM projects LIMIT 5",
+      "expected_columns": ["id", "name", "created_at"],
+      "api_expected_fields": ["id", "name", "created_at"]
+    },
+    "expected": {
+      "must_include_categories": ["query-shape"],
+      "minimum_findings": 1
+    },
+    "metrics": ["overall_score", "findings_count", "schema_smells", "db_actions"],
+    "screenshot": {
+      "required": true,
+      "route": "/database",
+      "filename": "database_select_star_result.png"
+    }
+  },
+  {
+    "id": "database_expected_column_check",
+    "module": "database",
+    "feature": "Validate expected DB columns",
+    "input": {
+      "connection_string": "postgresql://visionqa:visionqa_dev_password@localhost:5432/visionqa_db",
+      "query": "SELECT id, name, created_at FROM projects LIMIT 5",
+      "expected_columns": ["id", "name", "created_at"],
+      "api_expected_fields": ["id", "name", "created_at"]
+    },
+    "expected": {
+      "minimum_score": 75,
+      "must_not_include_categories": ["missing-column"]
+    },
+    "metrics": ["overall_score", "detected_columns", "findings_count"],
+    "screenshot": {
+      "required": true,
+      "route": "/database",
+      "filename": "database_expected_columns_result.png"
+    }
+  },
+  {
+    "id": "database_api_db_contract_signal",
+    "module": "database",
+    "feature": "Produce DB/API consistency signal",
+    "input": {
+      "connection_string": "postgresql://visionqa:visionqa_dev_password@localhost:5432/visionqa_db",
+      "query": "SELECT id, name FROM projects LIMIT 5",
+      "expected_columns": ["id", "name", "created_at"],
+      "api_expected_fields": ["id", "name", "created_at", "status"]
+    },
+    "expected": {
+      "must_include_categories_any": ["api-db-consistency", "missing-column", "format-consistency"],
+      "minimum_findings": 1
+    },
+    "metrics": ["contract_signals", "findings_count", "db_actions"],
+    "screenshot": {
+      "required": true,
+      "route": "/database",
+      "filename": "database_api_db_contract_result.png"
+    }
+  }
+]

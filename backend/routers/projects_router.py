@@ -1,11 +1,12 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 
 import schemas
 from database import get_db
-from database.models import Project, Page, TestCase, TestStep, PlatformType
+from database.models import Finding, JiraTicketDraft, Project, Page, TestCase, TestRun, TestStep, PlatformType
 from core.agents.case_generator import AICaseGenerator
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -44,9 +45,31 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
-    db.delete(project)
-    db.commit()
+
+    try:
+        test_run_ids = [
+            row[0]
+            for row in db.query(TestRun.id).filter(TestRun.project_id == project_id).all()
+        ]
+        test_case_ids = [
+            row[0]
+            for row in db.query(TestCase.id).filter(TestCase.project_id == project_id).all()
+        ]
+
+        if test_run_ids:
+            db.query(Finding).filter(Finding.test_run_id.in_(test_run_ids)).delete(synchronize_session=False)
+        if test_case_ids:
+            db.query(TestStep).filter(TestStep.test_case_id.in_(test_case_ids)).delete(synchronize_session=False)
+
+        db.query(JiraTicketDraft).filter(JiraTicketDraft.project_id == project_id).delete(synchronize_session=False)
+        db.query(TestRun).filter(TestRun.project_id == project_id).delete(synchronize_session=False)
+        db.query(TestCase).filter(TestCase.project_id == project_id).delete(synchronize_session=False)
+        db.query(Page).filter(Page.project_id == project_id).delete(synchronize_session=False)
+        db.delete(project)
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Project delete failed: {exc}") from exc
     return None
 
 # ============================================

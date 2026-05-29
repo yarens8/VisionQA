@@ -1,0 +1,63 @@
+[
+  {
+    "id": "uiux_layout_spacing_toolsqa",
+    "module": "uiux",
+    "feature": "Measure layout alignment and spacing consistency",
+    "input": {
+      "fixture": "toolsqa_home.png",
+      "platform": "web",
+      "source_type": "screenshot"
+    },
+    "expected": {
+      "must_include_categories_any": ["hierarchy", "whitespace-balance", "section-separation"],
+      "minimum_findings": 1
+    },
+    "metrics": ["layout_alignment", "spacing_consistency", "visual_hierarchy", "evidence_matrix"],
+    "screenshot": {
+      "required": true,
+      "route": "/uiux",
+      "filename": "uiux_toolsqa_layout_result.png"
+    }
+  },
+  {
+    "id": "uiux_clutter_readability_dense_screen",
+    "module": "uiux",
+    "feature": "Measure visual clutter, readability, and density",
+    "input": {
+      "fixture": "dense_dashboard.png",
+      "platform": "web",
+      "source_type": "screenshot"
+    },
+    "expected": {
+      "must_include_categories_any": ["clutter", "readability-flow", "responsive-risk"],
+      "minimum_findings": 1
+    },
+    "metrics": ["visual_clutter_score", "readability_score", "responsive_risk", "test_suggestions"],
+    "screenshot": {
+      "required": true,
+      "route": "/uiux",
+      "filename": "uiux_dense_screen_result.png"
+    }
+  },
+  {
+    "id": "uiux_attention_focus_prediction",
+    "module": "uiux",
+    "feature": "Predict primary visual focus and CTA dominance",
+    "input": {
+      "fixture": "saucedemo_login.png",
+      "platform": "web",
+      "source_type": "screenshot"
+    },
+    "expected": {
+      "must_include_metrics": ["primary_dominance", "attention_score"],
+      "minimum_findings": 1
+    },
+    "metrics": ["attention_prediction", "primary_dominance", "focus_path", "numeric_evidence"],
+    "screenshot": {
+      "required": true,
+      "route": "/uiux",
+      "filename": "uiux_attention_focus_result.png"
+    }
+  }
+]
+

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "mobile_touch_target_risk",
+    "module": "mobile",
+    "feature": "Detect small touch target",
+    "input": {
+      "platform": "android",
+      "screen_name": "Login Screen",
+      "metadata": [
+        {"element_type": "button", "x": 20, "y": 84, "width": 40, "height": 38, "text_content": "Login"},
+        {"element_type": "input", "x": 20, "y": 138, "width": 280, "height": 42, "text_content": "Email address"}
+      ]
+    },
+    "expected": {
+      "must_include_categories": ["touch-target"],
+      "minimum_findings": 1
+    },
+    "metrics": ["overall_score", "touch_target_findings", "task_completion_friction"],
+    "screenshot": {
+      "required": true,
+      "route": "/mobile",
+      "filename": "mobile_touch_target_result.png"
+    }
+  },
+  {
+    "id": "mobile_thumb_zone_risk",
+    "module": "mobile",
+    "feature": "Detect primary CTA outside comfortable thumb zone",
+    "input": {
+      "platform": "android",
+      "screen_name": "Checkout Screen",
+      "metadata": [
+        {"element_type": "button", "x": 20, "y": 80, "width": 280, "height": 44, "text_content": "Continue"},
+        {"element_type": "text", "x": 20, "y": 80, "width": 280, "height": 80, "text_content": "Order summary"}
+      ]
+    },
+    "expected": {
+      "must_include_categories": ["thumb-zone"],
+      "minimum_findings": 1
+    },
+    "metrics": ["thumb_zone_summary", "findings_count", "recommendations"],
+    "screenshot": {
+      "required": true,
+      "route": "/mobile",
+      "filename": "mobile_thumb_zone_result.png"
+    }
+  },
+  {
+    "id": "mobile_density_and_input_accessibility",
+    "module": "mobile",
+    "feature": "Detect dense upper screen and input accessibility risk",
+    "input": {
+      "platform": "ios",
+      "screen_name": "Search Screen",
+      "metadata": [
+        {"element_type": "input", "x": 12, "y": 72, "width": 250, "height": 32, "text_content": ""},
+        {"element_type": "button", "x": 270, "y": 72, "width": 36, "height": 32, "text_content": "Go"},
+        {"element_type": "button", "x": 12, "y": 116, "width": 84, "height": 36, "text_content": "Filter"},
+        {"element_type": "button", "x": 102, "y": 116, "width": 84, "height": 36, "text_content": "Sort"},
+        {"element_type": "button", "x": 192, "y": 116, "width": 84, "height": 36, "text_content": "Map"}
+      ]
+    },
+    "expected": {
+      "must_include_categories_any": ["density", "input-accessibility", "touch-target"],
+      "minimum_findings": 1
+    },
+    "metrics": ["density_score", "input_accessibility", "cross_platform_parity"],
+    "screenshot": {
+      "required": true,
+      "route": "/mobile",
+      "filename": "mobile_density_input_result.png"
+    }
+  }
+]

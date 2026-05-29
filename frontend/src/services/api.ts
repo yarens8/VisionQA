@@ -308,6 +308,12 @@ export interface UiuxAnalysisResponse {
     project_id?: number;
     project_name?: string;
     platform: string;
+    requested_platform?: string;
+    detected_platform?: string;
+    platform_profile?: string;
+    platform_confidence?: number;
+    platform_reason?: string;
+    platform_rules_applied?: string[];
     image: {
         width: number;
         height: number;
@@ -327,6 +333,104 @@ export interface UiuxAnalysisResponse {
     score_summary: UiuxScoreSummary;
     score_breakdown?: Record<string, number>;
     image_processing_metrics?: Record<string, unknown>;
+    color_intelligence?: {
+        palette?: { hex: string; coverage: number; hue?: number; saturation?: number; lightness?: number }[];
+        dominant_palette?: { hex: string; coverage: number; hue?: number; saturation?: number; lightness?: number }[];
+        dominant_contrast_ratio?: number;
+        palette_consistency_score?: number;
+        color_harmony_score?: number;
+        hue_spread?: number;
+        cta_visibility_score?: number;
+        cta_color?: string | null;
+        cta_recommended_fill?: string | null;
+        cta_recommended_text?: string | null;
+        suggested_palette?: { role: string; color: string }[];
+        recommendation?: string;
+    };
+    design_tokens?: {
+        spacing_tokens?: number[];
+        observed_spacing_gaps?: number[];
+        spacing_token_fit_score?: number;
+        spacing_token_deviation_px?: number;
+        spacing_token_violations?: number;
+        font_scale_score?: number;
+        font_proxy_text_regions?: number;
+        small_text_regions?: number;
+        average_text_height_px?: number;
+        radius_consistency_score?: number;
+        radius_bucket_variance?: number;
+        radius_buckets?: number[];
+        button_consistency_score?: number;
+        button_height_variance_px?: number;
+        button_count?: number;
+        design_token_score?: number;
+        recommendation?: string;
+    };
+    task_evaluation?: {
+        task_type: string;
+        task_label: string;
+        confidence: number;
+        task_score: number;
+        friction_score: number;
+        primary_action_label?: string | null;
+        signals: string[];
+        summary: string;
+        recommendation: string;
+        checks: Array<{
+            name: string;
+            status: string;
+            evidence: string;
+        }>;
+    };
+    persona_risk?: {
+        overall_persona_risk: number;
+        summary: string;
+        highest_risk_persona?: {
+            id: string;
+            label: string;
+            risk_score: number;
+            severity: string;
+            reason: string;
+            recommendation: string;
+            signals: string[];
+        };
+        personas: Array<{
+            id: string;
+            label: string;
+            risk_score: number;
+            severity: string;
+            reason: string;
+            recommendation: string;
+            signals: string[];
+        }>;
+    };
+    visual_regression?: {
+        status: string;
+        summary?: string;
+        baseline_record_id?: number | null;
+        baseline_created_at?: string | null;
+        current_score?: number;
+        previous_score?: number | null;
+        score_delta?: number | null;
+        pixel_change_percent?: number | null;
+        regressions?: Array<{
+            metric: string;
+            label: string;
+            previous: number;
+            current: number;
+            delta: number;
+            direction: string;
+        }>;
+        improvements?: Array<{
+            metric: string;
+            label: string;
+            previous: number;
+            current: number;
+            delta: number;
+            direction: string;
+        }>;
+        recommendation?: string;
+    };
     evidence_matrix?: Record<string, unknown>;
     test_suggestions?: {
         category: string;

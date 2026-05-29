@@ -1,0 +1,63 @@
+[
+  {
+    "id": "accessibility_demoqa_url_scan",
+    "module": "accessibility",
+    "feature": "Detect accessible name, contrast, focus, and structure issues from URL",
+    "input": {
+      "url": "https://demoqa.com/",
+      "platform": "web",
+      "source_type": "url"
+    },
+    "expected": {
+      "must_include_categories_any": ["alt-text", "component-contrast", "keyboard-navigation", "heading-structure"],
+      "minimum_findings": 1
+    },
+    "metrics": ["overall_score", "findings_count", "keyboard_profile", "score_breakdown"],
+    "screenshot": {
+      "required": true,
+      "route": "/accessibility",
+      "filename": "accessibility_demoqa_result.png"
+    }
+  },
+  {
+    "id": "accessibility_login_form_labels",
+    "module": "accessibility",
+    "feature": "Detect form label and keyboard focus risks on a login form",
+    "input": {
+      "url": "https://www.saucedemo.com/",
+      "platform": "web",
+      "source_type": "url"
+    },
+    "expected": {
+      "must_include_categories_any": ["form-label", "keyboard-navigation", "component-contrast"],
+      "minimum_findings": 1
+    },
+    "metrics": ["form_accessibility", "keyboard_navigation", "findings_count"],
+    "screenshot": {
+      "required": true,
+      "route": "/accessibility",
+      "filename": "accessibility_saucedemo_form_result.png"
+    }
+  },
+  {
+    "id": "accessibility_visual_contrast_screenshot",
+    "module": "accessibility",
+    "feature": "Detect visual contrast issues from a screenshot",
+    "input": {
+      "fixture": "toolsqa_home.png",
+      "platform": "web",
+      "source_type": "screenshot"
+    },
+    "expected": {
+      "must_include_categories_any": ["component-contrast"],
+      "minimum_findings": 1
+    },
+    "metrics": ["contrast_score", "priority_findings", "component_summary"],
+    "screenshot": {
+      "required": true,
+      "route": "/accessibility",
+      "filename": "accessibility_visual_contrast_result.png"
+    }
+  }
+]
+

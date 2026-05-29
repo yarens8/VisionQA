@@ -1,0 +1,495 @@
+[
+  {
+    "case_id": "api_happy_path_contract",
+    "module": "api",
+    "feature": "Validate successful endpoint contract",
+    "status": "passed",
+    "duration_ms": 46.25,
+    "error": "",
+    "checks": [
+      "status_code=200 expected=200",
+      "findings=0 maximum=0",
+      "score=100 minimum=90"
+    ],
+    "metrics": {
+      "status_code": 200,
+      "duration_ms": 9.78,
+      "overall_score": 100,
+      "findings_count": 0
+    },
+    "screenshot_route": "/test-lab",
+    "screenshot_file": "api_happy_path_contract_result.png",
+    "result": {
+      "method": "GET",
+      "url": "http://127.0.0.1:8002/benchmark-fixtures/api/todos/1",
+      "project_id": 113,
+      "success": true,
+      "status_code": 200,
+      "duration_ms": 9.78,
+      "overall_score": 100,
+      "endpoint_risk_score": 22,
+      "summary": "API analizi 0 bulgu, 2 negatif kontrol ve 2 baglamsal test onerisi uretti. Status 200 ve sure 9.78 ms.",
+      "ai_failure_explanation": "Endpoint bu kosumda temel health ve contract seviyesinde temiz gorunuyor; yine de baglama ozel negatif senaryolarla derinlestirmek faydali olur.",
+      "ai_test_summary": "generic baglaminda en oncelikli testler: Bozuk parametre senaryosu, Beklenmeyen content-type senaryosu",
+      "root_cause_summary": "Belirgin kok neden sinyali yok; bir sonraki adim endpoint'e baglam ozel varyant testleri eklemek.",
+      "endpoint_context": "generic",
+      "response_type": "application/json",
+      "response_size": 78,
+      "score_breakdown": {
+        "health": 100,
+        "validation": 100,
+        "security": 100,
+        "performance": 100,
+        "contract": 100
+      },
+      "evidence_summary": {
+        "contract_signals": 0,
+        "security_signals": 0,
+        "performance_signals": 0,
+        "validation_signals": 0,
+        "availability_signals": 0,
+        "negative_probe_signals": 0,
+        "primary_categories": [],
+        "recommended_modules": [
+          "4.3 UI/UX"
+        ]
+      },
+      "findings": [],
+      "negative_checks": [
+        {
+          "id": 1,
+          "name": "method-discovery",
+          "status": "blocked",
+          "summary": "OPTIONS cagrisi basarisiz veya engelli.",
+          "evidence": "No response"
+        },
+        {
+          "id": 2,
+          "name": "reflection-probe",
+          "status": "clean",
+          "summary": "Probe parametresi response govdesinde gorunmedi.",
+          "evidence": "Status: 200"
+        }
+      ],
+      "generated_tests": [
+        {
+          "id": 1,
+          "title": "Bozuk parametre senaryosu",
+          "category": "validation",
+          "priority": 2,
+          "rationale": "Her endpoint temel validation davranisini tutarli vermelidir.",
+          "suggested_payload": null,
+          "expected_signal": "4xx ve acik hata mesaji"
+        },
+        {
+          "id": 2,
+          "title": "Beklenmeyen content-type senaryosu",
+          "category": "contract",
+          "priority": 3,
+          "rationale": "Response tipi sozlesme ile hizali kalmalidir.",
+          "suggested_payload": null,
+          "expected_signal": "JSON contract korunur"
+        }
+      ],
+      "cross_module_correlation": [
+        {
+          "module": "4.3 UI/UX",
+          "summary": "Bu endpoint'i besleyen form akisi UI/UX ile birlikte gozden gecirilebilir.",
+          "reason": "Arama veya input akislarinda API validation sapmasi olabilir.",
+          "suggested_follow_up": "Ilgili formun hata mesaji ve input guidance kalitesini kontrol et."
+        }
+      ],
+      "raw_result": {
+        "status_code": 200,
+        "success": true,
+        "duration_ms": 9.78,
+        "response_body": {
+          "userId": 1,
+          "id": 1,
+          "title": "VisionQA benchmark todo",
+          "completed": false
+        },
+        "headers": {
+          "date": "Sat, 23 May 2026 21:58:11 GMT",
+          "server": "uvicorn",
+          "content-length": "71",
+          "content-type": "application/json"
+        },
+        "attempts": 1,
+        "timestamp": "2026-05-23T21:58:11.931362"
+      }
+    }
+  },
+  {
+    "case_id": "api_schema_mismatch_detection",
+    "module": "api",
+    "feature": "Detect missing expected response fields",
+    "status": "passed",
+    "duration_ms": 32.11,
+    "error": "",
+    "checks": [
+      "findings=1 minimum=1",
+      "categories=['contract', 'schema-mismatch', 'validation'] required=['schema-mismatch']"
+    ],
+    "metrics": {
+      "findings_count": 1,
+      "schema_mismatch_detected": null,
+      "overall_score": 75,
+      "api_actions": 0
+    },
+    "screenshot_route": "/test-lab",
+    "screenshot_file": "api_schema_mismatch_result.png",
+    "result": {
+      "method": "GET",
+      "url": "http://127.0.0.1:8002/benchmark-fixtures/api/todos/1",
+      "project_id": 113,
+      "success": true,
+      "status_code": 200,
+      "duration_ms": 3.05,
+      "overall_score": 75,
+      "endpoint_risk_score": 40,
+      "summary": "API analizi 1 bulgu, 2 negatif kontrol ve 2 baglamsal test onerisi uretti. Status 200 ve sure 3.05 ms.",
+      "ai_failure_explanation": "Response contract'i ile gercek payload uyusmuyor. Serializer, DTO veya versiyon gecisi sirasinda alan kaybi yasanmis olabilir.",
+      "ai_test_summary": "generic baglaminda en oncelikli testler: Bozuk parametre senaryosu, Beklenmeyen content-type senaryosu",
+      "root_cause_summary": "En baskin kok neden adayi contract drift; API dokumani, serializer ve frontend beklentisi ayrismis olabilir.",
+      "endpoint_context": "generic",
+      "response_type": "application/json",
+      "response_size": 78,
+      "score_breakdown": {
+        "health": 100,
+        "validation": 70,
+        "security": 100,
+        "performance": 100,
+        "contract": 55
+      },
+      "evidence_summary": {
+        "contract_signals": 1,
+        "security_signals": 0,
+        "performance_signals": 0,
+        "validation_signals": 0,
+        "availability_signals": 0,
+        "negative_probe_signals": 0,
+        "primary_categories": [
+          "schema-mismatch"
+        ],
+        "recommended_modules": [
+          "4.10 Database",
+          "4.3 UI/UX"
+        ]
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "Response icinde beklenen alanlar eksik",
+          "severity": "high",
+          "category": "schema-mismatch",
+          "description": "Beklenen zorunlu alanlardan bazilari response icinde bulunmuyor veya null geliyor.",
+          "evidence": "Missing fields: notExistingField",
+          "recommendation": "API response contract'ini, serializer katmanini ve breaking change riskini kontrol et."
+        }
+      ],
+      "negative_checks": [
+        {
+          "id": 1,
+          "name": "method-discovery",
+          "status": "blocked",
+          "summary": "OPTIONS cagrisi basarisiz veya engelli.",
+          "evidence": "No response"
+        },
+        {
+          "id": 2,
+          "name": "reflection-probe",
+          "status": "clean",
+          "summary": "Probe parametresi response govdesinde gorunmedi.",
+          "evidence": "Status: 200"
+        }
+      ],
+      "generated_tests": [
+        {
+          "id": 1,
+          "title": "Bozuk parametre senaryosu",
+          "category": "validation",
+          "priority": 2,
+          "rationale": "Her endpoint temel validation davranisini tutarli vermelidir.",
+          "suggested_payload": null,
+          "expected_signal": "4xx ve acik hata mesaji"
+        },
+        {
+          "id": 2,
+          "title": "Beklenmeyen content-type senaryosu",
+          "category": "contract",
+          "priority": 3,
+          "rationale": "Response tipi sozlesme ile hizali kalmalidir.",
+          "suggested_payload": null,
+          "expected_signal": "JSON contract korunur"
+        }
+      ],
+      "cross_module_correlation": [
+        {
+          "module": "4.10 Database",
+          "summary": "API-DB contract uyumu kontrol edilmeli.",
+          "reason": "Payload alanlari ile tablo/kolon beklentileri ayrisiyor olabilir.",
+          "suggested_follow_up": "DB tablosunda beklenen alanlari ve nullability durumunu audit et."
+        },
+        {
+          "module": "4.3 UI/UX",
+          "summary": "Bu endpoint'i besleyen form akisi UI/UX ile birlikte gozden gecirilebilir.",
+          "reason": "Arama veya input akislarinda API validation sapmasi olabilir.",
+          "suggested_follow_up": "Ilgili formun hata mesaji ve input guidance kalitesini kontrol et."
+        }
+      ],
+      "raw_result": {
+        "status_code": 200,
+        "success": true,
+        "duration_ms": 3.05,
+        "response_body": {
+          "userId": 1,
+          "id": 1,
+          "title": "VisionQA benchmark todo",
+          "completed": false
+        },
+        "headers": {
+          "date": "Sat, 23 May 2026 21:58:11 GMT",
+          "server": "uvicorn",
+          "content-length": "71",
+          "content-type": "application/json"
+        },
+        "attempts": 1,
+        "timestamp": "2026-05-23T21:58:11.962141"
+      }
+    }
+  },
+  {
+    "case_id": "api_response_type_mismatch_detection",
+    "module": "api",
+    "feature": "Detect response content-type mismatch",
+    "status": "passed",
+    "duration_ms": 17.78,
+    "error": "",
+    "checks": [
+      "findings=1 minimum=1",
+      "categories=['contract', 'response-type', 'validation'] required=['response-type']"
+    ],
+    "metrics": {
+      "response_type": "text/html",
+      "findings_count": 1,
+      "contract_signals": null
+    },
+    "screenshot_route": "/test-lab",
+    "screenshot_file": "api_response_type_mismatch_result.png",
+    "result": {
+      "method": "GET",
+      "url": "http://127.0.0.1:8002/benchmark-fixtures/pages/demoqa",
+      "project_id": 113,
+      "success": true,
+      "status_code": 200,
+      "duration_ms": 0.0,
+      "overall_score": 88,
+      "endpoint_risk_score": 28,
+      "summary": "API analizi 1 bulgu, 0 negatif kontrol ve 2 baglamsal test onerisi uretti. Status 200 ve sure 0.0 ms.",
+      "ai_failure_explanation": "Endpoint temel beklentilerden en az birinde sapma gosteriyor. Validation, content negotiation ve hata standardizasyonu birlikte gozden gecirilmeli.",
+      "ai_test_summary": "generic baglaminda en oncelikli testler: Bozuk parametre senaryosu, Beklenmeyen content-type senaryosu",
+      "root_cause_summary": "En baskin kok neden adayi contract drift; API dokumani, serializer ve frontend beklentisi ayrismis olabilir.",
+      "endpoint_context": "generic",
+      "response_type": "text/html",
+      "response_size": 787,
+      "score_breakdown": {
+        "health": 100,
+        "validation": 85,
+        "security": 100,
+        "performance": 100,
+        "contract": 78
+      },
+      "evidence_summary": {
+        "contract_signals": 1,
+        "security_signals": 0,
+        "performance_signals": 0,
+        "validation_signals": 0,
+        "availability_signals": 0,
+        "negative_probe_signals": 0,
+        "primary_categories": [
+          "response-type"
+        ],
+        "recommended_modules": [
+          "4.3 UI/UX"
+        ]
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "Response tipi beklenen format ile uyusmuyor",
+          "severity": "medium",
+          "category": "response-type",
+          "description": "Beklenen response content-type ile gercek content-type farkli gorunuyor.",
+          "evidence": "Expected type: application/json, got: text/html; charset=utf-8",
+          "recommendation": "Endpoint content negotiation kurallarini ve gateway davranisini hizala."
+        }
+      ],
+      "negative_checks": [],
+      "generated_tests": [
+        {
+          "id": 1,
+          "title": "Bozuk parametre senaryosu",
+          "category": "validation",
+          "priority": 2,
+          "rationale": "Her endpoint temel validation davranisini tutarli vermelidir.",
+          "suggested_payload": null,
+          "expected_signal": "4xx ve acik hata mesaji"
+        },
+        {
+          "id": 2,
+          "title": "Beklenmeyen content-type senaryosu",
+          "category": "contract",
+          "priority": 3,
+          "rationale": "Response tipi sozlesme ile hizali kalmalidir.",
+          "suggested_payload": null,
+          "expected_signal": "JSON contract korunur"
+        }
+      ],
+      "cross_module_correlation": [
+        {
+          "module": "4.3 UI/UX",
+          "summary": "Bu endpoint'i besleyen form akisi UI/UX ile birlikte gozden gecirilebilir.",
+          "reason": "Arama veya input akislarinda API validation sapmasi olabilir.",
+          "suggested_follow_up": "Ilgili formun hata mesaji ve input guidance kalitesini kontrol et."
+        }
+      ],
+      "raw_result": {
+        "status_code": 200,
+        "success": true,
+        "duration_ms": 0.0,
+        "response_body": "\n    <!doctype html>\n    <html>\n      <head><title>ToolsQA Benchmark</title></head>\n      <body>\n        <header style=\"height:140px;background:#3b98c9;color:white;text-align:center\">\n          <h1>TOOLSQA</h1>\n          <p>Selenium Certification Training</p>\n        </header>\n        <main style=\"display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:24px\">\n          <a href=\"/benchmark-fixtures/pages/elements\">Elements</a>\n          <a href=\"/benchmark-fixtures/pages/forms\">Forms</a>\n          <a href=\"/benchmark-fixtures/pages/alerts\">Alerts, Frame & Windows</a>\n          <button>Widgets</button>\n          <button>Interactions</button>\n          <a href=\"/benchmark-fixtures/pages/book-store\">Book Store Application</a>\n        </main>\n      </body>\n    </html>\n    ",
+        "headers": {
+          "date": "Sat, 23 May 2026 21:58:11 GMT",
+          "server": "uvicorn",
+          "content-length": "787",
+          "content-type": "text/html; charset=utf-8"
+        },
+        "attempts": 1,
+        "timestamp": "2026-05-23T21:58:11.983463"
+      }
+    }
+  },
+  {
+    "case_id": "api_slow_response_detection",
+    "module": "api",
+    "feature": "Detect slow API response",
+    "status": "passed",
+    "duration_ms": 2629.17,
+    "error": "",
+    "checks": [
+      "findings=1 minimum=1",
+      "categories=['contract', 'slow-response', 'validation'] required=['slow-response']"
+    ],
+    "metrics": {
+      "duration_ms": 2618.09,
+      "performance_signals": null,
+      "api_actions": 0
+    },
+    "screenshot_route": "/test-lab",
+    "screenshot_file": "api_slow_response_result.png",
+    "result": {
+      "method": "GET",
+      "url": "http://127.0.0.1:8002/benchmark-fixtures/api/delay/2",
+      "project_id": 113,
+      "success": true,
+      "status_code": 200,
+      "duration_ms": 2618.09,
+      "overall_score": 75,
+      "endpoint_risk_score": 40,
+      "summary": "API analizi 1 bulgu, 0 negatif kontrol ve 2 baglamsal test onerisi uretti. Status 200 ve sure 2618.09 ms.",
+      "ai_failure_explanation": "Endpoint'in gecikme profili hedefin ustune cikiyor. Muhtemel nedenler verimsiz downstream cagri, cache eksigi veya DB sorgu maliyeti olabilir.",
+      "ai_test_summary": "generic baglaminda en oncelikli testler: Bozuk parametre senaryosu, Beklenmeyen content-type senaryosu",
+      "root_cause_summary": "En baskin kok neden adayi yavas dependency veya optimize edilmemis sorgu/servis zinciri.",
+      "endpoint_context": "generic",
+      "response_type": "application/json",
+      "response_size": 79,
+      "score_breakdown": {
+        "health": 100,
+        "validation": 100,
+        "security": 100,
+        "performance": 70,
+        "contract": 100
+      },
+      "evidence_summary": {
+        "contract_signals": 0,
+        "security_signals": 0,
+        "performance_signals": 1,
+        "validation_signals": 0,
+        "availability_signals": 0,
+        "negative_probe_signals": 0,
+        "primary_categories": [
+          "slow-response"
+        ],
+        "recommended_modules": [
+          "4.7 Performance",
+          "4.3 UI/UX"
+        ]
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "API yaniti belirgin sekilde yavas",
+          "severity": "high",
+          "category": "slow-response",
+          "description": "Response suresi yuksek ve kullanici akisinda gecikme yaratabilir.",
+          "evidence": "Duration: 2618.09 ms",
+          "recommendation": "DB sorgularini, downstream servisleri ve cache katmanini inceleyip p95 hedefi belirle."
+        }
+      ],
+      "negative_checks": [],
+      "generated_tests": [
+        {
+          "id": 1,
+          "title": "Bozuk parametre senaryosu",
+          "category": "validation",
+          "priority": 2,
+          "rationale": "Her endpoint temel validation davranisini tutarli vermelidir.",
+          "suggested_payload": null,
+          "expected_signal": "4xx ve acik hata mesaji"
+        },
+        {
+          "id": 2,
+          "title": "Beklenmeyen content-type senaryosu",
+          "category": "contract",
+          "priority": 3,
+          "rationale": "Response tipi sozlesme ile hizali kalmalidir.",
+          "suggested_payload": null,
+          "expected_signal": "JSON contract korunur"
+        }
+      ],
+      "cross_module_correlation": [
+        {
+          "module": "4.7 Performance",
+          "summary": "API gecikmesi performans modulu ile derinlestirilmeli.",
+          "reason": "Response latency bulgusu var.",
+          "suggested_follow_up": "Ayni endpoint icin load profile ve p95/p99 analizi cikar."
+        },
+        {
+          "module": "4.3 UI/UX",
+          "summary": "Bu endpoint'i besleyen form akisi UI/UX ile birlikte gozden gecirilebilir.",
+          "reason": "Arama veya input akislarinda API validation sapmasi olabilir.",
+          "suggested_follow_up": "Ilgili formun hata mesaji ve input guidance kalitesini kontrol et."
+        }
+      ],
+      "raw_result": {
+        "status_code": 200,
+        "success": true,
+        "duration_ms": 2618.09,
+        "response_body": {
+          "status": "ok",
+          "message": "Delayed benchmark response",
+          "delay_seconds": 2.6
+        },
+        "headers": {
+          "date": "Sat, 23 May 2026 21:58:11 GMT",
+          "server": "uvicorn",
+          "content-length": "74",
+          "content-type": "application/json"
+        },
+        "attempts": 1,
+        "timestamp": "2026-05-23T21:58:14.617289"
+      }
+    }
+  }
+]

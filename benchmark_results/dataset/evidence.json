@@ -1,0 +1,411 @@
+[
+  {
+    "case_id": "dataset_missing_annotations",
+    "module": "dataset",
+    "feature": "Detect records without usable labels or annotations",
+    "status": "passed",
+    "duration_ms": 4057.65,
+    "error": "",
+    "checks": [
+      "findings=2 minimum=1",
+      "categories=['json', 'missing-label', 'missing_label'] required=['missing-label']"
+    ],
+    "metrics": {
+      "overall_score": 94,
+      "findings_count": 2,
+      "grade": "A",
+      "records_count": null
+    },
+    "screenshot_route": "/dataset",
+    "screenshot_file": "dataset_missing_annotations_result.png",
+    "result": {
+      "dataset_name": "missing_annotation_sample",
+      "total_records": 2,
+      "overall_score": 94,
+      "quality_grade": "A",
+      "overview": "Dataset analizi 1 kalite sorunu tespit etti.",
+      "ai_interpretation": "Deterministik kalite kuralları; eksik etiket, annotation sağlığı, duplicate, label consistency, split dengesi ve sınıf dağılımı sinyallerini birlikte yorumladı.",
+      "training_risk_summary": "Dataset kalite sinyalleri model doğruluğu, validation güvenilirliği ve sınıf bazlı recall üzerinde risk oluşturuyor.",
+      "score_breakdown": {
+        "completeness": 72,
+        "balance": 100,
+        "consistency": 100,
+        "validity": 100,
+        "annotation_health": 100
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "Eksik etiketli kayıtlar bulundu",
+          "severity": "high",
+          "category": "missing-label",
+          "description": "Bazı kayıtların label alanı boş. Bu durum eğitim sırasında sınıf hedefini belirsiz hale getirir.",
+          "evidence": "Records: 1",
+          "recommendation": "Etiketsiz kayıtları tamamla veya eğitim setinden ayırıp review kuyruğuna al.",
+          "error_type": null,
+          "image_id": null,
+          "annotation_id": null,
+          "file_name": null,
+          "field": null
+        }
+      ],
+      "detail_errors": [
+        {
+          "error_id": "PRED_0001",
+          "error_type": "missing_label",
+          "image_id": "1",
+          "annotation_id": null,
+          "file_name": "ui-1.png",
+          "field": "annotations",
+          "severity": "high",
+          "message": "Image/record has no usable label or annotation target.",
+          "source": "dataset_validator",
+          "metadata": {}
+        }
+      ],
+      "class_distribution": [
+        {
+          "label": "input",
+          "count": 1,
+          "ratio": 0.5
+        }
+      ],
+      "split_health": [
+        {
+          "split": "train",
+          "count": 1,
+          "ratio": 0.5
+        },
+        {
+          "split": "val",
+          "count": 1,
+          "ratio": 0.5
+        }
+      ],
+      "coverage_gaps": [],
+      "duplicate_signals": [],
+      "suspicious_label_signals": [],
+      "synthetic_data_suggestions": [],
+      "collection_targets": [],
+      "model_impact_summary": "Kalite bulguları arttıkça modelin genelleme kabiliyeti, minority-class recall ve validation metriklerinin güvenilirliği düşebilir.",
+      "training_risks": [
+        {
+          "severity": "high",
+          "summary": "Dataset kalite sinyalleri model doğruluğu, validation güvenilirliği ve sınıf bazlı recall üzerinde risk oluşturuyor.",
+          "impacted_areas": [
+            "model performance",
+            "validation stability",
+            "class-level recall"
+          ]
+        }
+      ],
+      "source_artifact": {
+        "type": "json",
+        "label": "missing_annotation_sample",
+        "path": "storage\\datasets\\20260523T215857_250003e6de5d_missing_annotation_sample.json",
+        "sha256": "250003e6de5dd43780dd2d73a15818d696af3262606f414135b43fe715c85d5d",
+        "size_bytes": 342,
+        "saved_at": "2026-05-23T21:58:57.846434"
+      },
+      "_benchmark_job": {
+        "job_id": 188,
+        "status": "completed",
+        "module_name": "dataset",
+        "target": "missing_annotation_sample",
+        "celery_task_id": "12294c3d-b616-42c8-be4c-d5c28e723c18",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:58:54.829554",
+        "started_at": "2026-05-23T21:58:57.843171",
+        "completed_at": "2026-05-23T21:58:57.846434"
+      }
+    }
+  },
+  {
+    "case_id": "dataset_label_consistency",
+    "module": "dataset",
+    "feature": "Detect inconsistent labels for the same semantic text",
+    "status": "passed",
+    "duration_ms": 4076.63,
+    "error": "",
+    "checks": [
+      "findings=1 minimum=1",
+      "categories=['json', 'label-consistency'] required=['label-consistency']"
+    ],
+    "metrics": {
+      "label_consistency": null,
+      "findings_count": 1,
+      "model_impact": null
+    },
+    "screenshot_route": "/dataset",
+    "screenshot_file": "dataset_label_consistency_result.png",
+    "result": {
+      "dataset_name": "label_mismatch_sample",
+      "total_records": 2,
+      "overall_score": 97,
+      "quality_grade": "A",
+      "overview": "Dataset analizi 1 kalite sorunu tespit etti.",
+      "ai_interpretation": "Deterministik kalite kuralları; eksik etiket, annotation sağlığı, duplicate, label consistency, split dengesi ve sınıf dağılımı sinyallerini birlikte yorumladı.",
+      "training_risk_summary": "Dataset kalite sinyalleri model doğruluğu, validation güvenilirliği ve sınıf bazlı recall üzerinde risk oluşturuyor.",
+      "score_breakdown": {
+        "completeness": 100,
+        "balance": 100,
+        "consistency": 86,
+        "validity": 100,
+        "annotation_health": 100
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "Label consistency riski bulundu",
+          "severity": "medium",
+          "category": "label-consistency",
+          "description": "Aynı text ipucuna sahip kayıtlar farklı sınıflara atanmış. Bu durum modelin karar sınırını bulanıklaştırır.",
+          "evidence": "Inconsistent text groups: 1",
+          "recommendation": "Benzer içeriklerin aynı etiket yönergesine göre işaretlendiğini doğrula.",
+          "error_type": null,
+          "image_id": null,
+          "annotation_id": null,
+          "file_name": null,
+          "field": null
+        }
+      ],
+      "detail_errors": [],
+      "class_distribution": [
+        {
+          "label": "cat",
+          "count": 1,
+          "ratio": 0.5
+        },
+        {
+          "label": "dog",
+          "count": 1,
+          "ratio": 0.5
+        }
+      ],
+      "split_health": [
+        {
+          "split": "train",
+          "count": 1,
+          "ratio": 0.5
+        },
+        {
+          "split": "val",
+          "count": 1,
+          "ratio": 0.5
+        }
+      ],
+      "coverage_gaps": [],
+      "duplicate_signals": [],
+      "suspicious_label_signals": [
+        {
+          "id": 1,
+          "record_id": "1, 2",
+          "current_label": "cat, dog",
+          "reason": "Aynı metin/semantik ipucu farklı etiketlerle görünüyor: 'same visual object'.",
+          "suggested_review": "Bu örnekleri manuel review ile doğrula; label mapping veya annotation yönergesi kaymış olabilir."
+        }
+      ],
+      "synthetic_data_suggestions": [],
+      "collection_targets": [],
+      "model_impact_summary": "Kalite bulguları arttıkça modelin genelleme kabiliyeti, minority-class recall ve validation metriklerinin güvenilirliği düşebilir.",
+      "training_risks": [
+        {
+          "severity": "medium",
+          "summary": "Dataset kalite sinyalleri model doğruluğu, validation güvenilirliği ve sınıf bazlı recall üzerinde risk oluşturuyor.",
+          "impacted_areas": [
+            "model performance",
+            "validation stability",
+            "class-level recall"
+          ]
+        }
+      ],
+      "source_artifact": {
+        "type": "json",
+        "label": "label_mismatch_sample",
+        "path": "storage\\datasets\\20260523T215901_ce52d923476b_label_mismatch_sample.json",
+        "sha256": "ce52d923476bc6ee8d7b0325f0da26017378782de83e7c0fa03eca5e9a08da18",
+        "size_bytes": 441,
+        "saved_at": "2026-05-23T21:59:01.921022"
+      },
+      "_benchmark_job": {
+        "job_id": 189,
+        "status": "completed",
+        "module_name": "dataset",
+        "target": "label_mismatch_sample",
+        "celery_task_id": "0ab70ccc-e120-463e-b486-ac802883fcd8",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:58:58.883414",
+        "started_at": "2026-05-23T21:59:01.904975",
+        "completed_at": "2026-05-23T21:59:01.921022"
+      }
+    }
+  },
+  {
+    "case_id": "dataset_duplicate_and_split_balance",
+    "module": "dataset",
+    "feature": "Detect duplicate images and split leakage",
+    "status": "passed",
+    "duration_ms": 4070.8,
+    "error": "",
+    "checks": [
+      "findings=4 minimum=1",
+      "categories=['duplicate-signal', 'duplicate_annotation', 'json', 'split-leakage', 'split_leakage'] required=['duplicate-signal', 'split-leakage']"
+    ],
+    "metrics": {
+      "duplicate_count": null,
+      "split_balance_score": null,
+      "findings_count": 4
+    },
+    "screenshot_route": "/dataset",
+    "screenshot_file": "dataset_duplicate_split_result.png",
+    "result": {
+      "dataset_name": "duplicate_split_sample",
+      "total_records": 3,
+      "overall_score": 92,
+      "quality_grade": "A",
+      "overview": "Dataset analizi 2 kalite sorunu tespit etti.",
+      "ai_interpretation": "Deterministik kalite kuralları; eksik etiket, annotation sağlığı, duplicate, label consistency, split dengesi ve sınıf dağılımı sinyallerini birlikte yorumladı.",
+      "training_risk_summary": "Dataset kalite sinyalleri model doğruluğu, validation güvenilirliği ve sınıf bazlı recall üzerinde risk oluşturuyor.",
+      "score_breakdown": {
+        "completeness": 100,
+        "balance": 100,
+        "consistency": 58,
+        "validity": 100,
+        "annotation_health": 100
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "Duplicate veya near-duplicate kayıt sinyali var",
+          "severity": "medium",
+          "category": "duplicate-signal",
+          "description": "Aynı içerik imzasına sahip kayıtlar train/validation davranışını yapay olarak iyileştirebilir.",
+          "evidence": "Duplicate groups: 1",
+          "recommendation": "Tekrarlı örnekleri deduplicate et veya split'ler arası sızıntı oluşturmadığını doğrula.",
+          "error_type": null,
+          "image_id": null,
+          "annotation_id": null,
+          "file_name": null,
+          "field": null
+        },
+        {
+          "id": 2,
+          "title": "Split leakage sinyali bulundu",
+          "severity": "high",
+          "category": "split-leakage",
+          "description": "Aynı görsel referansı veya görsel hash'i birden fazla split içinde görünüyor.",
+          "evidence": "Leakage keys: same.png",
+          "recommendation": "Train/validation/test split'lerini yeniden üret ve aynı görselin farklı split'lere sızmadığını doğrula.",
+          "error_type": null,
+          "image_id": null,
+          "annotation_id": null,
+          "file_name": null,
+          "field": null
+        }
+      ],
+      "detail_errors": [
+        {
+          "error_id": "PRED_0001",
+          "error_type": "duplicate_annotation",
+          "image_id": "2",
+          "annotation_id": null,
+          "file_name": "same.png",
+          "field": "annotations",
+          "severity": "medium",
+          "message": "Record has the same label/image/text/annotation signature as another record.",
+          "source": "dataset_validator",
+          "metadata": {
+            "duplicate_group": [
+              "1",
+              "2"
+            ]
+          }
+        },
+        {
+          "error_id": "PRED_0002",
+          "error_type": "split_leakage",
+          "image_id": null,
+          "annotation_id": null,
+          "file_name": "same.png",
+          "field": "split",
+          "severity": "high",
+          "message": "Same image reference appears in more than one split.",
+          "source": "dataset_validator",
+          "metadata": {
+            "splits": [
+              "test",
+              "train"
+            ]
+          }
+        }
+      ],
+      "class_distribution": [
+        {
+          "label": "button",
+          "count": 3,
+          "ratio": 1.0
+        }
+      ],
+      "split_health": [
+        {
+          "split": "train",
+          "count": 2,
+          "ratio": 0.667
+        },
+        {
+          "split": "test",
+          "count": 1,
+          "ratio": 0.333
+        }
+      ],
+      "coverage_gaps": [],
+      "duplicate_signals": [
+        {
+          "id": 1,
+          "reason": "Aynı label/image/text/annotation imzasına sahip kayıtlar bulundu.",
+          "record_ids": [
+            "1",
+            "2"
+          ]
+        }
+      ],
+      "suspicious_label_signals": [],
+      "synthetic_data_suggestions": [],
+      "collection_targets": [],
+      "model_impact_summary": "Kalite bulguları arttıkça modelin genelleme kabiliyeti, minority-class recall ve validation metriklerinin güvenilirliği düşebilir.",
+      "training_risks": [
+        {
+          "severity": "high",
+          "summary": "Dataset kalite sinyalleri model doğruluğu, validation güvenilirliği ve sınıf bazlı recall üzerinde risk oluşturuyor.",
+          "impacted_areas": [
+            "model performance",
+            "validation stability",
+            "class-level recall"
+          ]
+        }
+      ],
+      "source_artifact": {
+        "type": "json",
+        "label": "duplicate_split_sample",
+        "path": "storage\\datasets\\20260523T215905_172dae3e5677_duplicate_split_sample.json",
+        "sha256": "172dae3e5677b67bfd735e1c6b9c50f045d7eafe1167081f579071419f1337c5",
+        "size_bytes": 565,
+        "saved_at": "2026-05-23T21:59:05.993780"
+      },
+      "_benchmark_job": {
+        "job_id": 190,
+        "status": "completed",
+        "module_name": "dataset",
+        "target": "duplicate_split_sample",
+        "celery_task_id": "fb2a314b-4554-4f85-a3a6-d9d959e9af6a",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:59:02.979172",
+        "started_at": "2026-05-23T21:59:05.986106",
+        "completed_at": "2026-05-23T21:59:05.993780"
+      }
+    }
+  }
+]

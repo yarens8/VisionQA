@@ -1,0 +1,2572 @@
+[
+  {
+    "case_id": "accessibility_demoqa_url_scan",
+    "module": "accessibility",
+    "feature": "Detect accessible name, contrast, focus, and structure issues from URL",
+    "status": "passed",
+    "duration_ms": 8320.56,
+    "error": "",
+    "checks": [
+      "findings=5 minimum=1",
+      "categories=['component-contrast', 'keyboard-navigation', 'touch-target'] any=['alt-text', 'component-contrast', 'heading-structure', 'keyboard-navigation']"
+    ],
+    "metrics": {
+      "overall_score": 14,
+      "findings_count": 5,
+      "keyboard_profile": {
+        "focusable_count": 6,
+        "positive_tabindex_count": 0,
+        "keyboard_findings": 3,
+        "first_focusable": "a"
+      },
+      "score_breakdown": {
+        "visual_contrast": 45,
+        "semantic_structure": 100,
+        "keyboard_support": 64,
+        "form_accessibility": 100,
+        "aria_quality": 100
+      }
+    },
+    "screenshot_route": "/accessibility",
+    "screenshot_file": "accessibility_demoqa_result.png",
+    "result": {
+      "platform": "web",
+      "image": {
+        "width": 1280,
+        "height": 720
+      },
+      "overall_score": 14,
+      "overview": "Visual-first tam sayfa kontrast analizi tamamlandi. 34 kritik dusuk kontrastli alan ve 9 sinirda alan tespit edildi.",
+      "wcag_summary": {
+        "aaa_pass": 8,
+        "aa_pass": 13,
+        "large_text_only": 9,
+        "fail": 34
+      },
+      "color_consistency_score": 40,
+      "palette": [
+        {
+          "color": "#ffffff",
+          "coverage": 79.5
+        },
+        {
+          "color": "#3b98c9",
+          "coverage": 19.0
+        },
+        {
+          "color": "#e6eaed",
+          "coverage": 1.0
+        },
+        {
+          "color": "#463eb4",
+          "coverage": 0.3
+        },
+        {
+          "color": "#d8fffe",
+          "coverage": 0.1
+        }
+      ],
+      "components": [
+        {
+          "id": 1,
+          "label": "\"Selenium Certification Tr...\" basligi",
+          "severity": "medium",
+          "average_contrast_ratio": 3.21,
+          "bounding_box": {
+            "x": 499,
+            "y": 78,
+            "width": 282,
+            "height": 24
+          }
+        },
+        {
+          "id": 2,
+          "label": "\"TOOLSQA\" basligi",
+          "severity": "medium",
+          "average_contrast_ratio": 3.22,
+          "bounding_box": {
+            "x": 8,
+            "y": 21,
+            "width": 1264,
+            "height": 37
+          }
+        }
+      ],
+      "findings": [
+        {
+          "id": 1,
+          "title": "\"Selenium Certification Tr...\" basligi icin zayif kontrast sorunu",
+          "severity": "medium",
+          "category": "component-contrast",
+          "description": "Tespit edilen \"Selenium Certification Tr...\" basligi, normal metin veya kontroller icin WCAG AA seviyesinin altinda oldugu icin okumayi zorlastirabilir.",
+          "wcag_status": "large-text-only",
+          "contrast_ratio": 3.21,
+          "dominant_dark": "#3b98c9",
+          "dominant_light": "#fdfffd",
+          "bounding_box": {
+            "x": 499,
+            "y": 78,
+            "width": 282,
+            "height": 24
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAToAAAA4CAIAAADin6O0AAAHJklEQVR4nO2cz2saaRjH3y6KKFHQ0MiawyikxGzwkARycG03sKcGhFzMJZfQS04hd/+A3oOX9bBLLl7iZUFIr24bAis0OUi3hhbMHGpJQiJoiEg8LO87M844OkZTQ/K0388pzLzzvM/74zvv8zxO++TXP/5lAAAK/PTQDgAABgVyBYAMkCsAZIBcASAD5AoAGSBXAMgAuQJABsgVADJArgCQAXIFgAyQKwBkgFwBIAPkCgAZIFcAyAC5AkAGyBUAMkCuAJABcgWADJArAGSAXAEgg43RIRGf3woIh5u17Z3myipb2y1bNw9lNp6y48JafvieliL702wvXXzN7nMUjMnHhbWLcCZYXcud3smYP7UuTV3IL/XH+ZU5hzB+VvNNuD4fHG4Wv8HdSPhN9JuNiLWQet6pnsf6LeKwi+LvmpDviidk/idEvlr2I2Xf8D3kcfdbaXV/yHeT632heNVo77nk6uKyl9UrI9teydXF2TM+ZG7ZVdveKWXZIyASfrPA/hLO8LfV+LXq2FJkf+JqULkCQsFwcsLJqlX1HV8svUyfy/2al9duafAAJFc7tMoYe71b2K60hrMSCWfifot7oVlv6/JCtRy7s1b7dXFHPp/0ciZ/dtQYbT/fOWTk+qnRYl5vKtK+UO4bCT8+IuHn/CA9M8Vy2Vz10uka2Io/teDxWXbhsLw1BH27uBvF0mbvGOd0M0dqER8aMrlrNldd2Xg6F13cX+iO8fSEzTqw1NMnLULmV3wV+S82KZLJlhppGwI2puaZ4khUInCtmUhBb/bSV7OKWR6ZX6tu8NTafJgkgi43Y3K927fy2m7P5FwLF6ftR5WbuYCTtVpNm42PMiDtb0wKN/T8vP0sn6KocHK8M9njppzir/ZIjSmlcYyGLiyNGKZazVO+sAXL4ffDOEbx7DORIyi005mEIYruNfnlroKF5fqqyZTBhRHmI/cKmdNVxLfyUZMxh2drY3F/NaRd96fWJ9n7QixdiKXPLwNSZqn72VBmY+wDb1CIHdR80/OpiLpT3QHpFfsS45ZtczMhUykomzvUg9Vi6eVBrS7+1No4lxWzxw3mfbq/obhxLjs8Kz18uIVEfF54wp3cu/ZsrYY0bdjmnFf8+p+Hv4sIv16RY2lVq+36TTZ3GOPutY4OCvzuuK4rQ52moI50IZxQgvPquTJvMnM+j/vbWYbahaURPmR3QHoT9+tORsXwD2r1oYZvGuNOKbsUWfY2lF72qkwKcleNi5LoMflK2GWcEMv15beiHsYHKJ4VbwQSWqUlVxE77Sh7i3F5rPOFZEsTcw4bP1I2FvfFCkkTbSWrJOJeia+uaMNfq7ap4LWS3Gqv1dOv16yHRC3Q2miJ6MWN0IlePvW5h839QisBm5ufadxJfrZ4x5L5othPraOP5aHzc/VZBX8q6JSPlRNSzKE4o3h+u1vmR41V2bbLiB7M54t7VeYe9ybaTirDLzYvhxp39xjzxRifVX9qXT9jjYuS7TH53RNStlpfkTK0Pp8Ifeav5Lss1oNBJhhOxMPPciWxV8pr6bJ4xfK3OA+6Bom+epSRzaq+V7L1my1mEzvD6kXeIfiR4vKJTKELcQQ1a9tp+cW6NDWkEVFNsD9jo0cUzHmYsB2c3xoftfVi6d3M4vJMiBXLHdKlAKHT1TVrCLGyuap+sDgG2DQuBz+KH5D82VGTuQMTSfONUEYJE5jNN/KtqXJ92ew+Q/ypdZ7aDVxA5kb4cWq81rz5NFJHlViX/wTFo312T7z+WKvz5IWHWpfH99jRjyxXJk0vtvNSEd82PuQVGTiX1R3Pd3/K8COEske5th0iG1SIhFO3JlfaKyBbv2HM/rOoSCdneCA9F503FKgH53Tzfa3OY/JI0pRUc8GU/660JJ5UqzeS8faIzJrhLIXbLTt1aNK84vnp24uWOzCpG19VfXArRemId8rRpwvVyOZJgzk8r9Tp5dG73PPnmVu59fWqNvC/GO+M/hwDHea3BbehTNT+TsnA04/qZ/nv6DMJJRhmes3Q+ANmV4XTcEXNXozFQOWjKEODd05JNdus/XPh+k2taiimDN8JVWq+AP/E522wXflo7B3cPNcsy8fnbLqzXzO6ta5RqF9N6BVR1l3L1drw2J4Zx6jVP7UBnti3Op81VmsU3wyF6IbMnJJDTRn0Ls7GzA4YKsNqzbaj4Fz1RfsMv6M21utxwzcw4opcZZKXV+b/q9h/0Sbc+Lf15F9dBsZ6ru/2TvVFxxKYV+ExQ0auAIyIUMb8+WooFb/epFAcphQMAzCib8tMV8a+UtAqTlfwAxIy/XuDR/ZheT8gVwDIgGAYADJArgCQAXIFgAyQKwBkgFwBIAPkCgAZIFcAyAC5AkAGyBUAMkCuAJABcgWADJArAGSAXAEgA+QKABkgVwDIALkCQAbIFQAyQK4AkAFyBYAMkCsAjAr/AzXpAlxOGY/rAAAAAElFTkSuQmCC",
+          "recommendation": "\"Selenium Certification Tr...\" basligi icin #3b98c9 ve #fdfffd arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+          "wcag_refs": [
+            "1.4.3 Contrast (Minimum)"
+          ],
+          "impact_score": 62,
+          "affected_role": "component contrast",
+          "test_suggestion": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "component-contrast",
+            "wcag_status": "large-text-only",
+            "wcag_refs": [
+              "1.4.3 Contrast (Minimum)"
+            ],
+            "contrast_ratio": 3.21,
+            "bounding_box": {
+              "x": 499,
+              "y": 78,
+              "width": 282,
+              "height": 24
+            },
+            "why_flagged": "Tespit edilen \"Selenium Certification Tr...\" basligi, normal metin veya kontroller icin WCAG AA seviyesinin altinda oldugu icin okumayi zorlastirabilir.",
+            "recommended_action": "\"Selenium Certification Tr...\" basligi icin #3b98c9 ve #fdfffd arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "title": "\"TOOLSQA\" basligi icin zayif kontrast sorunu",
+          "severity": "medium",
+          "category": "component-contrast",
+          "description": "Tespit edilen \"TOOLSQA\" basligi, normal metin veya kontroller icin WCAG AA seviyesinin altinda oldugu icin okumayi zorlastirabilir.",
+          "wcag_status": "large-text-only",
+          "contrast_ratio": 3.22,
+          "dominant_dark": "#3b98c9",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 8,
+            "y": 21,
+            "width": 1264,
+            "height": 37
+          },
+          "crop_image_base64": "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",
+          "recommendation": "\"TOOLSQA\" basligi icin #3b98c9 ve #ffffff arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+          "wcag_refs": [
+            "1.4.3 Contrast (Minimum)"
+          ],
+          "impact_score": 62,
+          "affected_role": "component contrast",
+          "test_suggestion": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "component-contrast",
+            "wcag_status": "large-text-only",
+            "wcag_refs": [
+              "1.4.3 Contrast (Minimum)"
+            ],
+            "contrast_ratio": 3.22,
+            "bounding_box": {
+              "x": 8,
+              "y": 21,
+              "width": 1264,
+              "height": 37
+            },
+            "why_flagged": "Tespit edilen \"TOOLSQA\" basligi, normal metin veya kontroller icin WCAG AA seviyesinin altinda oldugu icin okumayi zorlastirabilir.",
+            "recommended_action": "\"TOOLSQA\" basligi icin #3b98c9 ve #ffffff arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 3,
+          "title": "\"Widgets\" butonu icin dokunma alani sorunu",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Tespit edilen \"Widgets\" butonu dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 237x21px ve onerilen minimum 44x44px esiginin altinda.",
+          "wcag_status": "touch-target-fail",
+          "contrast_ratio": 15.71,
+          "dominant_dark": "#311b34",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 766,
+            "y": 185,
+            "width": 237,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAQ0AAAA1CAIAAADULikrAAADnElEQVR4nO3boW7rSBTG8bmrJZVRXsBSwIRFIVafwKzMakBAQWTUJ6hqsrrEVZ+gKAoICMjKLGyeoDKJzGJQyS8QZBV2NfZ17LS3mfVd37bR/n+oPZ5GAfNpzpkm315eXgSAo/44/hgAOQH+FXICmJETwIycAGbkBDAjJ4AZOQHMyAlgRk4AM3ICmJETwIycAGbkBDAjJ4DZn6K9xWKR5/nT09Mv/C3wifr9vmVZV1dXbbf3t7bf01osFmdnZ67r/upbBT6TUur5+fm9qLy3vVv3XXmeExKcLtd18zxvu71b54R2C6fuyB5+7xFzPGBGTjqUPZz3fHXwa+/8IdsXlN/Tz3W9Wa5Xv63iayAnHbLlUETLfVC2cSqlmK+rva+WkfAm3c52pOtjkJMuuRNPJOmPXauWkReGw7QKSpYmZUzs68fd47X9uW8VrZCTTg0cmcbb4scsTaQzcCdeVdDHizN4dQYUvZl2/j1uvI7u0Aq+X/Zqh9WqovxRkIo0GJUvVz/niOkYOemUfTGVZeeVrediemHrI6YsqGUkdaEpe7gMRLjZ7Xa7UERpVVb+OPJWurpxkmi/9nyclGs3YTIukuDONqEUMtzo40n51fPdahhckpQukZPuR5Si89rG6VDqVAwcqQu66yoLtWw9T6vsuH+F8u0cY1+HXr3WC8tuTVf37VxTGnwvDhp3RmP3+Z9bwRHuxBsvt8VwMpnpgn0xFZfrTMbpmxl+G6d1dnTCCjpRcqobtNdro3EvapaEaGbBne1Wolct8Va7Gf8O7gznSdfciZekqhhOyoIth2m8TpO3V10DR9Zjv45HtV5UM83h2rIXq/wkBu6sfLQJZTRu3FDjvyInnRs4Il7GxXBSJ2c+F1VuDqeZqlXSfVW9vrpezh6CqDH5BD+GDj2wvx7Vm7cDOmr7nKID5KRz9sU0iaLmLDJwRNrITWPp9ePKi8b6hmoUD736WKiql2LqNdYOg1FxnaXH/HIAKaM26vmq+bw3TsK/GVA61Przwjc3N7e3t12+BRyj/F7gFPdZ6Mrd3d39/X2r7c158qU//lL0Xa+vyfDxuO/6evS17/7eSoYb7q1OMCf9fv/3vBMc3lsVl8r4HY7s4fcete67LMtSihtHnCqllGVZbbd36zme78fjdH3c9+OB/yHuuwAzcgKYkRPAjJwAZuQEMCMngBk5AczICWBGTgAzcgKYkRPAjJwAZuQEMCMngBk5AYTRP0ijqbyARnlHAAAAAElFTkSuQmCC",
+          "recommendation": "\"Widgets\" butonu icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+          "wcag_refs": [
+            "2.5.5 Target Size"
+          ],
+          "impact_score": 85,
+          "affected_role": "touch target",
+          "test_suggestion": "Mobile viewport'ta hedef alanin en az 44px civarinda tiklanabilir oldugunu dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "touch-target",
+            "wcag_status": "touch-target-fail",
+            "wcag_refs": [
+              "2.5.5 Target Size"
+            ],
+            "contrast_ratio": 15.71,
+            "bounding_box": {
+              "x": 766,
+              "y": 185,
+              "width": 237,
+              "height": 21
+            },
+            "why_flagged": "Tespit edilen \"Widgets\" butonu dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 237x21px ve onerilen minimum 44x44px esiginin altinda.",
+            "recommended_action": "\"Widgets\" butonu icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 4,
+          "title": "\"Interactions\" butonu icin dokunma alani sorunu",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Tespit edilen \"Interactions\" butonu dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 237x21px ve onerilen minimum 44x44px esiginin altinda.",
+          "wcag_status": "touch-target-fail",
+          "contrast_ratio": 15.51,
+          "dominant_dark": "#2f1e33",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 1011,
+            "y": 185,
+            "width": 237,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAQ0AAAA1CAIAAADULikrAAADWElEQVR4nO3dP0/qUBjH8ePNXUynvgEShuNGWAyvoJtbcxkcHAwTb0BjF3OXGl8BE3FgcGjSza2vgLgQNjuY9A10ahy9aUuBgvThzyVI/H4WtZzntMP5eZ6DGk8+Pz8VgEq/ql8GQE6AtZATQEZOABk5AWTkBJCRE0BGTgAZOQFk5ASQkRNARk4AGTkBZOQEkJETQHZyc3Mz/3W9XjcM4+rqqqJmMBgkSfL+/r7G/MA3ss7y/tJJHMcLl4Ig+Pj4WDXXYDA4PT21LGvbRwUOqXp5b9B3WZaVJMmqgiRJCAmOV/Xy3ux8UtFT0W7h2G2xhjnHAzJyspmo1zJbveigzxB0TLMTHPQRfhxyciyLmHQc0u+D3h3bsPpL71Fiz9hPdvr+3umYubwXi3qttq+U3y6+86eDcsVWkDZuk7L80mxIqaErV5Ymnt9Z0ukWirPWsNMprk/3oNmMh24cjxA52YU/Ph/FcRx7duj86UWq1h16tlK2F/etfHGP3WzAyB23Z6tzUpaOCTrFkGySv/miXqpUpYmngk7TaXj5MOU0Z21Z6Cs3v6z9dnZ5/kaN7GGxAXKyC9vt1tKPZ+d6+cXo5SksBtS6rh0+vUwWp76+qM16qGE+JArH85XFmFp3WIxYEjz7yr60ihso/7kIinbv88u6MRtexHB2T6yL88nevL2GaaPkz19S6qw8KOq1mk6Yfqa1nq9saHElp8nS1wsTrmL1Y0+ZxeMsbkwQsJ/sTbrJ2FlTVFhemsFfJ5yMGbqN+cpxKHZG6WYRvr5tdP4vN2NYFznZm9rFtfadyUEgPUSvOD7niYh6jj9fOe3SKt4Pti6nvVZWPunBpJ/7pPnS52vuQ8jQd/1n6dptt82xOxp2u0Pv1WyaTvaC7cXpoaAcFeve1U0nHaJdz9XtpzBSVi17P2Baqd3RMF3/04ndWXl/5LaapjkZVtFKlWbMxnJA2fH3hZVSDw8Pj4+PXxbc3t7e3d1tdA/gW6lY3qvQdwEycgJsm5N6vb6qoOIl4ChssYa/yEkQBIZhrCowDCMIeE8Rx6p6ea/C38fjB6lv/ffx/B9TQMQ5HpCRE0BGTgAZOQFk5ASQkRNARk4AGTkBZOQEkJETQEZOABk5AWTkBJCRE0BGTgAl+gc3dpQfLqBdZwAAAABJRU5ErkJggg==",
+          "recommendation": "\"Interactions\" butonu icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+          "wcag_refs": [
+            "2.5.5 Target Size"
+          ],
+          "impact_score": 85,
+          "affected_role": "touch target",
+          "test_suggestion": "Mobile viewport'ta hedef alanin en az 44px civarinda tiklanabilir oldugunu dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "touch-target",
+            "wcag_status": "touch-target-fail",
+            "wcag_refs": [
+              "2.5.5 Target Size"
+            ],
+            "contrast_ratio": 15.51,
+            "bounding_box": {
+              "x": 1011,
+              "y": 185,
+              "width": 237,
+              "height": 21
+            },
+            "why_flagged": "Tespit edilen \"Interactions\" butonu dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 237x21px ve onerilen minimum 44x44px esiginin altinda.",
+            "recommended_action": "\"Interactions\" butonu icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 5,
+          "title": "etkilesimli bilesen icin klavye erisimi sorunu",
+          "severity": "high",
+          "category": "keyboard-navigation",
+          "description": "Bu etkilesimli bilesen klavye ile erisilemiyor.",
+          "wcag_status": "keyboard-navigation-risk",
+          "contrast_ratio": 0.0,
+          "dominant_dark": "#000000",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 8,
+            "y": 21,
+            "width": 1264,
+            "height": 37
+          },
+          "crop_image_base64": "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",
+          "recommendation": "Bu bileseni klavye ile odaklanabilir hale getir ve mantikli tab sirasina ekle.",
+          "wcag_refs": [
+            "2.1.1 Keyboard",
+            "2.4.3 Focus Order"
+          ],
+          "impact_score": 93,
+          "affected_role": "keyboard navigation",
+          "test_suggestion": "Tab/Shift+Tab sirasinda bilesenin odaklanabilir ve mantikli sirada oldugunu test et.",
+          "evidence": {
+            "source": "rule-check",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "keyboard-navigation",
+            "wcag_status": "keyboard-navigation-risk",
+            "wcag_refs": [
+              "2.1.1 Keyboard",
+              "2.4.3 Focus Order"
+            ],
+            "contrast_ratio": 0.0,
+            "bounding_box": {
+              "x": 8,
+              "y": 21,
+              "width": 1264,
+              "height": 37
+            },
+            "why_flagged": "Bu etkilesimli bilesen klavye ile erisilemiyor.",
+            "recommended_action": "Bu bileseni klavye ile odaklanabilir hale getir ve mantikli tab sirasina ekle.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        }
+      ],
+      "heatmap": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 160,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 320,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 480,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 640,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 800,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 960,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 1120,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 0,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 8.01
+        },
+        {
+          "x": 160,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 7.96
+        },
+        {
+          "x": 320,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.22
+        },
+        {
+          "x": 480,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 8.17
+        },
+        {
+          "x": 640,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 7.65
+        },
+        {
+          "x": 800,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 7.44
+        },
+        {
+          "x": 960,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "low",
+          "contrast_ratio": 6.11
+        },
+        {
+          "x": 1120,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 7.8
+        },
+        {
+          "x": 0,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 9.4
+        },
+        {
+          "x": 160,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 9.33
+        },
+        {
+          "x": 320,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "low",
+          "contrast_ratio": 4.54
+        },
+        {
+          "x": 800,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "low",
+          "contrast_ratio": 4.54
+        },
+        {
+          "x": 960,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "low",
+          "contrast_ratio": 4.54
+        },
+        {
+          "x": 1120,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "low",
+          "contrast_ratio": 4.54
+        },
+        {
+          "x": 0,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        }
+      ],
+      "artifacts": {
+        "overlay_image_base64": "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gDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgbO/l4eHJ9BAAAAAAwGaszq5PNvT88CY37B+D7B+T7B+T7B+T7B+T7B+T7B9jfAUYAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAICwvZeHhyfTQwAAAAAAm7E6uz7Z0PPDm9ywfwyyf0yyf0yyf0yyf0yyf0yyf4zxFWAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAML2Xh4enkwPAQAAAABsxurs+mRDzw9vcsP+Mcj+Mcn+Mcn+Mcn+Mcn+Mcn+McZXgAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACNt7eXh4Mj0EAAAAALAZq7Prkw09P7zJDfvHIPvHJPvHJPvHJPvHJPvHJPvHGF8BBgAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAMIEQAAAAAAIEwABAAAAIEwABAAAAIAwARAAAAAAwgRAAAAAAAgTAAEAAAAgTAAEAAAAgDABEAAAAADCBEAAAAAACBMAAQAAACBMAAQAAACAMAEQAAAAAJau/wFwwe7TOPZXkwAAAABJRU5ErkJggg==",
+        "source_image_base64": "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fzrrx8/uq3v0l392YNcNs/PRziff2vd+afEH33lt5g/vuKI8KfO8udcuSd7cMZLyp5fi5bcGHmtK6z2zxux947crftYzePtl9y7+q2srfahb5lz1QPLBWX0FAADngC7QAFxeDu37f3/50f7yAN5J075y1xA35ln0qbtnlh/07Xilc92ANs933vxOdQfjmTP+alH9PS25a06lrbXvyHPbO7YmZ+Ga+ctnjUk+6f1p1bLmuVf/1aLxp9iw99D2VyqP3t35+x/sqRrJ3Dz16yMpf+FSvDNglfEr/nTG/L7DL7zcU3cP23b01Fy8xin33uV+SABcdARgAC528yfW9FdqHt80/Prv7vzdwy8e2FuKfvOub117zaCVWuY8cXOpdbTv2Esvdzy6s0734JdfeP1b/1YeDNy45OaFK6YMXGf29dc/dn2pJbn38DPPD06PqfHjaztdjR87LqkrLdg90+fUmYS5cckd/8OTfzJj8PxSt/2H6Xnz77Edv/x9bfA+tvXZf//u28d6q8r/QMuw5U/6dv3mzcGXYvaiT319bmPPex98r0437Nzet1/4oGbarfqXHQAuqLHf+ta36j7xg1/+IQGAC2zSbbde/3+0NdVE3knjl4w9vOMPxw4NvdmhDz7c+tax6+Y0f2rimGTMuPk3zrq7ZeyRT46+cehE0jL1S7e0/T//01Xz8/bUngP7v7ftt090HR9qV3945/3nPxo7/8pJc5oaksam2z8987apY97vOfSHI8nsOdO+dNv8/3zLFVdl3yef3Ltn33eee+OpfScGn8WyOz/1v19TE9wbx42Z8cnhF/dXjnvDNVfef3vb/33bzE/lBTvy8QdP/S6/kVLrrK/PLKTlMVfNmvGlBVOvGXv80KGj7x5LN5nzyP9yw/95TVNj75HtL3b8xeuDM/yJ3+x6t3N88x+3NDWnhWxs+h9vrC7/zK/ccf1f3Fwof5q50538ds0va+/e1DL1gTtu/M+fmZJ+WdCU9Pf2HH//o7pXvimZNeWumVUxP73s82Zcd+JIx3vD/aYA4Fz4+i1X113e0N/fX/eJzz35SgIAF86KL362ajqrOnr27F727KluNdQy85Gbr7pz1oTZ4xubyjvrO9l74vgb7x3cvmPP1qHnhRpg9pxZX79l5pKWiTPGjqneVc+x3jf2HHjutXe27a+z1dr7b62aSes07O585YHn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AAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYIAEAIAIBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQBGAAAABCEIABAAAIQQAGAAAgBAEYAACAEARgAAAAQhCAAQAACEEABgAAIAQBGAAAgBAEYAAAAEIQgAEAAAhBAAYAACAEARgAAIAQ/jsAAAD//wutRncAAAAGSURBVAMAz4ElPlEpKcUAAAAASUVORK5CYII="
+      },
+      "recommendations": [
+        "Isaretlenen alanlarda on plan ve arka plan ayrimini guclendir.",
+        "Form ipuclari ve ikincil etiketlerde acik zemin uzerinde griye yakin metin kullanmaktan kacin.",
+        "Aksiyon butonlarini ve satir ici yardimci metinleri WCAG AA kontrast hedefine gore yeniden kontrol et.",
+        "Birincil aksiyonlar, ikincil aksiyonlar ve yardimci metinler gorsel olarak daha net ayrissin diye palet tutarliligini gozden gecir.",
+        "Kucuk tiklanabilir alanlari en az 44x44px seviyesine yaklastir.",
+        "Etkilesimli bilesenleri klavye ile erisilebilir ve gorunur focus durumuna sahip hale getir."
+      ],
+      "score_breakdown": {
+        "visual_contrast": 45,
+        "semantic_structure": 100,
+        "keyboard_support": 64,
+        "form_accessibility": 100,
+        "aria_quality": 100
+      },
+      "accessibility_summary": {
+        "risk_level": "high",
+        "high": 3,
+        "medium": 2,
+        "weakest_area": "visual_contrast",
+        "summary": "5 accessibility bulgusu var; en zayif alan visual contrast."
+      },
+      "test_suggestions": [
+        {
+          "category": "keyboard-navigation",
+          "priority": "high",
+          "title": "etkilesimli bilesen icin klavye erisimi sorunu",
+          "suggestion": "Tab/Shift+Tab sirasinda bilesenin odaklanabilir ve mantikli sirada oldugunu test et."
+        },
+        {
+          "category": "touch-target",
+          "priority": "high",
+          "title": "\"Widgets\" butonu icin dokunma alani sorunu",
+          "suggestion": "Mobile viewport'ta hedef alanin en az 44px civarinda tiklanabilir oldugunu dogrula."
+        },
+        {
+          "category": "component-contrast",
+          "priority": "medium",
+          "title": "\"Selenium Certification Tr...\" basligi icin zayif kontrast sorunu",
+          "suggestion": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula."
+        }
+      ],
+      "keyboard_profile": {
+        "focusable_count": 6,
+        "positive_tabindex_count": 0,
+        "keyboard_findings": 3,
+        "first_focusable": "a"
+      },
+      "_benchmark_job": {
+        "job_id": 182,
+        "status": "completed",
+        "module_name": "accessibility",
+        "target": "http://127.0.0.1:8002/benchmark-fixtures/pages/demoqa",
+        "celery_task_id": "457ca389-bc60-4181-9c03-fcf4ecb816b6",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:57:53.369776",
+        "started_at": "2026-05-23T21:57:56.569568",
+        "completed_at": "2026-05-23T21:57:59.985364"
+      }
+    }
+  },
+  {
+    "case_id": "accessibility_login_form_labels",
+    "module": "accessibility",
+    "feature": "Detect form label and keyboard focus risks on a login form",
+    "status": "passed",
+    "duration_ms": 6077.91,
+    "error": "",
+    "checks": [
+      "findings=9 minimum=1",
+      "categories=['component-contrast', 'form-autocomplete', 'form-label', 'keyboard-navigation', 'touch-target'] any=['component-contrast', 'form-label', 'keyboard-navigation']"
+    ],
+    "metrics": {
+      "form_accessibility": null,
+      "keyboard_navigation": null,
+      "findings_count": 9
+    },
+    "screenshot_route": "/accessibility",
+    "screenshot_file": "accessibility_saucedemo_form_result.png",
+    "result": {
+      "platform": "web",
+      "image": {
+        "width": 1280,
+        "height": 720
+      },
+      "overall_score": 9,
+      "overview": "Visual-first tam sayfa kontrast analizi tamamlandi. 50 kritik dusuk kontrastli alan ve 0 sinirda alan tespit edildi.",
+      "wcag_summary": {
+        "aaa_pass": 5,
+        "aa_pass": 6,
+        "large_text_only": 0,
+        "fail": 50
+      },
+      "color_consistency_score": 40,
+      "palette": [
+        {
+          "color": "#ffffff",
+          "coverage": 99.5
+        },
+        {
+          "color": "#7e8180",
+          "coverage": 0.2
+        },
+        {
+          "color": "#271b27",
+          "coverage": 0.2
+        },
+        {
+          "color": "#ffffce",
+          "coverage": 0.1
+        },
+        {
+          "color": "#d4fffc",
+          "coverage": 0.0
+        }
+      ],
+      "components": [
+        {
+          "id": 1,
+          "label": "\"Username\" giris alani",
+          "severity": "low",
+          "average_contrast_ratio": 6.6,
+          "bounding_box": {
+            "x": 8,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          }
+        },
+        {
+          "id": 2,
+          "label": "\"Password\" giris alani",
+          "severity": "low",
+          "average_contrast_ratio": 4.54,
+          "bounding_box": {
+            "x": 189,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          }
+        }
+      ],
+      "findings": [
+        {
+          "id": 1,
+          "title": "\"Username\" giris alani kontrast acisindan gozden gecirilmeli",
+          "severity": "low",
+          "category": "component-contrast",
+          "description": "Tespit edilen \"Username\" giris alani, minimum guvenli kontrast sinirina yakin oldugu icin gozden gecirilmelidir.",
+          "wcag_status": "aa-pass",
+          "contrast_ratio": 6.6,
+          "dominant_dark": "#6a5861",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 8,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAMkAAAA1CAIAAABk9FgwAAACvElEQVR4nO3cPXKjMBgGYGVnL6ACFRyA1hQcgNYUOQBtfARGHk7gMcMRcMsBUuCWA7jALQegwAVH8I4AJWZje/HPF2fH79NJSIgZ3vmkJExe9vs9AyDwi+KmAMgWEEK2gAqyBVSQLaCCbAEVZAuoIFtABdkCKsgWUEG2gAqyBVSQLaCCbAEVZAuo/D5zbT6fk60L/5nlcnlxPPYnSClPXYInJId5GBMP7IlABdkCKsgWPOIsf6BIZMr8aGaf6YGnVSQyLQ87uBuE3shsAfyD9Vlo6mwRx4mJPRHuTnhTi5Wbu9QtldO8+Tu9n4Xyo7NI5JpZrCwb7gZvbBVvjbY1nHlQYdvaKroVthPXyHN1oZ/cLqlHHF8QHugOdavOVrnhR0rg7tKk6DoX6c4NdOciq/vRTcmmURT1eehbUeDysp9ZJHpi5FtN/t52tmPzytG98Yq9ddP0iJMLwrers3XJLOdO561yndW2J4QXRt3dN9vGmnb5URUyX29qr2tazkFF4e5r2xKmobvsWaS37WrHmPFlrGlytps4YjDtzILwLcpUylQ3uBvM7JHZUu9zW9XMPvK2hBcGbBHHMu/vGnqiqprhYoxVjInLNljO+binU3e/fkG4i6/nkGvrlqopfGL2LVWvPH3kWWVO6Jicsek1h57iPW/0Y7a/5xgf/usWhAeft4Qz4U2++jjEqATwbl9SCZDdUal7xYYp2vFqn+wGJ1JedP7ZVbXetce6bUGgMLZuDTe+wY9n9iyoFrHejiy/PS4JL/QrqYdbfjT27GO/uus4VxO567s8PbUTH3nA6xYEMiP/7g1PTuI7CPg5kC2ggmwBFWQLqLyc+X+n+F4ebvle/ly2AG6BPRGoIFtABdkCKsgWUEG2gAqyBVSQLaCCbAEVZAuoIFtABdkCKsgWUEG2gAqyBVSQLWBE/gB3sNzMcAE0BgAAAABJRU5ErkJggg==",
+          "recommendation": "\"Username\" giris alani icin #6a5861 ve #ffffff arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+          "wcag_refs": [
+            "1.4.3 Contrast (Minimum)"
+          ],
+          "impact_score": 34,
+          "affected_role": "component contrast",
+          "test_suggestion": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "component-contrast",
+            "wcag_status": "aa-pass",
+            "wcag_refs": [
+              "1.4.3 Contrast (Minimum)"
+            ],
+            "contrast_ratio": 6.6,
+            "bounding_box": {
+              "x": 8,
+              "y": 80,
+              "width": 177,
+              "height": 21
+            },
+            "why_flagged": "Tespit edilen \"Username\" giris alani, minimum guvenli kontrast sinirina yakin oldugu icin gozden gecirilmelidir.",
+            "recommended_action": "\"Username\" giris alani icin #6a5861 ve #ffffff arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 2,
+          "title": "\"Password\" giris alani kontrast acisindan gozden gecirilmeli",
+          "severity": "low",
+          "category": "component-contrast",
+          "description": "Tespit edilen \"Password\" giris alani, minimum guvenli kontrast sinirina yakin oldugu icin gozden gecirilmelidir.",
+          "wcag_status": "aa-pass",
+          "contrast_ratio": 4.54,
+          "dominant_dark": "#767676",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 189,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAANEAAAA1CAIAAABQjZksAAADTElEQVR4nO3br3LiQBwH8F9vznSqIoiIq1lLRB4AgQFx7gz2eAQmDE/ANMMjgGIm5mYqKsAg8gARiY2pWxFEFJqb3RAayr/pNPzKle9HJZvdDRm+s7+Flrv1ek0AjH5w3gwAmYMvgMwBN2QOuCFzwA2ZA27IHHBD5oAbMgfckDnghswBN2QOuCFzwA2ZA27IHHC7c133dI+np6d3Lf1+/5IvCf4n+/GYTqer1er19fXYkLuz/7PZ7/fL8747hRvX383DdDq9v79vNpsnhqC2QpVWq9XpwCFzULETJXULmQNuPz83PBq7flJuMBq9Qdukq5LOhqO4fn2v67Ys/hi/6W82aX42c4roeF377d0dja3tOcCla6vZbglKwqjSSeGbqWCdO0qtekH2bjF8q8ZvZXivLRq7cyu/Wi6M6li29ERvQ8ozz0lQkmR6FirubghxwYeEL17n0tk8IeHoCKSzSVDreEqvYSTzWapz4S8bPd3YqQWTY222I7I4VBfTMCaDtseZnjydDYshHZH4Qz2NkiXU8jxv0DbV3Snv0qJkE3z4Lutc4ruuX5wYjd5mM2e2B96mUcrSm54FL1G7a5Pd9eyjbZZlZFISmVJSvVWPQ0lEKnItFbkwzoy6o5dI+1djPorDtJ2vmJu8H+jy+eeEilT7GWJHqWIaxqbN7no0douQ5iMPtZlO3RipfWGY1JyuJf0wIkfmq5yOcM06+SF0p4tp1QiZu4H9nCqzxY5N78mKC8Vaphr9cWSrvO63qdBNZCSXKmY2ibmchYlwuqqXZRkUy5Ts47Hb6ZLKJZF1qQeFj7rod8K6PBJFL8UniXQ2dIvdl1p9DMs62JYfZvE8Jn1mWRTHOn76klM3Nts9PXdRREt0l+AlKursJZ8SrmWdU1+bBL6umKKjdvoqf3Z70JHuyA22ez+T6FCbWg8d4fuJ0AVSBTAgtZfbzF0aIjregS978y55wRZC0PJSzwkf8PzbeCai9Tmu6544hRvn7sUjOwd/bwVuyBxwQ+agSo+Pj2f7IHNQpYeHh8VicboPfg8B1/d7CIBqobYCN2QOuCFzwA2ZA27IHHBD5oAbMgfckDnghswBN2QOuCFzwA2ZA27IHHBD5oAbMgfE7B/JMfXGJJBP+AAAAABJRU5ErkJggg==",
+          "recommendation": "\"Password\" giris alani icin #767676 ve #ffffff arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+          "wcag_refs": [
+            "1.4.3 Contrast (Minimum)"
+          ],
+          "impact_score": 34,
+          "affected_role": "component contrast",
+          "test_suggestion": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "component-contrast",
+            "wcag_status": "aa-pass",
+            "wcag_refs": [
+              "1.4.3 Contrast (Minimum)"
+            ],
+            "contrast_ratio": 4.54,
+            "bounding_box": {
+              "x": 189,
+              "y": 80,
+              "width": 177,
+              "height": 21
+            },
+            "why_flagged": "Tespit edilen \"Password\" giris alani, minimum guvenli kontrast sinirina yakin oldugu icin gozden gecirilmelidir.",
+            "recommended_action": "\"Password\" giris alani icin #767676 ve #ffffff arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 3,
+          "title": "\"Username\" giris alani icin dokunma alani sorunu",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Tespit edilen \"Username\" giris alani dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 177x21px ve onerilen minimum 44x44px esiginin altinda.",
+          "wcag_status": "touch-target-fail",
+          "contrast_ratio": 6.6,
+          "dominant_dark": "#6a5861",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 8,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAMkAAAA1CAIAAABk9FgwAAACvElEQVR4nO3cPXKjMBgGYGVnL6ACFRyA1hQcgNYUOQBtfARGHk7gMcMRcMsBUuCWA7jALQegwAVH8I4AJWZje/HPF2fH79NJSIgZ3vmkJExe9vs9AyDwi+KmAMgWEEK2gAqyBVSQLaCCbAEVZAuoIFtABdkCKsgWUEG2gAqyBVSQLaCCbAEVZAuo/D5zbT6fk60L/5nlcnlxPPYnSClPXYInJId5GBMP7IlABdkCKsgWPOIsf6BIZMr8aGaf6YGnVSQyLQ87uBuE3shsAfyD9Vlo6mwRx4mJPRHuTnhTi5Wbu9QtldO8+Tu9n4Xyo7NI5JpZrCwb7gZvbBVvjbY1nHlQYdvaKroVthPXyHN1oZ/cLqlHHF8QHugOdavOVrnhR0rg7tKk6DoX6c4NdOciq/vRTcmmURT1eehbUeDysp9ZJHpi5FtN/t52tmPzytG98Yq9ddP0iJMLwrers3XJLOdO561yndW2J4QXRt3dN9vGmnb5URUyX29qr2tazkFF4e5r2xKmobvsWaS37WrHmPFlrGlytps4YjDtzILwLcpUylQ3uBvM7JHZUu9zW9XMPvK2hBcGbBHHMu/vGnqiqprhYoxVjInLNljO+binU3e/fkG4i6/nkGvrlqopfGL2LVWvPH3kWWVO6Jicsek1h57iPW/0Y7a/5xgf/usWhAeft4Qz4U2++jjEqATwbl9SCZDdUal7xYYp2vFqn+wGJ1JedP7ZVbXetce6bUGgMLZuDTe+wY9n9iyoFrHejiy/PS4JL/QrqYdbfjT27GO/uus4VxO567s8PbUTH3nA6xYEMiP/7g1PTuI7CPg5kC2ggmwBFWQLqLyc+X+n+F4ebvle/ly2AG6BPRGoIFtABdkCKsgWUEG2gAqyBVSQLaCCbAEVZAuoIFtABdkCKsgWUEG2gAqyBVSQLWBE/gB3sNzMcAE0BgAAAABJRU5ErkJggg==",
+          "recommendation": "\"Username\" giris alani icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+          "wcag_refs": [
+            "2.5.5 Target Size"
+          ],
+          "impact_score": 85,
+          "affected_role": "touch target",
+          "test_suggestion": "Mobile viewport'ta hedef alanin en az 44px civarinda tiklanabilir oldugunu dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "touch-target",
+            "wcag_status": "touch-target-fail",
+            "wcag_refs": [
+              "2.5.5 Target Size"
+            ],
+            "contrast_ratio": 6.6,
+            "bounding_box": {
+              "x": 8,
+              "y": 80,
+              "width": 177,
+              "height": 21
+            },
+            "why_flagged": "Tespit edilen \"Username\" giris alani dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 177x21px ve onerilen minimum 44x44px esiginin altinda.",
+            "recommended_action": "\"Username\" giris alani icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 4,
+          "title": "\"Password\" giris alani icin dokunma alani sorunu",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Tespit edilen \"Password\" giris alani dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 177x21px ve onerilen minimum 44x44px esiginin altinda.",
+          "wcag_status": "touch-target-fail",
+          "contrast_ratio": 4.54,
+          "dominant_dark": "#767676",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 189,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAANEAAAA1CAIAAABQjZksAAADTElEQVR4nO3br3LiQBwH8F9vznSqIoiIq1lLRB4AgQFx7gz2eAQmDE/ANMMjgGIm5mYqKsAg8gARiY2pWxFEFJqb3RAayr/pNPzKle9HJZvdDRm+s7+Flrv1ek0AjH5w3gwAmYMvgMwBN2QOuCFzwA2ZA27IHHBD5oAbMgfckDnghswBN2QOuCFzwA2ZA27IHHC7c133dI+np6d3Lf1+/5IvCf4n+/GYTqer1er19fXYkLuz/7PZ7/fL8747hRvX383DdDq9v79vNpsnhqC2QpVWq9XpwCFzULETJXULmQNuPz83PBq7flJuMBq9Qdukq5LOhqO4fn2v67Ys/hi/6W82aX42c4roeF377d0dja3tOcCla6vZbglKwqjSSeGbqWCdO0qtekH2bjF8q8ZvZXivLRq7cyu/Wi6M6li29ERvQ8ozz0lQkmR6FirubghxwYeEL17n0tk8IeHoCKSzSVDreEqvYSTzWapz4S8bPd3YqQWTY222I7I4VBfTMCaDtseZnjydDYshHZH4Qz2NkiXU8jxv0DbV3Snv0qJkE3z4Lutc4ruuX5wYjd5mM2e2B96mUcrSm54FL1G7a5Pd9eyjbZZlZFISmVJSvVWPQ0lEKnItFbkwzoy6o5dI+1djPorDtJ2vmJu8H+jy+eeEilT7GWJHqWIaxqbN7no0douQ5iMPtZlO3RipfWGY1JyuJf0wIkfmq5yOcM06+SF0p4tp1QiZu4H9nCqzxY5N78mKC8Vaphr9cWSrvO63qdBNZCSXKmY2ibmchYlwuqqXZRkUy5Ts47Hb6ZLKJZF1qQeFj7rod8K6PBJFL8UniXQ2dIvdl1p9DMs62JYfZvE8Jn1mWRTHOn76klM3Nts9PXdRREt0l+AlKursJZ8SrmWdU1+bBL6umKKjdvoqf3Z70JHuyA22ez+T6FCbWg8d4fuJ0AVSBTAgtZfbzF0aIjregS978y55wRZC0PJSzwkf8PzbeCai9Tmu6544hRvn7sUjOwd/bwVuyBxwQ+agSo+Pj2f7IHNQpYeHh8VicboPfg8B1/d7CIBqobYCN2QOuCFzwA2ZA27IHHBD5oAbMgfckDnghswBN2QOuCFzwA2ZA27IHHBD5oAbMgfE7B/JMfXGJJBP+AAAAABJRU5ErkJggg==",
+          "recommendation": "\"Password\" giris alani icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+          "wcag_refs": [
+            "2.5.5 Target Size"
+          ],
+          "impact_score": 85,
+          "affected_role": "touch target",
+          "test_suggestion": "Mobile viewport'ta hedef alanin en az 44px civarinda tiklanabilir oldugunu dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "touch-target",
+            "wcag_status": "touch-target-fail",
+            "wcag_refs": [
+              "2.5.5 Target Size"
+            ],
+            "contrast_ratio": 4.54,
+            "bounding_box": {
+              "x": 189,
+              "y": 80,
+              "width": 177,
+              "height": 21
+            },
+            "why_flagged": "Tespit edilen \"Password\" giris alani dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 177x21px ve onerilen minimum 44x44px esiginin altinda.",
+            "recommended_action": "\"Password\" giris alani icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 5,
+          "title": "\"Login\" butonu icin dokunma alani sorunu",
+          "severity": "high",
+          "category": "touch-target",
+          "description": "Tespit edilen \"Login\" butonu dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 49x21px ve onerilen minimum 44x44px esiginin altinda.",
+          "wcag_status": "touch-target-fail",
+          "contrast_ratio": 15.2,
+          "dominant_dark": "#3d1b25",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 370,
+            "y": 80,
+            "width": 49,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAFEAAAA1CAIAAAC2iJAtAAAB+klEQVR4nO3YMW7iQBQG4J9fadBUvgCSC2+HaCJOMCewliIFxWoqLgCSm+0scQIqVy5SRPIJ5gSrbRBdKJB8AVcWJSvsOKAI7eKAY5K3X4Ue8zzzxBtm5M5ut4MwhDyEPIQ8hDyEPIQ8hDyEPIQ8hDyEPIQ8hDyEPIQ8nel0+vcR8/n8TSSO4zzPN5sNWuW6rlJqPB7XTez8853BbDY7LjuO4263q7XGDbDWbrfbumWz7jR5nt9IwQC01nme181i3YTWW/ry9RDy8HqPssZxjL3kCeli6AwXKRpGyHOHG9Kb/MomzU/D5qcoWrZ03Lj7rVAwptoUr71dfDCmSrtsx7RQszWDoP+UZVm2DBEMXtZvzSjxy+j9KjmVt04QllleMrpq1UTD7GMC/6E40HuT0EfyaE9ET/DCn+X3Xv/KSyKala5X8O6/nRX9KGz4+ftfaf37+azoR2HTE+iHqp+RLoKqo99GP3PNyejlr/bwL62jZbgqwoMA4TIq7+o6evLLwd/x4+R+/hTns46yLDr/2D0MtyYoN/dh4HHGfuBXuIeli2F16ha93fd6X/4e1puEvjNyyo3svXb8jdbsum6zO6H59bBuglLK2uveBd/PWquUqpvV+f8+TARCHkIeQh5CHkIeQh5CHkIeQh5CHkIeQh5CHkIetr2AFvwBJVvIfY84vDgAAAAASUVORK5CYII=",
+          "recommendation": "\"Login\" butonu icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+          "wcag_refs": [
+            "2.5.5 Target Size"
+          ],
+          "impact_score": 85,
+          "affected_role": "touch target",
+          "test_suggestion": "Mobile viewport'ta hedef alanin en az 44px civarinda tiklanabilir oldugunu dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "touch-target",
+            "wcag_status": "touch-target-fail",
+            "wcag_refs": [
+              "2.5.5 Target Size"
+            ],
+            "contrast_ratio": 15.2,
+            "bounding_box": {
+              "x": 370,
+              "y": 80,
+              "width": 49,
+              "height": 21
+            },
+            "why_flagged": "Tespit edilen \"Login\" butonu dokunma/hedef boyutu acisindan kucuk gorunuyor. Bu alan yaklasik 49x21px ve onerilen minimum 44x44px esiginin altinda.",
+            "recommended_action": "\"Login\" butonu icin tiklanabilir alan boyutunu en az 44x44px seviyesine yaklastir. Icerik ayni kalsa bile padding veya buton kapsama alanini buyut.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 6,
+          "title": "etkilesimli bilesen icin klavye erisimi sorunu",
+          "severity": "high",
+          "category": "keyboard-navigation",
+          "description": "Bu etkilesimli bilesen klavye ile erisilemiyor.",
+          "wcag_status": "keyboard-navigation-risk",
+          "contrast_ratio": 0.0,
+          "dominant_dark": "#000000",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 8,
+            "y": 21,
+            "width": 1264,
+            "height": 37
+          },
+          "crop_image_base64": "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",
+          "recommendation": "Bu bileseni klavye ile odaklanabilir hale getir ve mantikli tab sirasina ekle.",
+          "wcag_refs": [
+            "2.1.1 Keyboard",
+            "2.4.3 Focus Order"
+          ],
+          "impact_score": 93,
+          "affected_role": "keyboard navigation",
+          "test_suggestion": "Tab/Shift+Tab sirasinda bilesenin odaklanabilir ve mantikli sirada oldugunu test et.",
+          "evidence": {
+            "source": "rule-check",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "keyboard-navigation",
+            "wcag_status": "keyboard-navigation-risk",
+            "wcag_refs": [
+              "2.1.1 Keyboard",
+              "2.4.3 Focus Order"
+            ],
+            "contrast_ratio": 0.0,
+            "bounding_box": {
+              "x": 8,
+              "y": 21,
+              "width": 1264,
+              "height": 37
+            },
+            "why_flagged": "Bu etkilesimli bilesen klavye ile erisilemiyor.",
+            "recommended_action": "Bu bileseni klavye ile odaklanabilir hale getir ve mantikli tab sirasina ekle.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 7,
+          "title": "form alani placeholder ile etiketlenmis",
+          "severity": "medium",
+          "category": "form-label",
+          "description": "input#user-name icin kalici label bulunamadi; placeholder tek basina screen reader ve hata durumlari icin zayif kalabilir.",
+          "wcag_status": "form-label-risk",
+          "contrast_ratio": 0.0,
+          "dominant_dark": "#000000",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 8,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAAMkAAAA1CAIAAABk9FgwAAACvElEQVR4nO3cPXKjMBgGYGVnL6ACFRyA1hQcgNYUOQBtfARGHk7gMcMRcMsBUuCWA7jALQegwAVH8I4AJWZje/HPF2fH79NJSIgZ3vmkJExe9vs9AyDwi+KmAMgWEEK2gAqyBVSQLaCCbAEVZAuoIFtABdkCKsgWUEG2gAqyBVSQLaCCbAEVZAuo/D5zbT6fk60L/5nlcnlxPPYnSClPXYInJId5GBMP7IlABdkCKsgWPOIsf6BIZMr8aGaf6YGnVSQyLQ87uBuE3shsAfyD9Vlo6mwRx4mJPRHuTnhTi5Wbu9QtldO8+Tu9n4Xyo7NI5JpZrCwb7gZvbBVvjbY1nHlQYdvaKroVthPXyHN1oZ/cLqlHHF8QHugOdavOVrnhR0rg7tKk6DoX6c4NdOciq/vRTcmmURT1eehbUeDysp9ZJHpi5FtN/t52tmPzytG98Yq9ddP0iJMLwrers3XJLOdO561yndW2J4QXRt3dN9vGmnb5URUyX29qr2tazkFF4e5r2xKmobvsWaS37WrHmPFlrGlytps4YjDtzILwLcpUylQ3uBvM7JHZUu9zW9XMPvK2hBcGbBHHMu/vGnqiqprhYoxVjInLNljO+binU3e/fkG4i6/nkGvrlqopfGL2LVWvPH3kWWVO6Jicsek1h57iPW/0Y7a/5xgf/usWhAeft4Qz4U2++jjEqATwbl9SCZDdUal7xYYp2vFqn+wGJ1JedP7ZVbXetce6bUGgMLZuDTe+wY9n9iyoFrHejiy/PS4JL/QrqYdbfjT27GO/uus4VxO567s8PbUTH3nA6xYEMiP/7g1PTuI7CPg5kC2ggmwBFWQLqLyc+X+n+F4ebvle/ly2AG6BPRGoIFtABdkCKsgWUEG2gAqyBVSQLaCCbAEVZAuoIFtABdkCKsgWUEG2gAqyBVSQLWBE/gB3sNzMcAE0BgAAAABJRU5ErkJggg==",
+          "recommendation": "Alanda gorunur label, aria-label veya aria-labelledby kullan; placeholder'i sadece ipucu olarak birak.",
+          "evidence_source": "dom-metadata",
+          "selector": "input#user-name",
+          "element_type": "input",
+          "role": "input",
+          "wcag_refs": [
+            "1.3.1 Info and Relationships",
+            "3.3.2 Labels or Instructions",
+            "4.1.2 Name, Role, Value"
+          ],
+          "impact_score": 69,
+          "affected_role": "input",
+          "test_suggestion": "Form alaninin label veya aria-labelledby ile okunabilir isme sahip oldugunu dogrula.",
+          "evidence": {
+            "source": "dom-metadata",
+            "selector": "input#user-name",
+            "element_type": "input",
+            "role": "input",
+            "category": "form-label",
+            "wcag_status": "form-label-risk",
+            "wcag_refs": [
+              "1.3.1 Info and Relationships",
+              "3.3.2 Labels or Instructions",
+              "4.1.2 Name, Role, Value"
+            ],
+            "contrast_ratio": 0.0,
+            "bounding_box": {
+              "x": 8,
+              "y": 80,
+              "width": 177,
+              "height": 21
+            },
+            "why_flagged": "input#user-name icin kalici label bulunamadi; placeholder tek basina screen reader ve hata durumlari icin zayif kalabilir.",
+            "recommended_action": "Alanda gorunur label, aria-label veya aria-labelledby kullan; placeholder'i sadece ipucu olarak birak.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 8,
+          "title": "form alani placeholder ile etiketlenmis",
+          "severity": "medium",
+          "category": "form-label",
+          "description": "input#password icin kalici label bulunamadi; placeholder tek basina screen reader ve hata durumlari icin zayif kalabilir.",
+          "wcag_status": "form-label-risk",
+          "contrast_ratio": 0.0,
+          "dominant_dark": "#000000",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 189,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAANEAAAA1CAIAAABQjZksAAADTElEQVR4nO3br3LiQBwH8F9vznSqIoiIq1lLRB4AgQFx7gz2eAQmDE/ANMMjgGIm5mYqKsAg8gARiY2pWxFEFJqb3RAayr/pNPzKle9HJZvdDRm+s7+Flrv1ek0AjH5w3gwAmYMvgMwBN2QOuCFzwA2ZA27IHHBD5oAbMgfckDnghswBN2QOuCFzwA2ZA27IHHC7c133dI+np6d3Lf1+/5IvCf4n+/GYTqer1er19fXYkLuz/7PZ7/fL8747hRvX383DdDq9v79vNpsnhqC2QpVWq9XpwCFzULETJXULmQNuPz83PBq7flJuMBq9Qdukq5LOhqO4fn2v67Ys/hi/6W82aX42c4roeF377d0dja3tOcCla6vZbglKwqjSSeGbqWCdO0qtekH2bjF8q8ZvZXivLRq7cyu/Wi6M6li29ERvQ8ozz0lQkmR6FirubghxwYeEL17n0tk8IeHoCKSzSVDreEqvYSTzWapz4S8bPd3YqQWTY222I7I4VBfTMCaDtseZnjydDYshHZH4Qz2NkiXU8jxv0DbV3Snv0qJkE3z4Lutc4ruuX5wYjd5mM2e2B96mUcrSm54FL1G7a5Pd9eyjbZZlZFISmVJSvVWPQ0lEKnItFbkwzoy6o5dI+1djPorDtJ2vmJu8H+jy+eeEilT7GWJHqWIaxqbN7no0douQ5iMPtZlO3RipfWGY1JyuJf0wIkfmq5yOcM06+SF0p4tp1QiZu4H9nCqzxY5N78mKC8Vaphr9cWSrvO63qdBNZCSXKmY2ibmchYlwuqqXZRkUy5Ts47Hb6ZLKJZF1qQeFj7rod8K6PBJFL8UniXQ2dIvdl1p9DMs62JYfZvE8Jn1mWRTHOn76klM3Nts9PXdRREt0l+AlKursJZ8SrmWdU1+bBL6umKKjdvoqf3Z70JHuyA22ez+T6FCbWg8d4fuJ0AVSBTAgtZfbzF0aIjregS978y55wRZC0PJSzwkf8PzbeCai9Tmu6544hRvn7sUjOwd/bwVuyBxwQ+agSo+Pj2f7IHNQpYeHh8VicboPfg8B1/d7CIBqobYCN2QOuCFzwA2ZA27IHHBD5oAbMgfckDnghswBN2QOuCFzwA2ZA27IHHBD5oAbMgfE7B/JMfXGJJBP+AAAAABJRU5ErkJggg==",
+          "recommendation": "Alanda gorunur label, aria-label veya aria-labelledby kullan; placeholder'i sadece ipucu olarak birak.",
+          "evidence_source": "dom-metadata",
+          "selector": "input#password",
+          "element_type": "input",
+          "role": "input",
+          "wcag_refs": [
+            "1.3.1 Info and Relationships",
+            "3.3.2 Labels or Instructions",
+            "4.1.2 Name, Role, Value"
+          ],
+          "impact_score": 69,
+          "affected_role": "input",
+          "test_suggestion": "Form alaninin label veya aria-labelledby ile okunabilir isme sahip oldugunu dogrula.",
+          "evidence": {
+            "source": "dom-metadata",
+            "selector": "input#password",
+            "element_type": "input",
+            "role": "input",
+            "category": "form-label",
+            "wcag_status": "form-label-risk",
+            "wcag_refs": [
+              "1.3.1 Info and Relationships",
+              "3.3.2 Labels or Instructions",
+              "4.1.2 Name, Role, Value"
+            ],
+            "contrast_ratio": 0.0,
+            "bounding_box": {
+              "x": 189,
+              "y": 80,
+              "width": 177,
+              "height": 21
+            },
+            "why_flagged": "input#password icin kalici label bulunamadi; placeholder tek basina screen reader ve hata durumlari icin zayif kalabilir.",
+            "recommended_action": "Alanda gorunur label, aria-label veya aria-labelledby kullan; placeholder'i sadece ipucu olarak birak.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        },
+        {
+          "id": 9,
+          "title": "form alani icin autocomplete amaci belirsiz",
+          "severity": "low",
+          "category": "form-autocomplete",
+          "description": "password alani kullanici verisi topluyor ama autocomplete token'i yok.",
+          "wcag_status": "input-purpose-risk",
+          "contrast_ratio": 0.0,
+          "dominant_dark": "#000000",
+          "dominant_light": "#ffffff",
+          "bounding_box": {
+            "x": 189,
+            "y": 80,
+            "width": 177,
+            "height": 21
+          },
+          "crop_image_base64": "iVBORw0KGgoAAAANSUhEUgAAANEAAAA1CAIAAABQjZksAAADTElEQVR4nO3br3LiQBwH8F9vznSqIoiIq1lLRB4AgQFx7gz2eAQmDE/ANMMjgGIm5mYqKsAg8gARiY2pWxFEFJqb3RAayr/pNPzKle9HJZvdDRm+s7+Flrv1ek0AjH5w3gwAmYMvgMwBN2QOuCFzwA2ZA27IHHBD5oAbMgfckDnghswBN2QOuCFzwA2ZA27IHHC7c133dI+np6d3Lf1+/5IvCf4n+/GYTqer1er19fXYkLuz/7PZ7/fL8747hRvX383DdDq9v79vNpsnhqC2QpVWq9XpwCFzULETJXULmQNuPz83PBq7flJuMBq9Qdukq5LOhqO4fn2v67Ys/hi/6W82aX42c4roeF377d0dja3tOcCla6vZbglKwqjSSeGbqWCdO0qtekH2bjF8q8ZvZXivLRq7cyu/Wi6M6li29ERvQ8ozz0lQkmR6FirubghxwYeEL17n0tk8IeHoCKSzSVDreEqvYSTzWapz4S8bPd3YqQWTY222I7I4VBfTMCaDtseZnjydDYshHZH4Qz2NkiXU8jxv0DbV3Snv0qJkE3z4Lutc4ruuX5wYjd5mM2e2B96mUcrSm54FL1G7a5Pd9eyjbZZlZFISmVJSvVWPQ0lEKnItFbkwzoy6o5dI+1djPorDtJ2vmJu8H+jy+eeEilT7GWJHqWIaxqbN7no0douQ5iMPtZlO3RipfWGY1JyuJf0wIkfmq5yOcM06+SF0p4tp1QiZu4H9nCqzxY5N78mKC8Vaphr9cWSrvO63qdBNZCSXKmY2ibmchYlwuqqXZRkUy5Ts47Hb6ZLKJZF1qQeFj7rod8K6PBJFL8UniXQ2dIvdl1p9DMs62JYfZvE8Jn1mWRTHOn76klM3Nts9PXdRREt0l+AlKursJZ8SrmWdU1+bBL6umKKjdvoqf3Z70JHuyA22ez+T6FCbWg8d4fuJ0AVSBTAgtZfbzF0aIjregS978y55wRZC0PJSzwkf8PzbeCai9Tmu6544hRvn7sUjOwd/bwVuyBxwQ+agSo+Pj2f7IHNQpYeHh8VicboPfg8B1/d7CIBqobYCN2QOuCFzwA2ZA27IHHBD5oAbMgfckDnghswBN2QOuCFzwA2ZA27IHHBD5oAbMgfE7B/JMfXGJJBP+AAAAABJRU5ErkJggg==",
+          "recommendation": "Alan amacina gore email, username, current-password, tel veya url gibi autocomplete token'i ekle.",
+          "evidence_source": "dom-metadata",
+          "selector": "input#password",
+          "element_type": "input",
+          "role": "input",
+          "wcag_refs": [
+            "1.3.5 Identify Input Purpose"
+          ],
+          "impact_score": 34,
+          "affected_role": "input",
+          "test_suggestion": "Login/iletisim gibi formlarda autocomplete token'larinin dogru verildigini kontrol et.",
+          "evidence": {
+            "source": "dom-metadata",
+            "selector": "input#password",
+            "element_type": "input",
+            "role": "input",
+            "category": "form-autocomplete",
+            "wcag_status": "input-purpose-risk",
+            "wcag_refs": [
+              "1.3.5 Identify Input Purpose"
+            ],
+            "contrast_ratio": 0.0,
+            "bounding_box": {
+              "x": 189,
+              "y": 80,
+              "width": 177,
+              "height": 21
+            },
+            "why_flagged": "password alani kullanici verisi topluyor ama autocomplete token'i yok.",
+            "recommended_action": "Alan amacina gore email, username, current-password, tel veya url gibi autocomplete token'i ekle.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        }
+      ],
+      "heatmap": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 19.59
+        },
+        {
+          "x": 160,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "low",
+          "contrast_ratio": 4.54
+        },
+        {
+          "x": 320,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 15.2
+        },
+        {
+          "x": 480,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 20.03
+        },
+        {
+          "x": 160,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 20.15
+        },
+        {
+          "x": 320,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 20.23
+        },
+        {
+          "x": 480,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        }
+      ],
+      "artifacts": {
+        "overlay_image_base64": "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JgACAAAAQJgACAAAAABhAiAAAAAAhAmAAAAAABAmAAIAAABAmAAIAAAAAGECIAAAAACECYAAAAAAECYAAgAAAECYAAgAAAAAYQIgAAAAAIQJgAAAAAAQJgACAAAAQJgACAAAAABhAiAAAAAAhAmAAAAAABAmAAIAAABAmAAIAAAAAGECIAAAAACECYAAAAAAECYAAgAAAECYAAgAAAAAYQIgAAAAAIQJgAAAAAAQJgACAAAAQJgACAAAAABhAiAAAAAAhAmAAAAAABAmAAIAAABAmAAIAAAAAGECIAAAAACECYAAAAAAECYAAgAAAECYAAgAAAAAYQIgAAAAAIQJgAAAAAAQJgACAAAAQJgACAAAAABhAiAAAAAAhAmAAAAAABAmAAIAAABAmAAIAAAAAGECIAAAAACECYAAAAAAECYAAgAAAECYAAgAAAAAYQIgAAAAAIQJgAAAAAAQJgACAAAAQJgACAAAAABhAiAAAAAAhAmAAAAAABAmAAIAAABAmAAIAAAAAGECIAAAAACECYAAAAAAECYAAgAAAECYAAgAAAAAYQIgAAAAAIQJgAAAAAAQJgACAAAAQJgACAAAAABhAiAAAAAAhAmAAAAAABAmAAIAAABAmAAIAAAAAGECIAAAAACECYAAAAAAECYAAgAAAECYAAgAAAAAYQIgAAAAAIQJgAAAAAAQJgACAAAAQJgACAAAAABhAiAAAAAAhAmAAAAAALB0/QftELP3OpvUZwAAAABJRU5ErkJggg==",
+        "source_image_base64": "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GAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAG/mV/YAAAfuSURBVEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAARIAACIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEL4PwAAAP//Bu4lPQAAAAZJREFUAwBqccL+FAMUuQAAAABJRU5ErkJggg=="
+      },
+      "recommendations": [
+        "Isaretlenen alanlarda on plan ve arka plan ayrimini guclendir.",
+        "Form ipuclari ve ikincil etiketlerde acik zemin uzerinde griye yakin metin kullanmaktan kacin.",
+        "Aksiyon butonlarini ve satir ici yardimci metinleri WCAG AA kontrast hedefine gore yeniden kontrol et.",
+        "Birincil aksiyonlar, ikincil aksiyonlar ve yardimci metinler gorsel olarak daha net ayrissin diye palet tutarliligini gozden gecir.",
+        "Kucuk tiklanabilir alanlari en az 44x44px seviyesine yaklastir.",
+        "Etkilesimli bilesenleri klavye ile erisilebilir ve gorunur focus durumuna sahip hale getir.",
+        "Form alanlari icin kalici label, hata mesaji iliskisi ve uygun autocomplete tokenlarini tamamla."
+      ],
+      "score_breakdown": {
+        "visual_contrast": 45,
+        "semantic_structure": 100,
+        "keyboard_support": 52,
+        "form_accessibility": 52,
+        "aria_quality": 100
+      },
+      "accessibility_summary": {
+        "risk_level": "high",
+        "high": 4,
+        "medium": 2,
+        "weakest_area": "visual_contrast",
+        "summary": "9 accessibility bulgusu var; en zayif alan visual contrast."
+      },
+      "test_suggestions": [
+        {
+          "category": "keyboard-navigation",
+          "priority": "high",
+          "title": "etkilesimli bilesen icin klavye erisimi sorunu",
+          "suggestion": "Tab/Shift+Tab sirasinda bilesenin odaklanabilir ve mantikli sirada oldugunu test et."
+        },
+        {
+          "category": "touch-target",
+          "priority": "high",
+          "title": "\"Username\" giris alani icin dokunma alani sorunu",
+          "suggestion": "Mobile viewport'ta hedef alanin en az 44px civarinda tiklanabilir oldugunu dogrula."
+        },
+        {
+          "category": "form-label",
+          "priority": "medium",
+          "title": "form alani placeholder ile etiketlenmis",
+          "suggestion": "Form alaninin label veya aria-labelledby ile okunabilir isme sahip oldugunu dogrula."
+        },
+        {
+          "category": "component-contrast",
+          "priority": "low",
+          "title": "\"Username\" giris alani kontrast acisindan gozden gecirilmeli",
+          "suggestion": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula."
+        },
+        {
+          "category": "form-autocomplete",
+          "priority": "low",
+          "title": "form alani icin autocomplete amaci belirsiz",
+          "suggestion": "Login/iletisim gibi formlarda autocomplete token'larinin dogru verildigini kontrol et."
+        }
+      ],
+      "keyboard_profile": {
+        "focusable_count": 3,
+        "positive_tabindex_count": 0,
+        "keyboard_findings": 4,
+        "first_focusable": "input#user-name"
+      },
+      "_benchmark_job": {
+        "job_id": 183,
+        "status": "completed",
+        "module_name": "accessibility",
+        "target": "http://127.0.0.1:8002/benchmark-fixtures/pages/saucedemo-login",
+        "celery_task_id": "975fa56c-4339-489c-8798-7fe6202f9cf3",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:58:01.676529",
+        "started_at": "2026-05-23T21:58:04.693528",
+        "completed_at": "2026-05-23T21:58:07.664253"
+      }
+    }
+  },
+  {
+    "case_id": "accessibility_visual_contrast_screenshot",
+    "module": "accessibility",
+    "feature": "Detect visual contrast issues from a screenshot",
+    "status": "passed",
+    "duration_ms": 4137.82,
+    "error": "",
+    "checks": [
+      "findings=1 minimum=1",
+      "categories=['component-contrast'] any=['component-contrast']"
+    ],
+    "metrics": {
+      "contrast_score": null,
+      "priority_findings": null,
+      "component_summary": null
+    },
+    "screenshot_route": "/accessibility",
+    "screenshot_file": "accessibility_visual_contrast_result.png",
+    "result": {
+      "platform": "web",
+      "image": {
+        "width": 1280,
+        "height": 720
+      },
+      "overall_score": 14,
+      "overview": "Visual-first tam sayfa kontrast analizi tamamlandi. 37 kritik dusuk kontrastli alan ve 10 sinirda alan tespit edildi.",
+      "wcag_summary": {
+        "aaa_pass": 8,
+        "aa_pass": 9,
+        "large_text_only": 10,
+        "fail": 37
+      },
+      "color_consistency_score": 40,
+      "palette": [
+        {
+          "color": "#f8fafc",
+          "coverage": 63.0
+        },
+        {
+          "color": "#0ea5e9",
+          "coverage": 21.8
+        },
+        {
+          "color": "#f5fafc",
+          "coverage": 13.9
+        },
+        {
+          "color": "#3f4656",
+          "coverage": 1.2
+        },
+        {
+          "color": "#85bcd5",
+          "coverage": 0.1
+        }
+      ],
+      "components": [
+        {
+          "id": 1,
+          "label": "\"selenium Certification Ta...\" basligi",
+          "severity": "medium",
+          "average_contrast_ratio": 3.06,
+          "bounding_box": {
+            "x": 471,
+            "y": 44,
+            "width": 204,
+            "height": 42
+          }
+        }
+      ],
+      "findings": [
+        {
+          "id": 1,
+          "title": "\"selenium Certification Ta...\" basligi icin zayif kontrast sorunu",
+          "severity": "medium",
+          "category": "component-contrast",
+          "description": "Tespit edilen \"selenium Certification Ta...\" basligi, normal metin veya kontroller icin WCAG AA seviyesinin altinda oldugu icin okumayi zorlastirabilir.",
+          "wcag_status": "large-text-only",
+          "contrast_ratio": 3.06,
+          "dominant_dark": "#3998c9",
+          "dominant_light": "#f4fafc",
+          "bounding_box": {
+            "x": 471,
+            "y": 44,
+            "width": 204,
+            "height": 42
+          },
+          "crop_image_base64": "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",
+          "recommendation": "\"selenium Certification Ta...\" basligi icin #3998c9 ve #f4fafc arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+          "wcag_refs": [
+            "1.4.3 Contrast (Minimum)"
+          ],
+          "impact_score": 62,
+          "affected_role": "component contrast",
+          "test_suggestion": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula.",
+          "evidence": {
+            "source": "visual-analysis",
+            "selector": null,
+            "element_type": null,
+            "role": null,
+            "category": "component-contrast",
+            "wcag_status": "large-text-only",
+            "wcag_refs": [
+              "1.4.3 Contrast (Minimum)"
+            ],
+            "contrast_ratio": 3.06,
+            "bounding_box": {
+              "x": 471,
+              "y": 44,
+              "width": 204,
+              "height": 42
+            },
+            "why_flagged": "Tespit edilen \"selenium Certification Ta...\" basligi, normal metin veya kontroller icin WCAG AA seviyesinin altinda oldugu icin okumayi zorlastirabilir.",
+            "recommended_action": "\"selenium Certification Ta...\" basligi icin #3998c9 ve #f4fafc arasindaki ayrismayi artir. Daha koyu bir on plan ya da daha acik bir zemin tercih et.",
+            "validation_steps": [
+              "Bulgu crop/overlay alanini ekranda kontrol et.",
+              "Ilgili DOM selector veya element tipini tarayicida dogrula.",
+              "WCAG referansindaki kural ile davranisi karsilastir."
+            ]
+          }
+        }
+      ],
+      "heatmap": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.04
+        },
+        {
+          "x": 640,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.07
+        },
+        {
+          "x": 800,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 0,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.08
+        },
+        {
+          "x": 160,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.08
+        },
+        {
+          "x": 320,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.08
+        },
+        {
+          "x": 480,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.08
+        },
+        {
+          "x": 640,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.08
+        },
+        {
+          "x": 800,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.08
+        },
+        {
+          "x": 960,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.08
+        },
+        {
+          "x": 1120,
+          "y": 102,
+          "width": 160,
+          "height": 102,
+          "severity": "medium",
+          "contrast_ratio": 3.08
+        },
+        {
+          "x": 0,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 9.62
+        },
+        {
+          "x": 160,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "low",
+          "contrast_ratio": 6.62
+        },
+        {
+          "x": 320,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 13.97
+        },
+        {
+          "x": 480,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 8.66
+        },
+        {
+          "x": 640,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 7.85
+        },
+        {
+          "x": 800,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 11.72
+        },
+        {
+          "x": 960,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 8.91
+        },
+        {
+          "x": 1120,
+          "y": 204,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 0,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 160,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 320,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 480,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 640,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 800,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 960,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 1120,
+          "y": 306,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 2.2
+        },
+        {
+          "x": 0,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 12.24
+        },
+        {
+          "x": 160,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "pass",
+          "contrast_ratio": 13.86
+        },
+        {
+          "x": 320,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 408,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.42
+        },
+        {
+          "x": 160,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.42
+        },
+        {
+          "x": 320,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 510,
+          "width": 160,
+          "height": 102,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 0,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 160,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 320,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 480,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 640,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 800,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 960,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        },
+        {
+          "x": 1120,
+          "y": 612,
+          "width": 160,
+          "height": 108,
+          "severity": "high",
+          "contrast_ratio": 1.0
+        }
+      ],
+      "artifacts": {
+        "overlay_image_base64": "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",
+        "source_image_base64": "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9Ig+8KBjH/rbHRtssN5hR57Yrl3ryy855+13Rjz0j8d7dO/qEK591XyuKz6tZfe03HD9V4e9Mer91ypOmhcM1KYqXrLe/qdrqjgblzudzp4z97wLrpg7d15eXt4tNw6+/4FHUit56G93pA6HSl+llNu01yTBCeB0GnzVjUcdeVC3rp2/+vrbY48/9blnH0mSZOnSwkMP2f/0037fd9s9/v3E384566R99j/iuGMOq3ThoqKiZs2aPPbwPVOmfDnw4ON323XHM0474Z57//7Q3+7o1nPH/w57etq3M/50+92ObVahKwZfv8/eu+83YM8nnnx20JU33Hzj4MLCwv577dpvu75VDPAtf/qLgSQthr3+1vb9tm7XtvXUr74uKirKy8tL3V/pSXXFYf4F59Kyh19w8eDzzjm5Q/t2v9ntgFQA/6xze8qfbr7ywIOObdGiefNmTb/66utjf3vaPX+5aflbr9u3+2LKl6WlpSPeH9W7V7dp02aMGTs+Jye7yxabldufij8jBl1549577TJgnz2ef+HVp55+vuIR3a9f33eHf7DvPruXlJSMGzc+SZJ3h3+wQ79tBl15g0O49lXzua74tK54zzPfv4m64qR5wUBtquIl6znnXV7F2bjc6fSKwdfvucfO++y926OP//v6m+648ooLUyup4lVKxU17TRKcAK4NRUVFAw8+LnX73LNP6dF9i9TtYa+//fkXU1O3Fy1aXFxckpOTnZ2dtUXnzXJysvPy8rbo3Cn1i96VLVxSUpq6oNGq1Ybzv/tuxY3usMM2p5958RGHDbzp+kG1++WyOg/wVYMvevvdEdcNuSxJkr323PmqITcvv06Vk7PtNlulFljZABtI0uWFl14bN278f4a+NG3a9Hfefb9sVis9qa44zClVjG65Q6Nd29ZlD7/gvNOeevr5l1/574IFC1ML/Kxze+rDm27+86kn/fboow7OysrarMu2qfpNkiQrK2vjdm0mTf5i1Kgxxx932NffTPvww49ycnO27N2j3B5W/Bnx9jsjhlx9SZIkO+20XWpD5Y7oIVdd+tzzL3fs2GHzzTYd9/GEBQsXvjv8/cMO2f/Ntx3CaVDN57qSp7XCPVVMmvMztaCKl6xVn43LnU7ffGv4kKuWz/b+A/befdedKm6o4quUips288EJ4Nqwsn8ntqx42QP33V6vXn5JScl7I0am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AIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABBCbrp3IBn96Vfp3gUAAABWf64AAwAAEIIABgAAIISsJYXL0r0PAAAAUONcAQYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAEIIABgAAIAQBDAAAQAgCGAAAgBAEMAAAACEIYAAAAEIQwAAAAIQggAEAAAhBAAMAABCCAAYAACAEAQwAAEAIAhgAAIAQBDAAAAAhCGAAAABCEMAAAACEIIABAAAIQQADAAAQggAGAAAgBAEMAABACAIYAACAEAQwAAAAIQhgAAAAQhDAAAAAhCCAAQAACEEAAwAAkETw/wCoBkAVRdoamAAAAABJRU5ErkJggg=="
+      },
+      "recommendations": [
+        "Isaretlenen alanlarda on plan ve arka plan ayrimini guclendir.",
+        "Form ipuclari ve ikincil etiketlerde acik zemin uzerinde griye yakin metin kullanmaktan kacin.",
+        "Aksiyon butonlarini ve satir ici yardimci metinleri WCAG AA kontrast hedefine gore yeniden kontrol et.",
+        "Birincil aksiyonlar, ikincil aksiyonlar ve yardimci metinler gorsel olarak daha net ayrissin diye palet tutarliligini gozden gecir."
+      ],
+      "score_breakdown": {
+        "visual_contrast": 45,
+        "semantic_structure": 100,
+        "keyboard_support": 100,
+        "form_accessibility": 100,
+        "aria_quality": 100
+      },
+      "accessibility_summary": {
+        "risk_level": "medium",
+        "high": 0,
+        "medium": 1,
+        "weakest_area": "visual_contrast",
+        "summary": "1 accessibility bulgusu var; en zayif alan visual contrast."
+      },
+      "test_suggestions": [
+        {
+          "category": "component-contrast",
+          "priority": "medium",
+          "title": "\"selenium Certification Ta...\" basligi icin zayif kontrast sorunu",
+          "suggestion": "Automated contrast check ile ilgili bilesenin foreground/background oranini dogrula."
+        }
+      ],
+      "keyboard_profile": {
+        "focusable_count": 0,
+        "positive_tabindex_count": 0,
+        "keyboard_findings": 0,
+        "first_focusable": null
+      },
+      "_benchmark_job": {
+        "job_id": 184,
+        "status": "completed",
+        "module_name": "accessibility",
+        "target": "Screenshot accessibility analysis",
+        "celery_task_id": "ef468423-873c-48c3-bb10-a9091ffdb709",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:58:07.756851",
+        "started_at": "2026-05-23T21:58:10.828218",
+        "completed_at": "2026-05-23T21:58:11.339977"
+      }
+    }
+  }
+]

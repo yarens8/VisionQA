@@ -1,0 +1,103 @@
+[
+  {
+    "id": "dataset_missing_annotations",
+    "module": "dataset",
+    "feature": "Detect records without usable labels or annotations",
+    "input": {
+      "dataset_name": "missing_annotation_sample",
+      "records": [
+        {
+          "id": "1",
+          "split": "train",
+          "label": "",
+          "image_name": "ui-1.png",
+          "width": 640,
+          "height": 480,
+          "annotations": []
+        },
+        {
+          "id": "2",
+          "split": "val",
+          "label": "input",
+          "image_name": "ui-2.png",
+          "width": 640,
+          "height": 480,
+          "annotations": [{"label": "input", "bbox": [50, 80, 300, 40]}]
+        }
+      ]
+    },
+    "expected": {
+      "must_include_categories": ["missing-label"],
+      "minimum_findings": 1
+    },
+    "metrics": ["overall_score", "findings_count", "grade", "records_count"],
+    "screenshot": {
+      "required": true,
+      "route": "/dataset",
+      "filename": "dataset_missing_annotations_result.png"
+    }
+  },
+  {
+    "id": "dataset_label_consistency",
+    "module": "dataset",
+    "feature": "Detect inconsistent labels for the same semantic text",
+    "input": {
+      "dataset_name": "label_mismatch_sample",
+      "records": [
+        {
+          "id": "1",
+          "split": "train",
+          "label": "cat",
+          "text": "same visual object",
+          "image_name": "ui-3.png",
+          "width": 640,
+          "height": 480,
+          "annotations": [{"label": "cat", "bbox": [80, 120, 180, 50]}]
+        },
+        {
+          "id": "2",
+          "split": "val",
+          "label": "dog",
+          "text": "same visual object",
+          "image_name": "ui-4.png",
+          "width": 640,
+          "height": 480,
+          "annotations": [{"label": "dog", "bbox": [40, 60, 280, 40]}]
+        }
+      ]
+    },
+    "expected": {
+      "must_include_categories": ["label-consistency"],
+      "minimum_findings": 1
+    },
+    "metrics": ["label_consistency", "findings_count", "model_impact"],
+    "screenshot": {
+      "required": true,
+      "route": "/dataset",
+      "filename": "dataset_label_consistency_result.png"
+    }
+  },
+  {
+    "id": "dataset_duplicate_and_split_balance",
+    "module": "dataset",
+    "feature": "Detect duplicate images and split leakage",
+    "input": {
+      "dataset_name": "duplicate_split_sample",
+      "records": [
+        {"id": "1", "split": "train", "label": "button", "image_name": "same.png", "width": 640, "height": 480, "annotations": [{"label": "button", "bbox": [10, 10, 120, 40]}]},
+        {"id": "2", "split": "test", "label": "button", "image_name": "same.png", "width": 640, "height": 480, "annotations": [{"label": "button", "bbox": [10, 10, 120, 40]}]},
+        {"id": "3", "split": "train", "label": "button", "image_name": "third.png", "width": 640, "height": 480, "annotations": [{"label": "button", "bbox": [20, 20, 140, 45]}]}
+      ]
+    },
+    "expected": {
+      "must_include_categories": ["duplicate-signal", "split-leakage"],
+      "minimum_findings": 1
+    },
+    "metrics": ["duplicate_count", "split_balance_score", "findings_count"],
+    "screenshot": {
+      "required": true,
+      "route": "/dataset",
+      "filename": "dataset_duplicate_split_result.png"
+    }
+  }
+]

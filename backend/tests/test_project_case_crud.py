@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import main
+from database import SessionLocal
+from database.models import Finding, JiraTicketDraft, Page, PlatformType, Project, TestRun as DbTestRun, TestStatus as DbTestStatus
 
 
 def _create_project(client: TestClient) -> int:
@@ -83,3 +85,62 @@ def test_manual_case_create_validates_project_and_title():
         json={"title": "   "},
     )
     assert missing_title_response.status_code == 400
+
+
+def test_project_delete_removes_related_records():
+    client = TestClient(main.app)
+    project_id = _create_project(client)
+
+    db = SessionLocal()
+    try:
+        page = Page(project_id=project_id, name="Delete flow", url="https://delete.example.test")
+        db.add(page)
+        db.flush()
+        run = DbTestRun(
+            project_id=project_id,
+            page_id=page.id,
+            platform=PlatformType.WEB,
+            module_name="web",
+            target=page.url,
+            status=DbTestStatus.FAILED,
+        )
+        db.add(run)
+        db.flush()
+        db.add(
+            Finding(
+                test_run_id=run.id,
+                title="Delete finding",
+                description="Finding attached to deleted project",
+                severity="medium",
+                category="test",
+            )
+        )
+        db.add(
+            JiraTicketDraft(
+                project_id=project_id,
+                provider="jira",
+                ticket_key="JIRA-DRAFT-DELETE",
+                source_module="uiux",
+                source_type="final_report_action",
+                source_ref="delete-test",
+                title="Delete draft",
+                description="Draft attached to deleted project",
+                priority="medium",
+                payload={},
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    delete_response = client.delete(f"/projects/{project_id}")
+    assert delete_response.status_code == 204
+
+    db = SessionLocal()
+    try:
+        assert db.query(Project).filter(Project.id == project_id).first() is None
+        assert db.query(Page).filter(Page.project_id == project_id).count() == 0
+        assert db.query(DbTestRun).filter(DbTestRun.project_id == project_id).count() == 0
+        assert db.query(JiraTicketDraft).filter(JiraTicketDraft.project_id == project_id).count() == 0
+    finally:
+        db.close()

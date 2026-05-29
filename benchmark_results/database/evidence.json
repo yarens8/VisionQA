@@ -1,0 +1,453 @@
+[
+  {
+    "case_id": "database_select_star_query_shape",
+    "module": "database",
+    "feature": "Detect SELECT star query-shape risk",
+    "status": "passed",
+    "duration_ms": 4079.62,
+    "error": "",
+    "checks": [
+      "findings=3 minimum=1",
+      "categories=['format-consistency', 'query-shape'] required=['query-shape']"
+    ],
+    "metrics": {
+      "overall_score": 78,
+      "findings_count": 3,
+      "schema_smells": [],
+      "db_actions": 0
+    },
+    "screenshot_route": "/database",
+    "screenshot_file": "database_select_star_result.png",
+    "result": {
+      "success": true,
+      "overall_score": 78,
+      "table_quality_score": 95,
+      "summary": "DB kalite analizi 3 bulgu ve 0 schema smell uretti. Calisan sorgu icin performans, constraint, veri butunlugu ve security sinyalleri kontrol edildi.",
+      "ai_interpretation": "Bulgular schema, veri standardi ve performans eksenlerinde birikiyor; tablo tasarimi ile veri uretim akisi birlikte ele alinmali.",
+      "root_cause_summary": "Belirgin kok neden sinyali daginik; constraint ve veri standardizasyon katmanlari birlikte gozden gecirilmeli.",
+      "table_name": null,
+      "duration_ms": 31.28,
+      "score_breakdown": {
+        "integrity": 100,
+        "completeness": 100,
+        "consistency": 88,
+        "performance": 86,
+        "security": 100
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "SELECT * kullanimi bulundu",
+          "severity": "medium",
+          "category": "query-shape",
+          "description": "Query tum kolonlari cagiriyor; bu hem performans hem de veri gereksizligi riski olusturabilir.",
+          "evidence": "SELECT * FROM projects LIMIT 5",
+          "recommendation": "Ihtiyac olan kolonlari acik sec ve response yuzeyini daralt."
+        },
+        {
+          "id": 2,
+          "title": "name kolonunda format tutarsizligi sinyali var",
+          "severity": "low",
+          "category": "format-consistency",
+          "description": "Ayni kolon icinde farkli buyuk-kucuk harf veya format kullanimi veri standardizasyonunu zayiflatabilir.",
+          "evidence": "Sample values: E-Commerce Test, VisionQA AI Test Project, VisionQA AI Test Project, VisionQA AI Test Project",
+          "recommendation": "Bu kolon icin canonical format ve normalize etme kurali tanimla."
+        },
+        {
+          "id": 3,
+          "title": "description kolonunda format tutarsizligi sinyali var",
+          "severity": "low",
+          "category": "format-consistency",
+          "description": "Ayni kolon icinde farkli buyuk-kucuk harf veya format kullanimi veri standardizasyonunu zayiflatabilir.",
+          "evidence": "Sample values: Hepsiburada clone test, Pytest ile AI Test Case Üretimi, Pytest ile AI Test Case Üretimi, Pytest ile AI Test Case Üretimi",
+          "recommendation": "Bu kolon icin canonical format ve normalize etme kurali tanimla."
+        }
+      ],
+      "schema_smells": [],
+      "constraint_summary": null,
+      "query_result": {
+        "success": true,
+        "data": [
+          {
+            "id": 1,
+            "name": "E-Commerce Test",
+            "description": "Hepsiburada clone test",
+            "platforms": [
+              "web",
+              "mobile_android"
+            ],
+            "created_at": "2026-02-13T17:24:14.573917",
+            "updated_at": "2026-02-13T17:24:14.573917"
+          },
+          {
+            "id": 2,
+            "name": "VisionQA AI Test Project",
+            "description": "Pytest ile AI Test Case Üretimi",
+            "platforms": [
+              "web"
+            ],
+            "created_at": "2026-02-14T13:21:07.410543",
+            "updated_at": "2026-02-14T13:21:07.410543"
+          },
+          {
+            "id": 3,
+            "name": "VisionQA AI Test Project",
+            "description": "Pytest ile AI Test Case Üretimi",
+            "platforms": [
+              "web"
+            ],
+            "created_at": "2026-02-14T13:21:32.818063",
+            "updated_at": "2026-02-14T13:21:32.818063"
+          },
+          {
+            "id": 4,
+            "name": "VisionQA AI Test Project",
+            "description": "Pytest ile AI Test Case Üretimi",
+            "platforms": [
+              "web"
+            ],
+            "created_at": "2026-02-14T13:21:54.760023",
+            "updated_at": "2026-02-14T13:21:54.760023"
+          },
+          {
+            "id": 9,
+            "name": "Food Application",
+            "description": "GETİR login page",
+            "platforms": [
+              "web"
+            ],
+            "created_at": "2026-02-20T17:22:35.928960",
+            "updated_at": "2026-02-20T17:22:35.928960"
+          }
+        ],
+        "row_count": 5,
+        "duration_ms": 31.28,
+        "query": "SELECT * FROM projects LIMIT 5",
+        "attempts": 1
+      },
+      "schema_validation": null,
+      "detected_columns": [
+        "id",
+        "name",
+        "description",
+        "platforms",
+        "created_at",
+        "updated_at"
+      ],
+      "sample_rows": [
+        {
+          "id": 1,
+          "name": "E-Commerce Test",
+          "description": "Hepsiburada clone test",
+          "platforms": [
+            "web",
+            "mobile_android"
+          ],
+          "created_at": "2026-02-13T17:24:14.573917",
+          "updated_at": "2026-02-13T17:24:14.573917"
+        },
+        {
+          "id": 2,
+          "name": "VisionQA AI Test Project",
+          "description": "Pytest ile AI Test Case Üretimi",
+          "platforms": [
+            "web"
+          ],
+          "created_at": "2026-02-14T13:21:07.410543",
+          "updated_at": "2026-02-14T13:21:07.410543"
+        },
+        {
+          "id": 3,
+          "name": "VisionQA AI Test Project",
+          "description": "Pytest ile AI Test Case Üretimi",
+          "platforms": [
+            "web"
+          ],
+          "created_at": "2026-02-14T13:21:32.818063",
+          "updated_at": "2026-02-14T13:21:32.818063"
+        },
+        {
+          "id": 4,
+          "name": "VisionQA AI Test Project",
+          "description": "Pytest ile AI Test Case Üretimi",
+          "platforms": [
+            "web"
+          ],
+          "created_at": "2026-02-14T13:21:54.760023",
+          "updated_at": "2026-02-14T13:21:54.760023"
+        },
+        {
+          "id": 9,
+          "name": "Food Application",
+          "description": "GETİR login page",
+          "platforms": [
+            "web"
+          ],
+          "created_at": "2026-02-20T17:22:35.928960",
+          "updated_at": "2026-02-20T17:22:35.928960"
+        }
+      ],
+      "_benchmark_job": {
+        "job_id": 185,
+        "status": "completed",
+        "module_name": "database",
+        "target": "SELECT * FROM projects LIMIT 5",
+        "celery_task_id": "c67867cd-5475-49cd-8667-4ab772262af3",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:58:42.588326",
+        "started_at": "2026-05-23T21:58:45.592687",
+        "completed_at": "2026-05-23T21:58:45.638096"
+      }
+    }
+  },
+  {
+    "case_id": "database_expected_column_check",
+    "module": "database",
+    "feature": "Validate expected DB columns",
+    "status": "passed",
+    "duration_ms": 4053.26,
+    "error": "",
+    "checks": [
+      "score=95 minimum=75",
+      "categories=['format-consistency'] forbidden=['missing-column']"
+    ],
+    "metrics": {
+      "overall_score": 95,
+      "detected_columns": [
+        "id",
+        "name",
+        "created_at"
+      ],
+      "findings_count": 1
+    },
+    "screenshot_route": "/database",
+    "screenshot_file": "database_expected_columns_result.png",
+    "result": {
+      "success": true,
+      "overall_score": 95,
+      "table_quality_score": 99,
+      "summary": "DB kalite analizi 1 bulgu ve 0 schema smell uretti. Calisan sorgu icin performans, constraint, veri butunlugu ve security sinyalleri kontrol edildi.",
+      "ai_interpretation": "Bulgular schema, veri standardi ve performans eksenlerinde birikiyor; tablo tasarimi ile veri uretim akisi birlikte ele alinmali.",
+      "root_cause_summary": "Belirgin kok neden sinyali daginik; constraint ve veri standardizasyon katmanlari birlikte gozden gecirilmeli.",
+      "table_name": null,
+      "duration_ms": 15.07,
+      "score_breakdown": {
+        "integrity": 100,
+        "completeness": 100,
+        "consistency": 94,
+        "performance": 100,
+        "security": 100
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "name kolonunda format tutarsizligi sinyali var",
+          "severity": "low",
+          "category": "format-consistency",
+          "description": "Ayni kolon icinde farkli buyuk-kucuk harf veya format kullanimi veri standardizasyonunu zayiflatabilir.",
+          "evidence": "Sample values: E-Commerce Test, VisionQA AI Test Project, VisionQA AI Test Project, VisionQA AI Test Project",
+          "recommendation": "Bu kolon icin canonical format ve normalize etme kurali tanimla."
+        }
+      ],
+      "schema_smells": [],
+      "constraint_summary": null,
+      "query_result": {
+        "success": true,
+        "data": [
+          {
+            "id": 1,
+            "name": "E-Commerce Test",
+            "created_at": "2026-02-13T17:24:14.573917"
+          },
+          {
+            "id": 2,
+            "name": "VisionQA AI Test Project",
+            "created_at": "2026-02-14T13:21:07.410543"
+          },
+          {
+            "id": 3,
+            "name": "VisionQA AI Test Project",
+            "created_at": "2026-02-14T13:21:32.818063"
+          },
+          {
+            "id": 4,
+            "name": "VisionQA AI Test Project",
+            "created_at": "2026-02-14T13:21:54.760023"
+          },
+          {
+            "id": 9,
+            "name": "Food Application",
+            "created_at": "2026-02-20T17:22:35.928960"
+          }
+        ],
+        "row_count": 5,
+        "duration_ms": 15.07,
+        "query": "SELECT id, name, created_at FROM projects LIMIT 5",
+        "attempts": 1
+      },
+      "schema_validation": null,
+      "detected_columns": [
+        "id",
+        "name",
+        "created_at"
+      ],
+      "sample_rows": [
+        {
+          "id": 1,
+          "name": "E-Commerce Test",
+          "created_at": "2026-02-13T17:24:14.573917"
+        },
+        {
+          "id": 2,
+          "name": "VisionQA AI Test Project",
+          "created_at": "2026-02-14T13:21:07.410543"
+        },
+        {
+          "id": 3,
+          "name": "VisionQA AI Test Project",
+          "created_at": "2026-02-14T13:21:32.818063"
+        },
+        {
+          "id": 4,
+          "name": "VisionQA AI Test Project",
+          "created_at": "2026-02-14T13:21:54.760023"
+        },
+        {
+          "id": 9,
+          "name": "Food Application",
+          "created_at": "2026-02-20T17:22:35.928960"
+        }
+      ],
+      "_benchmark_job": {
+        "job_id": 186,
+        "status": "completed",
+        "module_name": "database",
+        "target": "SELECT id, name, created_at FROM projects LIMIT 5",
+        "celery_task_id": "be64f054-3613-4064-a32f-30af6038591d",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:58:46.669913",
+        "started_at": "2026-05-23T21:58:49.692561",
+        "completed_at": "2026-05-23T21:58:49.721230"
+      }
+    }
+  },
+  {
+    "case_id": "database_api_db_contract_signal",
+    "module": "database",
+    "feature": "Produce DB/API consistency signal",
+    "status": "passed",
+    "duration_ms": 4104.8,
+    "error": "",
+    "checks": [
+      "findings=1 minimum=1",
+      "categories=['format-consistency'] any=['api-db-consistency', 'format-consistency', 'missing-column']"
+    ],
+    "metrics": {
+      "contract_signals": null,
+      "findings_count": 1,
+      "db_actions": 0
+    },
+    "screenshot_route": "/database",
+    "screenshot_file": "database_api_db_contract_result.png",
+    "result": {
+      "success": true,
+      "overall_score": 95,
+      "table_quality_score": 99,
+      "summary": "DB kalite analizi 1 bulgu ve 0 schema smell uretti. Calisan sorgu icin performans, constraint, veri butunlugu ve security sinyalleri kontrol edildi.",
+      "ai_interpretation": "Bulgular schema, veri standardi ve performans eksenlerinde birikiyor; tablo tasarimi ile veri uretim akisi birlikte ele alinmali.",
+      "root_cause_summary": "Belirgin kok neden sinyali daginik; constraint ve veri standardizasyon katmanlari birlikte gozden gecirilmeli.",
+      "table_name": null,
+      "duration_ms": 40.12,
+      "score_breakdown": {
+        "integrity": 100,
+        "completeness": 100,
+        "consistency": 94,
+        "performance": 100,
+        "security": 100
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "name kolonunda format tutarsizligi sinyali var",
+          "severity": "low",
+          "category": "format-consistency",
+          "description": "Ayni kolon icinde farkli buyuk-kucuk harf veya format kullanimi veri standardizasyonunu zayiflatabilir.",
+          "evidence": "Sample values: E-Commerce Test, VisionQA AI Test Project, VisionQA AI Test Project, VisionQA AI Test Project",
+          "recommendation": "Bu kolon icin canonical format ve normalize etme kurali tanimla."
+        }
+      ],
+      "schema_smells": [],
+      "constraint_summary": null,
+      "query_result": {
+        "success": true,
+        "data": [
+          {
+            "id": 1,
+            "name": "E-Commerce Test"
+          },
+          {
+            "id": 2,
+            "name": "VisionQA AI Test Project"
+          },
+          {
+            "id": 3,
+            "name": "VisionQA AI Test Project"
+          },
+          {
+            "id": 4,
+            "name": "VisionQA AI Test Project"
+          },
+          {
+            "id": 9,
+            "name": "Food Application"
+          }
+        ],
+        "row_count": 5,
+        "duration_ms": 39.6,
+        "query": "SELECT id, name FROM projects LIMIT 5",
+        "attempts": 1
+      },
+      "schema_validation": null,
+      "detected_columns": [
+        "id",
+        "name"
+      ],
+      "sample_rows": [
+        {
+          "id": 1,
+          "name": "E-Commerce Test"
+        },
+        {
+          "id": 2,
+          "name": "VisionQA AI Test Project"
+        },
+        {
+          "id": 3,
+          "name": "VisionQA AI Test Project"
+        },
+        {
+          "id": 4,
+          "name": "VisionQA AI Test Project"
+        },
+        {
+          "id": 9,
+          "name": "Food Application"
+        }
+      ],
+      "_benchmark_job": {
+        "job_id": 187,
+        "status": "completed",
+        "module_name": "database",
+        "target": "SELECT id, name FROM projects LIMIT 5",
+        "celery_task_id": "bb941322-a34e-4437-bccb-339174ec5208",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:58:50.733620",
+        "started_at": "2026-05-23T21:58:53.746547",
+        "completed_at": "2026-05-23T21:58:53.790331"
+      }
+    }
+  }
+]

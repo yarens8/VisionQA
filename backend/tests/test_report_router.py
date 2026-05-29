@@ -531,6 +531,82 @@ def test_project_jira_draft_uses_mobile_specific_acceptance_criteria():
     assert "Tap hedeflerini" in criteria_text
 
 
+def test_project_jira_draft_uses_color_intelligence_acceptance_criteria():
+    client = TestClient(main.app)
+    db = SessionLocal()
+    try:
+        project = db_models.Project(
+            name="Color Jira Draft Project",
+            description="Color intelligence ticket draft test",
+            platforms=["web"],
+        )
+        db.add(project)
+        db.commit()
+        project_id = project.id
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/reports/project/{project_id}/jira-drafts",
+        json={
+            "source_module": "uiux",
+            "source_type": "final_report_action",
+            "source_ref": "uiux-color-1",
+            "title": "CTA rengi yeterince ayrismiyor",
+            "description": "CTA cevre zeminle fazla yakin gorunuyor.",
+            "priority": "medium",
+            "evidence": "cta_visibility_score: 51",
+            "recommendation": "CTA icin daha net accent rengi kullan.",
+            "payload": {"category": "cta-visibility"},
+        },
+    )
+
+    assert response.status_code == 200
+    criteria = response.json()["payload"]["acceptance_criteria"]
+    criteria_text = " ".join(item["text"] for item in criteria)
+    assert "renk/kontrast" in criteria_text
+    assert "CTA" in criteria_text
+    assert "accent" in criteria_text
+
+
+def test_project_jira_draft_uses_design_token_acceptance_criteria():
+    client = TestClient(main.app)
+    db = SessionLocal()
+    try:
+        project = db_models.Project(
+            name="Design Token Jira Draft Project",
+            description="Design token ticket draft test",
+            platforms=["web"],
+        )
+        db.add(project)
+        db.commit()
+        project_id = project.id
+    finally:
+        db.close()
+
+    response = client.post(
+        f"/reports/project/{project_id}/jira-drafts",
+        json={
+            "source_module": "uiux",
+            "source_type": "final_report_action",
+            "source_ref": "uiux-token-1",
+            "title": "Spacing token ritmi tutarsiz",
+            "description": "Blok araliklari 4/8 ritminden sapiyor.",
+            "priority": "medium",
+            "evidence": "spacing_token_fit_score: 61",
+            "recommendation": "Bosluklari 4/8 tabanli token setiyle hizala.",
+            "payload": {"category": "spacing-token"},
+        },
+    )
+
+    assert response.status_code == 200
+    criteria = response.json()["payload"]["acceptance_criteria"]
+    criteria_text = " ".join(item["text"] for item in criteria)
+    assert "design token" in criteria_text
+    assert "Spacing" in criteria_text
+    assert "screenshot" in criteria_text
+
+
 def test_bug_analysis_classifies_common_failure_patterns():
     from core.bug_analysis import build_bug_analysis
 

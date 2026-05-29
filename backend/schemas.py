@@ -332,6 +332,9 @@ class UiuxScoreSummary(BaseModel):
     readability_score: int
     friction_score: int
     focus_score: int
+    task_completion_score: Optional[int] = None
+    task_friction_score: Optional[int] = None
+    persona_risk_score: Optional[int] = None
 
 
 class UiuxAttentionPrediction(BaseModel):
@@ -348,7 +351,7 @@ class UiuxArtifacts(BaseModel):
 
 
 class UiuxAnalysisRequest(BaseModel):
-    platform: str = "web"
+    platform: str = "auto"
     image_base64: str
     project_id: Optional[int] = None
 
@@ -357,6 +360,12 @@ class UiuxAnalysisResponse(BaseModel):
     project_id: Optional[int] = None
     project_name: Optional[str] = None
     platform: str
+    requested_platform: Optional[str] = None
+    detected_platform: Optional[str] = None
+    platform_profile: Optional[str] = None
+    platform_confidence: Optional[int] = None
+    platform_reason: Optional[str] = None
+    platform_rules_applied: List[str] = Field(default_factory=list)
     image: AccessibilityImageMeta
     overall_score: int
     ux_score: int
@@ -373,6 +382,11 @@ class UiuxAnalysisResponse(BaseModel):
     score_summary: UiuxScoreSummary
     score_breakdown: Dict[str, int] = Field(default_factory=dict)
     image_processing_metrics: Dict[str, Any] = Field(default_factory=dict)
+    color_intelligence: Dict[str, Any] = Field(default_factory=dict)
+    design_tokens: Dict[str, Any] = Field(default_factory=dict)
+    task_evaluation: Dict[str, Any] = Field(default_factory=dict)
+    persona_risk: Dict[str, Any] = Field(default_factory=dict)
+    visual_regression: Dict[str, Any] = Field(default_factory=dict)
     evidence_matrix: Dict[str, Any] = Field(default_factory=dict)
     test_suggestions: List[Dict[str, Any]] = Field(default_factory=list)
     attention_prediction: UiuxAttentionPrediction

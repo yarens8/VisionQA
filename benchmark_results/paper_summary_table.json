@@ -1,0 +1,110 @@
+{
+  "generated_at": "2026-05-23T22:00:12.760810+00:00",
+  "total_cases": 33,
+  "modules": [
+    {
+      "module": "accessibility",
+      "total_cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 3
+    },
+    {
+      "module": "api",
+      "total_cases": 4,
+      "passed": 4,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 4
+    },
+    {
+      "module": "autonomous",
+      "total_cases": 4,
+      "passed": 4,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 4
+    },
+    {
+      "module": "database",
+      "total_cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 3
+    },
+    {
+      "module": "dataset",
+      "total_cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 3
+    },
+    {
+      "module": "final_report",
+      "total_cases": 4,
+      "passed": 4,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 4
+    },
+    {
+      "module": "mobile",
+      "total_cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 3
+    },
+    {
+      "module": "performance",
+      "total_cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 3
+    },
+    {
+      "module": "security",
+      "total_cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 3
+    },
+    {
+      "module": "uiux",
+      "total_cases": 3,
+      "passed": 3,
+      "failed": 0,
+      "error": 0,
+      "skipped": 0,
+      "pass_rate": 100.0,
+      "screenshot_targets": 3
+    }
+  ],
+  "notes": [
+    "UI result screenshots are tracked as screenshot targets and should be captured by the Playwright benchmark screenshot runner.",
+    "Skipped cases usually mean a required screenshot fixture or project id was not provided."
+  ]
+}

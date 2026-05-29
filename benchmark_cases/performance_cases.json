@@ -1,0 +1,74 @@
+[
+  {
+    "id": "performance_web_page_score",
+    "module": "performance",
+    "feature": "Analyze web page performance and perceived quality",
+    "input": {
+      "project_id": null,
+      "web_url": "https://demoqa.com/",
+      "api_method": "GET",
+      "api_url": "https://jsonplaceholder.typicode.com/todos/1",
+      "db_connection_string": "postgresql://visionqa:visionqa_dev_password@localhost:5432/visionqa_db",
+      "db_query": "SELECT * FROM projects LIMIT 5",
+      "sample_count": 3
+    },
+    "expected": {
+      "must_include_sections": ["technical_score", "perceived_score", "performance_grade"],
+      "minimum_score": 50
+    },
+    "metrics": ["overall_score", "technical_score", "perceived_score", "findings_count"],
+    "screenshot": {
+      "required": true,
+      "route": "/performance",
+      "filename": "performance_web_page_result.png"
+    }
+  },
+  {
+    "id": "performance_slow_api_signal",
+    "module": "performance",
+    "feature": "Detect slow API latency as performance action",
+    "input": {
+      "project_id": null,
+      "web_url": "https://demoqa.com/",
+      "api_method": "GET",
+      "api_url": "https://httpbin.org/delay/2",
+      "db_connection_string": "postgresql://visionqa:visionqa_dev_password@localhost:5432/visionqa_db",
+      "db_query": "SELECT * FROM projects LIMIT 5",
+      "sample_count": 3
+    },
+    "expected": {
+      "must_include_categories_any": ["api-latency", "slow-response"],
+      "minimum_findings": 1
+    },
+    "metrics": ["api_duration_ms", "performance_actions", "overall_score", "grade"],
+    "screenshot": {
+      "required": true,
+      "route": "/performance",
+      "filename": "performance_slow_api_result.png"
+    }
+  },
+  {
+    "id": "performance_db_query_signal",
+    "module": "performance",
+    "feature": "Include DB query shape and latency in performance summary",
+    "input": {
+      "project_id": null,
+      "web_url": "https://demoqa.com/",
+      "api_method": "GET",
+      "api_url": "https://jsonplaceholder.typicode.com/todos/1",
+      "db_connection_string": "postgresql://visionqa:visionqa_dev_password@localhost:5432/visionqa_db",
+      "db_query": "SELECT * FROM projects LIMIT 5",
+      "sample_count": 3
+    },
+    "expected": {
+      "must_include_terms": ["DB", "query"],
+      "minimum_findings": 0
+    },
+    "metrics": ["db_signal_present", "performance_actions", "sample_api_runs"],
+    "screenshot": {
+      "required": true,
+      "route": "/performance",
+      "filename": "performance_db_signal_result.png"
+    }
+  }
+]

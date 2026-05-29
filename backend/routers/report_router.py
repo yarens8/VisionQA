@@ -280,6 +280,13 @@ def _uiux_analysis_summary(record: UiuxAnalysisRecord) -> dict[str, Any]:
     ]
     return {
         **_generic_analysis_summary(record, "uiux"),
+        "detected_platform": payload.get("detected_platform") or payload.get("platform"),
+        "platform_profile": payload.get("platform_profile"),
+        "color_intelligence": payload.get("color_intelligence") or {},
+        "design_tokens": payload.get("design_tokens") or {},
+        "task_evaluation": payload.get("task_evaluation") or {},
+        "persona_risk": payload.get("persona_risk") or {},
+        "visual_regression": payload.get("visual_regression") or {},
         "score_breakdown": payload.get("score_breakdown") or {},
         "evidence_matrix": payload.get("evidence_matrix") or {},
         "test_suggestions": payload.get("test_suggestions") or [],
@@ -640,6 +647,8 @@ def _uiux_priority_actions(uiux_summaries: list[dict[str, Any]]) -> list[dict[st
                 "severity": severity,
                 "category": category,
                 "source": "uiux",
+                "platform": record.get("platform"),
+                "detected_platform": record.get("detected_platform"),
                 "uiux_record_id": record.get("id"),
                 "uiux_record_ids": [record.get("id")] if record.get("id") else [],
                 "duplicate_count": 1,
@@ -650,6 +659,9 @@ def _uiux_priority_actions(uiux_summaries: list[dict[str, Any]]) -> list[dict[st
                 "metric": metric,
                 "metric_value": evidence.get("value"),
                 "test_suggestion": finding.get("test_suggestion"),
+                "color_intelligence": record.get("color_intelligence") or {},
+                "design_tokens": record.get("design_tokens") or {},
+                "task_evaluation": record.get("task_evaluation") or {},
             }
             existing = merged.get(key)
             if existing:
@@ -658,6 +670,137 @@ def _uiux_priority_actions(uiux_summaries: list[dict[str, Any]]) -> list[dict[st
                     existing["uiux_record_ids"].append(record.get("id"))
                 existing["uiux_record_id"] = max(existing["uiux_record_ids"]) if existing["uiux_record_ids"] else existing.get("uiux_record_id")
                 existing["severity"] = min([existing.get("severity"), severity], key=lambda value: _severity_rank(str(value)))
+            else:
+                merged[key] = action
+        design_tokens = record.get("design_tokens") or {}
+        try:
+            token_score = int(design_tokens.get("design_token_score") or 100)
+        except (TypeError, ValueError):
+            token_score = 100
+        if design_tokens and token_score < 82:
+            title = "Design token consistency should be reviewed"
+            category = "design-token"
+            key = (title, category)
+            action = {
+                "title": title,
+                "severity": "medium" if token_score >= 65 else "high",
+                "category": category,
+                "source": "uiux",
+                "platform": record.get("platform"),
+                "detected_platform": record.get("detected_platform"),
+                "uiux_record_id": record.get("id"),
+                "uiux_record_ids": [record.get("id")] if record.get("id") else [],
+                "duplicate_count": 1,
+                "summary": "Spacing, font scale, radius veya button token tutarliligi zayif gorunuyor.",
+                "evidence": f"design_token_score: {token_score}",
+                "recommendation": design_tokens.get("recommendation")
+                or "Spacing, font, radius ve button standardini tasarim sistemi tokenlariyla hizala.",
+                "score": record.get("overall_score"),
+                "metric": "design_token_score",
+                "metric_value": token_score,
+                "test_suggestion": "Ayni ekran icin tasarim token regresyon kontrolu yap.",
+                "color_intelligence": record.get("color_intelligence") or {},
+                "design_tokens": design_tokens,
+                "task_evaluation": record.get("task_evaluation") or {},
+            }
+            existing = merged.get(key)
+            if existing:
+                existing["duplicate_count"] = int(existing.get("duplicate_count", 1) or 1) + 1
+                if record.get("id") and record.get("id") not in existing["uiux_record_ids"]:
+                    existing["uiux_record_ids"].append(record.get("id"))
+                existing["uiux_record_id"] = max(existing["uiux_record_ids"]) if existing["uiux_record_ids"] else existing.get("uiux_record_id")
+                existing["severity"] = min([existing.get("severity"), action["severity"]], key=lambda value: _severity_rank(str(value)))
+            else:
+                merged[key] = action
+
+        task_evaluation = record.get("task_evaluation") or {}
+        try:
+            task_score = int(task_evaluation.get("task_score") or 100)
+            friction_score = int(task_evaluation.get("friction_score") or 0)
+        except (TypeError, ValueError):
+            task_score = 100
+            friction_score = 0
+        if task_evaluation and str(task_evaluation.get("task_type") or "generic") != "generic" and (task_score < 82 or friction_score >= 40):
+            task_label = str(task_evaluation.get("task_label") or "Task flow")
+            title = f"{task_label} akisi iyilestirilmeli"
+            category = "task-flow"
+            key = (title, category)
+            action = {
+                "title": title,
+                "severity": "high" if task_score < 58 or friction_score >= 62 else "medium",
+                "category": category,
+                "source": "uiux",
+                "platform": record.get("platform"),
+                "detected_platform": record.get("detected_platform"),
+                "uiux_record_id": record.get("id"),
+                "uiux_record_ids": [record.get("id")] if record.get("id") else [],
+                "duplicate_count": 1,
+                "summary": task_evaluation.get("summary") or "Gorev akisi ekran uzerinde surtunme uretiyor.",
+                "evidence": f"task_score: {task_score}, friction_score: {friction_score}",
+                "recommendation": task_evaluation.get("recommendation") or "Ana gorev yolunu daha net hale getir.",
+                "score": record.get("overall_score"),
+                "metric": "task_completion_score",
+                "metric_value": task_score,
+                "test_suggestion": "Ayni gorev tipi icin primary action, input ve sonraki adim yolunu tekrar dogrula.",
+                "color_intelligence": record.get("color_intelligence") or {},
+                "design_tokens": record.get("design_tokens") or {},
+                "task_evaluation": task_evaluation,
+            }
+            existing = merged.get(key)
+            if existing:
+                existing["duplicate_count"] = int(existing.get("duplicate_count", 1) or 1) + 1
+                if record.get("id") and record.get("id") not in existing["uiux_record_ids"]:
+                    existing["uiux_record_ids"].append(record.get("id"))
+                existing["uiux_record_id"] = max(existing["uiux_record_ids"]) if existing["uiux_record_ids"] else existing.get("uiux_record_id")
+                existing["severity"] = min([existing.get("severity"), action["severity"]], key=lambda value: _severity_rank(str(value)))
+            else:
+                merged[key] = action
+
+        visual_regression = record.get("visual_regression") or {}
+        if visual_regression.get("status") == "regressed":
+            regressions = [
+                item
+                for item in (visual_regression.get("regressions") or [])
+                if isinstance(item, dict)
+            ]
+            title = "UI/UX visual regression detected"
+            category = "visual-regression"
+            score_delta = visual_regression.get("score_delta")
+            key = (title, category)
+            action = {
+                "title": title,
+                "severity": "high" if isinstance(score_delta, int) and score_delta <= -15 else "medium",
+                "category": category,
+                "source": "uiux",
+                "platform": record.get("platform"),
+                "detected_platform": record.get("detected_platform"),
+                "uiux_record_id": record.get("id"),
+                "uiux_record_ids": [record.get("id")] if record.get("id") else [],
+                "duplicate_count": 1,
+                "summary": visual_regression.get("summary") or "Onceki UI/UX kaydina gore metrik gerilemesi bulundu.",
+                "evidence": (
+                    f"baseline #{visual_regression.get('baseline_record_id')}, "
+                    f"score_delta: {score_delta}, "
+                    f"pixel_change: {visual_regression.get('pixel_change_percent')}"
+                ),
+                "recommendation": visual_regression.get("recommendation")
+                or "Onceki screenshot ile yeni ekran arasindaki UX metrik farklarini incele.",
+                "score": record.get("overall_score"),
+                "metric": regressions[0].get("metric") if regressions else "visual_regression",
+                "metric_value": score_delta,
+                "test_suggestion": "Ayni ekran icin baseline screenshot ile yeni screenshot UX metriklerini karsilastir.",
+                "visual_regression": visual_regression,
+                "color_intelligence": record.get("color_intelligence") or {},
+                "design_tokens": record.get("design_tokens") or {},
+                "task_evaluation": record.get("task_evaluation") or {},
+            }
+            existing = merged.get(key)
+            if existing:
+                existing["duplicate_count"] = int(existing.get("duplicate_count", 1) or 1) + 1
+                if record.get("id") and record.get("id") not in existing["uiux_record_ids"]:
+                    existing["uiux_record_ids"].append(record.get("id"))
+                existing["uiux_record_id"] = max(existing["uiux_record_ids"]) if existing["uiux_record_ids"] else existing.get("uiux_record_id")
+                existing["severity"] = min([existing.get("severity"), action["severity"]], key=lambda value: _severity_rank(str(value)))
             else:
                 merged[key] = action
 
@@ -2015,6 +2158,26 @@ def _jira_acceptance_criteria_for_action(source_module: str, payload: dict[str, 
         criteria[1] = "Etkilesimli hedefler en az 44x44 px civarina getirilmeli ve cihazda dokunma testiyle dogrulanmali."
     if module == "uiux" and category in {"hierarchy", "readability-flow"}:
         criteria[1] = "Ana aksiyon, baslik ve destek metni gorsel hiyerarsi/regresyon screenshot'i ile dogrulanmali."
+    if module == "uiux" and category in {"contrast-risk", "cta-visibility", "palette-consistency", "color-harmony"}:
+        criteria[0] = "Ayni ekran tekrar analiz edildiginde renk/kontrast metriği kabul edilebilir esige cikmali."
+        criteria[1] = "CTA, metin ve zemin renkleri screenshot uzerinden ayrisma kontrolunden gecmeli."
+        criteria[2] = "Onerilen accent, text veya palette duzenlemesi tasarim tokenlariyla uyumlu uygulanmali."
+    if module == "uiux" and category in {"design-token", "spacing-token", "font-scale", "radius-consistency", "button-consistency"}:
+        criteria[0] = "Ayni ekran tekrar analiz edildiginde ilgili design token metriği kabul edilebilir esige cikmali."
+        criteria[1] = "Spacing, font scale, radius veya button standardi tasarim sistemi tokenlariyla hizalanmali."
+        criteria[2] = "screenshot regresyonunda ayni token tutarsizligi tekrar uretilmemeli."
+    if module == "uiux" and category == "task-flow":
+        criteria[0] = "Ayni gorev tipi tekrar analiz edildiginde task completion score kabul edilebilir seviyeye cikmali."
+        criteria[1] = "Primary action, gerekli inputlar ve sonraki adim yolu ayni screenshot uzerinde net gorunmeli."
+        criteria[2] = "Login/search/form/checkout akisi manuel veya otomatik regresyon testiyle tamamlanmali."
+    if module == "uiux" and category == "persona-risk":
+        criteria[0] = "Ayni ekran tekrar analiz edildiginde en yuksek persona risk skoru dusmeli."
+        criteria[1] = "Low vision, mobile one-hand, novice veya screen reader profilindeki ana risk icin UI duzenlemesi uygulanmali."
+        criteria[2] = "Ilgili persona akisi manuel kontrol veya screenshot regresyonuyla tekrar dogrulanmali."
+    if module == "uiux" and category == "visual-regression":
+        criteria[0] = "Ayni ekran baseline screenshot ile tekrar karsilastirildiginda regression status regressed olmamali."
+        criteria[1] = "Gerileyen UX metrikleri onceki kayit seviyesine yaklasmali veya iyilesmeli."
+        criteria[2] = "Pixel degisimi ve score delta tasarim degisikligi notuyla birlikte dogrulanmali."
     if recommendation:
         criteria.append(f"Onerilen aksiyon uygulanmali: {recommendation}")
     return [{"text": item, "done": False} for item in criteria[:4]]

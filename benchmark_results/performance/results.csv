@@ -1,0 +1,4 @@
+case_id,feature,status,duration_ms,error,metrics,checks,screenshot_route,screenshot_file
+performance_web_page_score,Analyze web page performance and perceived quality,passed,6104.6,,"{""overall_score"": 100, ""technical_score"": 100, ""perceived_score"": 100, ""findings_count"": 0}",score=100 minimum=50,/performance,performance_web_page_result.png
+performance_slow_api_signal,Detect slow API latency as performance action,passed,14207.95,,"{""api_duration_ms"": null, ""performance_actions"": 0, ""overall_score"": 86, ""grade"": ""B""}","findings=1 minimum=1 | categories=['api-latency'] any=['api-latency', 'slow-response']",/performance,performance_slow_api_result.png
+performance_db_query_signal,Include DB query shape and latency in performance summary,passed,6126.38,,"{""db_signal_present"": null, ""performance_actions"": 0, ""sample_api_runs"": null}",findings=0 minimum=0 | missing_terms=[],/performance,performance_db_signal_result.png

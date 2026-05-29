@@ -1,0 +1,11 @@
+module,total_cases,passed,failed,error,skipped,pass_rate,screenshot_targets
+accessibility,3,3,0,0,0,100.0,3
+api,4,4,0,0,0,100.0,4
+autonomous,4,4,0,0,0,100.0,4
+database,3,3,0,0,0,100.0,3
+dataset,3,3,0,0,0,100.0,3
+final_report,4,4,0,0,0,100.0,4
+mobile,3,3,0,0,0,100.0,3
+performance,3,3,0,0,0,100.0,3
+security,3,3,0,0,0,100.0,3
+uiux,3,3,0,0,0,100.0,3

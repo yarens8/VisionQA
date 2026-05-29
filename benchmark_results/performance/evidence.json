@@ -1,0 +1,298 @@
+[
+  {
+    "case_id": "performance_web_page_score",
+    "module": "performance",
+    "feature": "Analyze web page performance and perceived quality",
+    "status": "passed",
+    "duration_ms": 6104.6,
+    "error": "",
+    "checks": [
+      "score=100 minimum=50"
+    ],
+    "metrics": {
+      "overall_score": 100,
+      "technical_score": 100,
+      "perceived_score": 100,
+      "findings_count": 0
+    },
+    "screenshot_route": "/performance",
+    "screenshot_file": "performance_web_page_result.png",
+    "result": {
+      "platform": "web",
+      "overall_score": 100,
+      "technical_score": 100,
+      "perceived_score": 100,
+      "performance_grade": "A",
+      "bottleneck_confidence": 35,
+      "overview": "Performans analizi 0 bulgu uretti. Teknik skor 100, kullanici algi skoru 100 ve toplam skor 100.",
+      "timeline_summary": [
+        "Web: FCP 0 ms -> LCP 10 ms -> TTI 10 ms",
+        "API: avg 3 ms -> p95 4 ms -> errors 0.0",
+        "DB: query 29 ms -> rows 5 -> success True",
+        "Akis yorumu: kullanici once web render gecikmesini, sonra API tail latency etkisini hissedebilir."
+      ],
+      "root_cause_summary": "Belirgin tekil bir darboğaz yok; metrikler daginik ve yuk/baglam bazli tekrar kosum faydali olur.",
+      "optimization_suggestions": [
+        "Mevcut metrikler kabul edilebilir; bir sonraki adim daha genis yuk profili ve trend takibi olabilir."
+      ],
+      "module_recommendations": {
+        "web": [
+          "Belirgin acil aksiyon yok; trend ve regresyon takibi yeterli gorunuyor."
+        ],
+        "api": [
+          "Belirgin acil aksiyon yok; trend ve regresyon takibi yeterli gorunuyor."
+        ],
+        "db": [
+          "Belirgin acil aksiyon yok; trend ve regresyon takibi yeterli gorunuyor."
+        ]
+      },
+      "score_breakdown": {
+        "web": 100,
+        "api": 100,
+        "db": 100,
+        "technical": 100,
+        "perceived": 100
+      },
+      "web_metrics": {
+        "page_load_ms": 10.7,
+        "dom_content_loaded_ms": 10.4,
+        "fcp_ms": 0.0,
+        "lcp_ms": 10.4,
+        "tti_ms": 10.3,
+        "cls": 0.0,
+        "transfer_kb": 1.06
+      },
+      "api_metrics": {
+        "avg_ms": 2.77,
+        "p50_ms": 2.2,
+        "p95_ms": 3.84,
+        "p99_ms": 3.99,
+        "error_rate": 0.0,
+        "timeout_count": 0,
+        "sample_count": 3
+      },
+      "db_metrics": {
+        "duration_ms": 28.96,
+        "row_count": 5,
+        "success": true
+      },
+      "findings": [],
+      "correlations": [],
+      "_benchmark_job": {
+        "job_id": 194,
+        "status": "completed",
+        "module_name": "performance",
+        "target": "http://127.0.0.1:8002/benchmark-fixtures/pages/demoqa",
+        "celery_task_id": "3a9f8ed3-3cec-4e7f-9183-ae8437c37810",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:59:19.997985",
+        "started_at": "2026-05-23T21:59:23.007819",
+        "completed_at": "2026-05-23T21:59:24.743674"
+      }
+    }
+  },
+  {
+    "case_id": "performance_slow_api_signal",
+    "module": "performance",
+    "feature": "Detect slow API latency as performance action",
+    "status": "passed",
+    "duration_ms": 14207.95,
+    "error": "",
+    "checks": [
+      "findings=1 minimum=1",
+      "categories=['api-latency'] any=['api-latency', 'slow-response']"
+    ],
+    "metrics": {
+      "api_duration_ms": null,
+      "performance_actions": 0,
+      "overall_score": 86,
+      "grade": "B"
+    },
+    "screenshot_route": "/performance",
+    "screenshot_file": "performance_slow_api_result.png",
+    "result": {
+      "platform": "web",
+      "overall_score": 86,
+      "technical_score": 89,
+      "perceived_score": 84,
+      "performance_grade": "B",
+      "bottleneck_confidence": 53,
+      "overview": "Performans analizi 1 bulgu uretti. Teknik skor 89, kullanici algi skoru 84 ve toplam skor 86.",
+      "timeline_summary": [
+        "Web: FCP 0 ms -> LCP 10 ms -> TTI 10 ms",
+        "API: avg 2611 ms -> p95 2612 ms -> errors 0.0",
+        "DB: query 31 ms -> rows 5 -> success True",
+        "Akis yorumu: kullanici once web render gecikmesini, sonra API tail latency etkisini hissedebilir."
+      ],
+      "root_cause_summary": "En guclu bottleneck adayi backend endpoint latency'si; downstream servis ve cache katmanlari incelenmeli.",
+      "optimization_suggestions": [
+        "Yavas endpointler icin cache, batching veya daha hafif response modeli uygula."
+      ],
+      "module_recommendations": {
+        "web": [
+          "Belirgin acil aksiyon yok; trend ve regresyon takibi yeterli gorunuyor."
+        ],
+        "api": [
+          "Yavas endpointler icin cache, batching veya hafif response modeli dusun."
+        ],
+        "db": [
+          "Belirgin acil aksiyon yok; trend ve regresyon takibi yeterli gorunuyor."
+        ]
+      },
+      "score_breakdown": {
+        "web": 100,
+        "api": 68,
+        "db": 100,
+        "technical": 89,
+        "perceived": 84
+      },
+      "web_metrics": {
+        "page_load_ms": 10.4,
+        "dom_content_loaded_ms": 9.8,
+        "fcp_ms": 0.0,
+        "lcp_ms": 9.8,
+        "tti_ms": 9.8,
+        "cls": 0.0,
+        "transfer_kb": 1.06
+      },
+      "api_metrics": {
+        "avg_ms": 2611.04,
+        "p50_ms": 2611.92,
+        "p95_ms": 2612.43,
+        "p99_ms": 2612.48,
+        "error_rate": 0.0,
+        "timeout_count": 0,
+        "sample_count": 3
+      },
+      "db_metrics": {
+        "duration_ms": 31.21,
+        "row_count": 5,
+        "success": true
+      },
+      "findings": [
+        {
+          "id": 1,
+          "title": "API p95 suresi yuksek",
+          "severity": "high",
+          "category": "api-latency",
+          "description": "API tail latency hedefin ustunde ve kullanici akisinda tutarsizlik yaratabilir.",
+          "evidence": "P95: 2612.43 ms",
+          "recommendation": "Yuk altinda yavas endpointleri, cache ve downstream servisleri profil et."
+        }
+      ],
+      "correlations": [
+        {
+          "source": "api",
+          "summary": "Sayfa algisi ile API gecikmesi birbiriyle iliskili gorunuyor.",
+          "reason": "API ortalama suresi yuksek ve bu durum kullanici tarafinda gec algilanan render'a sebep olabilir."
+        }
+      ],
+      "_benchmark_job": {
+        "job_id": 195,
+        "status": "completed",
+        "module_name": "performance",
+        "target": "http://127.0.0.1:8002/benchmark-fixtures/pages/demoqa",
+        "celery_task_id": "aaa0f81f-a9de-45d9-932a-24aea4b8799e",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:59:26.081831",
+        "started_at": "2026-05-23T21:59:29.096507",
+        "completed_at": "2026-05-23T21:59:38.362466"
+      }
+    }
+  },
+  {
+    "case_id": "performance_db_query_signal",
+    "module": "performance",
+    "feature": "Include DB query shape and latency in performance summary",
+    "status": "passed",
+    "duration_ms": 6126.38,
+    "error": "",
+    "checks": [
+      "findings=0 minimum=0",
+      "missing_terms=[]"
+    ],
+    "metrics": {
+      "db_signal_present": null,
+      "performance_actions": 0,
+      "sample_api_runs": null
+    },
+    "screenshot_route": "/performance",
+    "screenshot_file": "performance_db_signal_result.png",
+    "result": {
+      "platform": "web",
+      "overall_score": 100,
+      "technical_score": 100,
+      "perceived_score": 100,
+      "performance_grade": "A",
+      "bottleneck_confidence": 35,
+      "overview": "Performans analizi 0 bulgu uretti. Teknik skor 100, kullanici algi skoru 100 ve toplam skor 100.",
+      "timeline_summary": [
+        "Web: FCP 0 ms -> LCP 10 ms -> TTI 10 ms",
+        "API: avg 5 ms -> p95 11 ms -> errors 0.0",
+        "DB: query 20 ms -> rows 5 -> success True",
+        "Akis yorumu: kullanici once web render gecikmesini, sonra API tail latency etkisini hissedebilir."
+      ],
+      "root_cause_summary": "Belirgin tekil bir darboğaz yok; metrikler daginik ve yuk/baglam bazli tekrar kosum faydali olur.",
+      "optimization_suggestions": [
+        "Mevcut metrikler kabul edilebilir; bir sonraki adim daha genis yuk profili ve trend takibi olabilir."
+      ],
+      "module_recommendations": {
+        "web": [
+          "Belirgin acil aksiyon yok; trend ve regresyon takibi yeterli gorunuyor."
+        ],
+        "api": [
+          "Belirgin acil aksiyon yok; trend ve regresyon takibi yeterli gorunuyor."
+        ],
+        "db": [
+          "Belirgin acil aksiyon yok; trend ve regresyon takibi yeterli gorunuyor."
+        ]
+      },
+      "score_breakdown": {
+        "web": 100,
+        "api": 100,
+        "db": 100,
+        "technical": 100,
+        "perceived": 100
+      },
+      "web_metrics": {
+        "page_load_ms": 10.2,
+        "dom_content_loaded_ms": 10.0,
+        "fcp_ms": 0.0,
+        "lcp_ms": 10.0,
+        "tti_ms": 9.9,
+        "cls": 0.0,
+        "transfer_kb": 1.06
+      },
+      "api_metrics": {
+        "avg_ms": 5.35,
+        "p50_ms": 2.28,
+        "p95_ms": 10.82,
+        "p99_ms": 11.57,
+        "error_rate": 0.0,
+        "timeout_count": 0,
+        "sample_count": 3
+      },
+      "db_metrics": {
+        "duration_ms": 20.47,
+        "row_count": 5,
+        "success": true
+      },
+      "findings": [],
+      "correlations": [],
+      "_benchmark_job": {
+        "job_id": 196,
+        "status": "completed",
+        "module_name": "performance",
+        "target": "http://127.0.0.1:8002/benchmark-fixtures/pages/demoqa",
+        "celery_task_id": "9c30ec5b-f469-42ca-a3ae-6f82edaf9fc1",
+        "source_record_id": null,
+        "error_message": null,
+        "created_at": "2026-05-23T21:59:40.313349",
+        "started_at": "2026-05-23T21:59:43.315908",
+        "completed_at": "2026-05-23T21:59:45.095117"
+      }
+    }
+  }
+]

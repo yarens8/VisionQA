@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import math
 from dataclasses import dataclass
-from statistics import median
+from statistics import median, pstdev
 from typing import Any, Dict, List, Optional
 
 from PIL import Image, ImageDraw
@@ -13,8 +13,10 @@ from core.accessibility.engine import (
     _component_display_name,
     _crop_to_base64,
     _detect_component_candidates,
+    _detect_text_like_regions,
     _image_to_base64,
     _normalize_base64_image,
+    _try_extract_text_regions_with_tesseract,
 )
 
 
@@ -26,6 +28,53 @@ class UiuxIssue:
     description: str
     recommendation: str
     candidate: ComponentCandidate
+
+
+def _resolve_platform_profile(requested_platform: str, image_width: int, image_height: int) -> Dict[str, Any]:
+    requested = (requested_platform or "auto").strip().lower()
+    aspect_ratio = round(image_width / max(image_height, 1), 3)
+    portrait_ratio = image_height / max(image_width, 1)
+
+    if requested in {"mobile", "android", "ios", "mobile_android", "mobile_ios"}:
+        detected = "mobile"
+        profile = "mobile-forced"
+        confidence = 96
+        reason = "Kullanici analizi mobil profil ile calistirmayi secti."
+    elif requested in {"web", "desktop"}:
+        detected = "web"
+        profile = "web-forced"
+        confidence = 94
+        reason = "Kullanici analizi web/desktop profil ile calistirmayi secti."
+    elif image_width <= 520 or portrait_ratio >= 1.35:
+        detected = "mobile"
+        profile = "mobile-portrait"
+        confidence = 90 if portrait_ratio >= 1.45 else 82
+        reason = "Screenshot dar veya dikey oldugu icin mobil ekran profili secildi."
+    elif image_width <= 920 and aspect_ratio <= 1.25:
+        detected = "mobile"
+        profile = "mobile-tablet"
+        confidence = 76
+        reason = "Viewport orta/dar aralikta oldugu icin mobil-tablet risk profili secildi."
+    else:
+        detected = "web"
+        profile = "web-desktop"
+        confidence = 88 if aspect_ratio >= 1.25 else 72
+        reason = "Screenshot genis yatay yerlesime sahip oldugu icin web/desktop profili secildi."
+
+    if detected == "mobile":
+        rules = ["touch-target", "thumb-zone", "safe-area", "mobile-density", "small-text"]
+    else:
+        rules = ["grid", "spacing", "desktop-density", "wide-layout", "cta-visibility"]
+
+    return {
+        "requested_platform": requested,
+        "detected_platform": detected,
+        "platform_profile": profile,
+        "platform_confidence": confidence,
+        "platform_reason": reason,
+        "aspect_ratio": aspect_ratio,
+        "rules_applied": rules,
+    }
 
 
 SEVERITY_BORDER = {
@@ -114,9 +163,9 @@ def _cluster_by_row(candidates: List[ComponentCandidate], threshold: int) -> Lis
     return [sorted(group, key=lambda item: item.x) for group in groups if len(group) >= 2]
 
 
-def _meaningful_candidates(image: Image.Image) -> List[ComponentCandidate]:
+def _meaningful_candidates(image: Image.Image, text_regions: Optional[List[Dict[str, Any]]] = None) -> List[ComponentCandidate]:
     width, height = image.size
-    candidates = _detect_component_candidates(image)
+    candidates = _detect_component_candidates(image, text_regions=text_regions)
     filtered: List[ComponentCandidate] = []
     for candidate in candidates:
         if candidate.width < max(42, int(width * 0.1)):
@@ -194,6 +243,318 @@ def _color_complexity(image: Image.Image) -> Dict[str, Any]:
         "significant_color_buckets": significant_colors,
         "dominant_color_share": round(dominant_share, 3),
         "color_complexity_score": max(0, min(100, 100 - significant_colors * 4 + int(dominant_share * 12))),
+    }
+
+
+def _relative_luminance(rgb: tuple[int, int, int]) -> float:
+    values = []
+    for channel in rgb:
+        c = channel / 255
+        values.append(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * values[0] + 0.7152 * values[1] + 0.0722 * values[2]
+
+
+def _contrast_ratio(first: tuple[int, int, int], second: tuple[int, int, int]) -> float:
+    lum_a = _relative_luminance(first)
+    lum_b = _relative_luminance(second)
+    lighter = max(lum_a, lum_b)
+    darker = min(lum_a, lum_b)
+    return round((lighter + 0.05) / (darker + 0.05), 2)
+
+
+def _rgb_to_hex(rgb: tuple[int, int, int]) -> str:
+    return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+
+
+def _rgb_to_hsl(rgb: tuple[int, int, int]) -> tuple[float, float, float]:
+    r, g, b = [channel / 255 for channel in rgb]
+    max_c = max(r, g, b)
+    min_c = min(r, g, b)
+    lightness = (max_c + min_c) / 2
+    if max_c == min_c:
+        return 0.0, 0.0, lightness
+    delta = max_c - min_c
+    saturation = delta / (2 - max_c - min_c) if lightness > 0.5 else delta / (max_c + min_c)
+    if max_c == r:
+        hue = ((g - b) / delta + (6 if g < b else 0)) / 6
+    elif max_c == g:
+        hue = ((b - r) / delta + 2) / 6
+    else:
+        hue = ((r - g) / delta + 4) / 6
+    return hue * 360, saturation, lightness
+
+
+def _hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    clean = hex_color.strip().lstrip("#")
+    if len(clean) != 6:
+        return (17, 24, 39)
+    return int(clean[0:2], 16), int(clean[2:4], 16), int(clean[4:6], 16)
+
+
+def _adjust_lightness(rgb: tuple[int, int, int], amount: int) -> str:
+    adjusted = tuple(max(0, min(255, channel + amount)) for channel in rgb)
+    return _rgb_to_hex(adjusted)
+
+
+def _dominant_palette(image: Image.Image) -> List[Dict[str, Any]]:
+    thumb = image.resize((max(1, image.width // 7), max(1, image.height // 7))).convert("RGB")
+    buckets: Dict[tuple[int, int, int], int] = {}
+    for r, g, b in thumb.getdata():
+        if r > 246 and g > 246 and b > 246:
+            continue
+        key = (round(r / 24) * 24, round(g / 24) * 24, round(b / 24) * 24)
+        key = tuple(max(0, min(255, value)) for value in key)
+        buckets[key] = buckets.get(key, 0) + 1
+
+    total = max(1, sum(buckets.values()))
+    palette = []
+    for color, count in sorted(buckets.items(), key=lambda item: item[1], reverse=True)[:6]:
+        hue, saturation, lightness = _rgb_to_hsl(color)
+        palette.append(
+            {
+                "hex": _rgb_to_hex(color),
+                "coverage": round(count / total, 3),
+                "hue": round(hue, 1),
+                "saturation": round(saturation, 3),
+                "lightness": round(lightness, 3),
+            }
+        )
+    return palette
+
+
+def _candidate_average_color(image: Image.Image, candidate: ComponentCandidate) -> tuple[int, int, int]:
+    crop = image.crop((
+        max(0, candidate.x),
+        max(0, candidate.y),
+        min(image.width, candidate.x + candidate.width),
+        min(image.height, candidate.y + candidate.height),
+    )).convert("RGB")
+    if crop.width <= 0 or crop.height <= 0:
+        return (17, 24, 39)
+    small = crop.resize((1, 1))
+    return small.getpixel((0, 0))
+
+
+def _nearest_token_distance(value: float, tokens: List[int]) -> float:
+    if value < 0:
+        return 0.0
+    return min(abs(value - token) for token in tokens)
+
+
+def _candidate_vertical_gaps(candidates: List[ComponentCandidate]) -> List[int]:
+    ordered = sorted(candidates, key=lambda item: (item.y, item.x))
+    gaps: List[int] = []
+    for current, next_candidate in zip(ordered, ordered[1:]):
+        gap = next_candidate.y - (current.y + current.height)
+        if 2 <= gap <= 160:
+            gaps.append(int(gap))
+    return gaps
+
+
+def _corner_radius_bucket(image: Image.Image, candidate: ComponentCandidate) -> int:
+    left = max(0, int(candidate.x))
+    top = max(0, int(candidate.y))
+    right = min(image.width, int(candidate.x + candidate.width))
+    bottom = min(image.height, int(candidate.y + candidate.height))
+    if right - left < 16 or bottom - top < 16:
+        return 0
+
+    crop = image.crop((left, top, right, bottom)).convert("RGB")
+    width, height = crop.size
+    patch = max(3, min(width, height) // 8)
+    center = crop.crop((
+        max(0, width // 2 - patch),
+        max(0, height // 2 - patch),
+        min(width, width // 2 + patch),
+        min(height, height // 2 + patch),
+    )).resize((1, 1)).getpixel((0, 0))
+    corner_points = [
+        crop.crop((0, 0, patch, patch)),
+        crop.crop((max(0, width - patch), 0, width, patch)),
+        crop.crop((0, max(0, height - patch), patch, height)),
+        crop.crop((max(0, width - patch), max(0, height - patch), width, height)),
+    ]
+    corner_colors = [corner.resize((1, 1)).getpixel((0, 0)) for corner in corner_points if corner.width and corner.height]
+    if not corner_colors:
+        return 0
+    avg_delta = sum(
+        sum(abs(int(channel) - int(center_channel)) for channel, center_channel in zip(color, center))
+        for color in corner_colors
+    ) / max(len(corner_colors), 1)
+    if avg_delta >= 85:
+        return 16
+    if avg_delta >= 55:
+        return 12
+    if avg_delta >= 28:
+        return 8
+    return 2
+
+
+def _design_token_metrics(
+    image: Image.Image,
+    candidates: List[ComponentCandidate],
+    layout: Dict[str, Any],
+    text: Dict[str, Any],
+) -> Dict[str, Any]:
+    tokens = [4, 8, 12, 16, 24, 32, 40, 48, 64]
+    gaps = _candidate_vertical_gaps(candidates)
+    deviations = [_nearest_token_distance(gap, tokens) for gap in gaps]
+    avg_deviation = round(sum(deviations) / max(len(deviations), 1), 2) if deviations else 0.0
+    spacing_violations = sum(1 for deviation in deviations if deviation > 3)
+    spacing_token_fit_score = max(35, min(100, 100 - int(avg_deviation * 5) - spacing_violations * 7))
+
+    text_regions = int(text.get("text_region_count") or 0)
+    small_text_regions = int(text.get("small_text_regions") or 0)
+    long_text_lines = int(text.get("long_text_lines") or 0)
+    average_text_height = int(text.get("average_text_height_px") or 0)
+    font_scale_score = max(
+        35,
+        min(
+            100,
+            96
+            - small_text_regions * 13
+            - long_text_lines * 7
+            - (8 if text_regions >= 18 else 0)
+            - (10 if 0 < average_text_height < 10 else 0),
+        ),
+    )
+
+    shape_candidates = [
+        candidate
+        for candidate in candidates
+        if candidate.width >= 44 and candidate.height >= 24
+    ][:10]
+    radius_buckets = [_corner_radius_bucket(image, candidate) for candidate in shape_candidates]
+    radius_variance = round(pstdev(radius_buckets), 2) if len(radius_buckets) >= 2 else 0.0
+    radius_consistency_score = max(40, min(100, 100 - int(radius_variance * 6) - max(0, len(set(radius_buckets)) - 3) * 8))
+
+    button_like = [
+        candidate
+        for candidate in candidates
+        if candidate.label == "action-button" or (44 <= candidate.height <= 72 and candidate.width >= 64)
+    ]
+    button_heights = [candidate.height for candidate in button_like[:8]]
+    button_height_variance = round(pstdev(button_heights), 2) if len(button_heights) >= 2 else 0.0
+    button_consistency_score = max(42, min(100, 100 - int(button_height_variance * 3) - max(0, len(button_like) - 6) * 5))
+
+    design_token_score = int(round((
+        spacing_token_fit_score
+        + font_scale_score
+        + radius_consistency_score
+        + button_consistency_score
+    ) / 4))
+
+    recommendation_parts = []
+    if spacing_token_fit_score < 76:
+        recommendation_parts.append("Bosluklari 4/8 tabanli spacing token ritmine yaklastir.")
+    if font_scale_score < 76:
+        recommendation_parts.append("Baslik, metin ve mikro metin boyutlarini daha net font scale ile hizala.")
+    if radius_consistency_score < 76:
+        recommendation_parts.append("Kart, input ve buton radius degerlerini tek token setinden sec.")
+    if button_consistency_score < 76:
+        recommendation_parts.append("Buton yukseklikleri, padding ve aksiyon boyutlarini ayni component standardina cek.")
+    if not recommendation_parts:
+        recommendation_parts.append("Tasarim token ritmi genel olarak tutarli; yeni ekranlarda ayni spacing, radius ve component standardini koru.")
+
+    return {
+        "spacing_tokens": tokens,
+        "observed_spacing_gaps": gaps[:10],
+        "spacing_token_fit_score": int(spacing_token_fit_score),
+        "spacing_token_deviation_px": avg_deviation,
+        "spacing_token_violations": int(spacing_violations),
+        "font_scale_score": int(font_scale_score),
+        "font_proxy_text_regions": text_regions,
+        "small_text_regions": small_text_regions,
+        "average_text_height_px": average_text_height,
+        "radius_consistency_score": int(radius_consistency_score),
+        "radius_bucket_variance": radius_variance,
+        "radius_buckets": radius_buckets[:10],
+        "button_consistency_score": int(button_consistency_score),
+        "button_height_variance_px": button_height_variance,
+        "button_count": len(button_like),
+        "design_token_score": design_token_score,
+        "recommendation": " ".join(recommendation_parts),
+        "layout_reference": {
+            "spacing_variance_px": layout.get("spacing_variance_px"),
+            "grid_deviation_px": layout.get("grid_deviation_px"),
+        },
+    }
+
+
+def _color_intelligence_metrics(image: Image.Image, candidates: List[ComponentCandidate]) -> Dict[str, Any]:
+    palette = _dominant_palette(image)
+    dominant_rgb = _hex_to_rgb(palette[0]["hex"]) if palette else (248, 250, 252)
+    second_rgb = _hex_to_rgb(palette[1]["hex"]) if len(palette) > 1 else (15, 23, 42)
+    dominant_contrast = _contrast_ratio(dominant_rgb, second_rgb)
+    hue_values = [item["hue"] for item in palette if item["coverage"] >= 0.03]
+    hue_spread = round(max(hue_values) - min(hue_values), 1) if len(hue_values) >= 2 else 0
+    palette_consistency_score = max(35, min(100, 100 - max(0, len(hue_values) - 4) * 12 - int(max(0, hue_spread - 170) * 0.18)))
+    harmony_score = max(35, min(100, 100 - int(max(0, hue_spread - 135) * 0.22) - max(0, len(hue_values) - 5) * 8))
+
+    cta_candidates = [candidate for candidate in candidates if candidate.label == "action-button"]
+    primary_cta = max(cta_candidates, key=lambda item: item.width * item.height) if cta_candidates else None
+    cta_visibility = 100
+    cta_color = None
+    cta_recommended_fill = None
+    cta_recommended_text = "#ffffff"
+    if primary_cta:
+        cta_rgb = _candidate_average_color(image, primary_cta)
+        cta_color = _rgb_to_hex(cta_rgb)
+        background_region = (
+            max(0, primary_cta.x - 24),
+            max(0, primary_cta.y - 24),
+            min(image.width, primary_cta.x + primary_cta.width + 24),
+            min(image.height, primary_cta.y + primary_cta.height + 24),
+        )
+        bg_rgb = image.crop(background_region).resize((1, 1)).convert("RGB").getpixel((0, 0))
+        cta_contrast = _contrast_ratio(cta_rgb, bg_rgb)
+        cta_visibility = max(20, min(100, int(cta_contrast * 18)))
+        if cta_contrast < 3.0:
+            cta_recommended_fill = _adjust_lightness(cta_rgb, -58 if _relative_luminance(cta_rgb) > 0.45 else 58)
+            cta_recommended_text = "#ffffff" if _relative_luminance(_hex_to_rgb(cta_recommended_fill)) < 0.45 else "#111827"
+    else:
+        cta_visibility = 72
+
+    recommendation_parts = []
+    if dominant_contrast < 3.0:
+        recommendation_parts.append("Baskin metin/zemin renklerini daha yuksek kontrastli hale getir.")
+    if cta_visibility < 62:
+        recommendation_parts.append("CTA rengini cevre zeminden daha net ayrilan bir accent renge cek.")
+    if palette_consistency_score < 72:
+        recommendation_parts.append("Palette surface, text ve tek accent rolu etrafinda sadelestir.")
+    if not recommendation_parts:
+        recommendation_parts.append("Mevcut palette iyi gorunuyor; yine de CTA ve metin kontrastini kritik ekranlarda koru.")
+
+    return {
+        "palette": palette,
+        "dominant_palette": palette,
+        "dominant_contrast_ratio": dominant_contrast,
+        "palette_consistency_score": int(palette_consistency_score),
+        "color_harmony_score": int(harmony_score),
+        "hue_spread": hue_spread,
+        "cta_visibility_score": int(cta_visibility),
+        "cta_color": cta_color,
+        "cta_recommended_fill": cta_recommended_fill,
+        "cta_recommended_text": cta_recommended_text,
+        "suggested_palette": [
+            {
+                "role": "primary",
+                "color": _adjust_lightness(dominant_rgb, -32 if _relative_luminance(dominant_rgb) > 0.5 else 24),
+            },
+            {
+                "role": "surface",
+                "color": "#0f172a" if _relative_luminance(dominant_rgb) > 0.5 else "#f8fafc",
+            },
+            {
+                "role": "accent",
+                "color": cta_recommended_fill or (palette[1]["hex"] if len(palette) > 1 else "#2563eb"),
+            },
+            {
+                "role": "text",
+                "color": cta_recommended_text,
+            },
+        ],
+        "recommendation": " ".join(recommendation_parts),
     }
 
 
@@ -388,9 +749,11 @@ def _image_processing_metrics(image: Image.Image, candidates: List[ComponentCand
     image_width, image_height = image.size
     edge_density = _edge_density(image)
     color_metrics = _color_complexity(image)
+    color_intelligence = _color_intelligence_metrics(image, candidates)
     layout = _layout_metrics(candidates, image_width, image_height)
     attention = _attention_metrics(candidates, image_width, image_height)
     text = _text_region_metrics(image)
+    design_tokens = _design_token_metrics(image, candidates, layout, text)
     clutter_score = min(
         100,
         int(edge_density * 180)
@@ -406,6 +769,8 @@ def _image_processing_metrics(image: Image.Image, candidates: List[ComponentCand
         "whitespace_score": whitespace_score,
         "layout": layout,
         "color": color_metrics,
+        "color_intelligence": color_intelligence,
+        "design_tokens": design_tokens,
         "attention": attention,
         "text": text,
     }
@@ -416,6 +781,8 @@ def _metric_evidence_for(issue: UiuxIssue, metrics: Dict[str, Any]) -> Dict[str,
     layout = metrics.get("layout", {})
     attention = metrics.get("attention", {})
     color = metrics.get("color", {})
+    color_intelligence = metrics.get("color_intelligence", {})
+    design_tokens = metrics.get("design_tokens", {})
     text = metrics.get("text", {})
     metric_map = {
         "alignment": ("grid_deviation_px", layout.get("grid_deviation_px"), "Benzer bloklarin x koordinatlari arasindaki sapma."),
@@ -431,7 +798,22 @@ def _metric_evidence_for(issue: UiuxIssue, metrics: Dict[str, Any]) -> Dict[str,
         "attention-flow": ("attention_dispersion", attention.get("attention_dispersion"), "Ilk odak adaylarinin tek rota yerine dagilip dagilmadigi."),
         "conversion-friction": ("primary_center_bias", attention.get("primary_center_bias"), "Ana aksiyonun gorev akisi icindeki konumu."),
         "trust-signal": ("component_count", layout.get("component_count"), "Form cevresindeki destekleyici sinyal sayisi icin proxy."),
-        "persona-risk": ("visual_clutter_score", metrics.get("visual_clutter_score"), "Ilk taramada olusan bilissel yuk icin proxy."),
+        "persona-risk": ("persona_risk_score", (metrics.get("persona_risk") or {}).get("overall_persona_risk", metrics.get("visual_clutter_score")), "Persona bazli risk skoru; kontrast, gorev surtunmesi, dokunma hedefi ve semantik proxy sinyallerinden turetildi."),
+        "mobile-touch-target": ("touch_target_px", min(issue.candidate.width, issue.candidate.height), "Mobil parmak hedefi icin en kucuk kenar olcumu."),
+        "mobile-thumb-zone": ("thumb_zone_center_y", round((issue.candidate.y + issue.candidate.height / 2), 2), "Ana aksiyonun dikey konumu ve tek elle erisim bandina yakinligi."),
+        "mobile-density": ("mobile_upper_fold_count", layout.get("component_count"), "Mobil ilk ekrandaki odak ve bilesen yogunlugu icin proxy."),
+        "mobile-safe-area": ("safe_area_offset_px", min(issue.candidate.y, max(0, issue.candidate.y + issue.candidate.height)), "Kritik alanin viewport sinirlarina yakinligi."),
+        "web-layout-density": ("desktop_component_count", layout.get("component_count"), "Desktop ekranda ayni anda gorunen bilesen yogunlugu."),
+        "web-wide-whitespace": ("content_width_px", issue.candidate.width, "Genis ekranda icerik bandinin alani ne kadar kullandigi."),
+        "contrast-risk": ("dominant_contrast_ratio", color_intelligence.get("dominant_contrast_ratio"), "Baskin renkler arasindaki gorunurluk ve ayrisma orani."),
+        "cta-visibility": ("cta_visibility_score", color_intelligence.get("cta_visibility_score"), "Birincil aksiyon renginin cevresinden ne kadar ayrildigi."),
+        "palette-consistency": ("palette_consistency_score", color_intelligence.get("palette_consistency_score"), "Paletin renk sayisi ve dagilim tutarliligi."),
+        "color-harmony": ("color_harmony_score", color_intelligence.get("color_harmony_score"), "Hue dagilimi ve renk ailesi uyumu."),
+        "spacing-token": ("spacing_token_fit_score", design_tokens.get("spacing_token_fit_score"), "Olculen bosluklarin 4/8 tabanli spacing token setine yakinligi."),
+        "font-scale": ("font_scale_score", design_tokens.get("font_scale_score"), "Metin bolgesi yuksekligi, kucuk metin ve uzun satir sinyallerinden uretilen font scale uyumu."),
+        "radius-consistency": ("radius_consistency_score", design_tokens.get("radius_consistency_score"), "Bilesen koselerindeki gorsel radius bucket dagilimi."),
+        "button-consistency": ("button_consistency_score", design_tokens.get("button_consistency_score"), "Buton benzeri ogelerin yukseklik ve boyut tutarliligi."),
+        "task-flow": ("task_completion_score", metrics.get("task_completion_score"), "Ekranin tahmin edilen gorevi tamamlatma netligi."),
     }
     metric_name, metric_value, explanation = metric_map.get(
         category,
@@ -458,8 +840,356 @@ def _test_suggestion_for(issue: UiuxIssue) -> str:
         "whitespace-balance": "Doluluk orani ve sol/sag agirlik dengesini viewport bazinda olc.",
         "attention-flow": "Attention overlay'deki ilk 3 odak noktasinin tek akista ilerledigini kontrol et.",
         "conversion-friction": "Form ile primary CTA arasindaki mesafenin viewport yuksekligine oranini dogrula.",
+        "mobile-touch-target": "Mobil viewportta interaktif alanlarin en az 44x44 px oldugunu dogrula.",
+        "mobile-thumb-zone": "Primary CTA'nin tek elle kullanimda basparmak erisim bolgesine yakin oldugunu kontrol et.",
+        "mobile-density": "Mobil ekranin ust bolgesindeki odak sayisini ve scroll oncesi yogunlugu olc.",
+        "mobile-safe-area": "Ust/alt safe area ve sistem bar yakininda kritik aksiyon olmadigini dogrula.",
+        "web-layout-density": "Desktop viewportta kolon sayisi, bosluk ritmi ve kart yogunlugunu regresyon metrikleriyle izle.",
+        "web-wide-whitespace": "Genis desktop ekranlarda sol/sag negatif alanin dengeli kullanildigini kontrol et.",
+        "contrast-risk": "Metin/arka plan ve baskin renk kontrastinin WCAG esigini karsiladigini dogrula.",
+        "cta-visibility": "Primary CTA renginin cevre zemininden yeterince ayrildigini screenshot metriği ile dogrula.",
+        "palette-consistency": "Ana sayfa/ekran paletindeki accent ve surface renklerinin tasarim tokenlariyla uyumunu kontrol et.",
+        "color-harmony": "Renk ailesi dagiliminin marka paleti ve vurgu rengiyle tutarli oldugunu gozden gecir.",
+        "spacing-token": "Dikey/horizontal bosluklarin 4/8 tabanli spacing token setinden sapmadigini screenshot metriği ile dogrula.",
+        "font-scale": "Baslik, body ve mikro metin yuksekliklerinin tasarim sistemindeki font scale ile uyumlu oldugunu kontrol et.",
+        "radius-consistency": "Kart, input ve buton koselerinin ayni radius token ailesinden geldigini screenshot regresyonuyla dogrula.",
+        "button-consistency": "Aksiyon butonlarinin yukseklik, padding ve boyut standardini component regresyon testiyle karsilastir.",
+        "task-flow": "Ayni gorev tipi icin primary action, input ve sonraki adim yolunu screenshot regresyonu ve manuel akış testiyle dogrula.",
     }
     return mapping.get(issue.category, "Bu UI/UX bulgusunu screenshot tabanli metrik ve manuel tasarim kontrolu ile dogrula.")
+
+
+def _find_mobile_touch_target_issue(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> Optional[UiuxIssue]:
+    interactive = [
+        candidate
+        for candidate in candidates
+        if candidate.label in {"action-button", "input-row", "small-text", "text-line"}
+    ]
+    if not interactive:
+        return None
+
+    too_small = [
+        candidate
+        for candidate in interactive
+        if candidate.width < 44 or candidate.height < 44
+    ]
+    if not too_small:
+        return None
+
+    candidate = min(too_small, key=lambda item: item.width * item.height)
+    return UiuxIssue(
+        title="Mobil dokunma alani kucuk",
+        severity="high" if candidate.width < 36 or candidate.height < 36 else "medium",
+        category="mobile-touch-target",
+        description=(
+            "Mobil profilinde bir interaktif alan parmak hedefi icin kucuk gorunuyor. "
+            "Bu durum yanlis tiklama ve gorev tamamlama zorlugu olusturabilir."
+        ),
+        recommendation="Dokunulabilir alanlari en az 44x44 px seviyesine yaklastir ve cevresinde yeterli bosluk birak.",
+        candidate=candidate,
+    )
+
+
+def _find_mobile_thumb_zone_issue(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> Optional[UiuxIssue]:
+    action_like = [candidate for candidate in candidates if candidate.label in {"action-button", "input-row", "form-panel"}]
+    if not action_like:
+        return None
+
+    primary = max(action_like, key=lambda item: item.width * item.height)
+    center_y = primary.y + primary.height / 2
+    if center_y < image_height * 0.38 or center_y > image_height * 0.92:
+        return UiuxIssue(
+            title="Ana aksiyon tek elle erisim bolgesinden uzak",
+            severity="medium",
+            category="mobile-thumb-zone",
+            description=(
+                "Mobil ekranda ana aksiyon basparmak erisim bandindan uzak gorunuyor. "
+                "Tek elle kullanimda kullanici daha fazla uzanmak veya scroll yapmak zorunda kalabilir."
+            ),
+            recommendation="Ana CTA veya form aksiyonunu orta-alt erisim bandina yaklastir; ikincil aksiyonlari daha geri plana al.",
+            candidate=primary,
+        )
+
+    return None
+
+
+def _find_mobile_density_issue(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> Optional[UiuxIssue]:
+    if not candidates:
+        return None
+
+    upper_fold = [
+        candidate
+        for candidate in candidates
+        if (candidate.y + candidate.height / 2) < image_height * 0.62
+    ]
+    if len(upper_fold) >= 6:
+        candidate = max(upper_fold, key=lambda item: item.width * item.height)
+        return UiuxIssue(
+            title="Mobil ust bolge fazla yogun",
+            severity="medium",
+            category="mobile-density",
+            description=(
+                "Mobil ekranin ilk gorunen bolgesinde cok fazla odak sinyali var. "
+                "Bu durum ilk taramayi zorlastirip ana gorevi geri plana itebilir."
+            ),
+            recommendation="Ilk ekranda ana gorevi one cikar, ikincil kartlari gruplandir veya daha asagi tasi.",
+            candidate=candidate,
+        )
+    return None
+
+
+def _find_mobile_safe_area_issue(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> Optional[UiuxIssue]:
+    critical = [
+        candidate
+        for candidate in candidates
+        if candidate.label in {"action-button", "input-row"}
+        and (candidate.y < image_height * 0.055 or candidate.y + candidate.height > image_height * 0.965)
+    ]
+    if not critical:
+        return None
+
+    return UiuxIssue(
+        title="Kritik alan safe area sinirina yakin",
+        severity="low",
+        category="mobile-safe-area",
+        description=(
+            "Mobil profilde kritik bir aksiyon veya input sistem bar/safe area sinirina yakin gorunuyor. "
+            "Gercek cihazlarda bu alan kismen kapanabilir veya zor tiklanabilir."
+        ),
+        recommendation="Ust ve alt sistem alanlarindan kritik aksiyonlari uzaklastir; safe area padding kullan.",
+        candidate=critical[0],
+    )
+
+
+def _find_web_layout_density_issue(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> Optional[UiuxIssue]:
+    if image_width < 900 or len(candidates) < 8:
+        return None
+
+    row_count = len(_cluster_by_row(candidates, max(18, int(image_height * 0.04))))
+    if row_count >= 3:
+        candidate = max(candidates, key=lambda item: item.width * item.height)
+        return UiuxIssue(
+            title="Desktop yerlesimde tarama yogunlugu artiyor",
+            severity="low",
+            category="web-layout-density",
+            description=(
+                "Web/desktop profilinde birden fazla satir ve kolon ayni anda dikkat istiyor. "
+                "Bu durum ozellikle dashboard veya listing ekranlarinda tarama maliyetini artirabilir."
+            ),
+            recommendation="Desktop gridini daha net bolgelere ayir; ana aksiyonlari ve ikincil kartlari farkli agirliklarla grupla.",
+            candidate=candidate,
+        )
+    return None
+
+
+def _find_web_wide_whitespace_issue(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> Optional[UiuxIssue]:
+    if image_width < 1000 or not candidates:
+        return None
+
+    min_x = min(candidate.x for candidate in candidates)
+    max_x = max(candidate.x + candidate.width for candidate in candidates)
+    content_width = max_x - min_x
+    content_ratio = content_width / max(image_width, 1)
+    if content_ratio < 0.48:
+        candidate = max(candidates, key=lambda item: item.width * item.height)
+        return UiuxIssue(
+            title="Genis web ekranda alan kullanimi zayif",
+            severity="low",
+            category="web-wide-whitespace",
+            description=(
+                "Desktop profilde icerik cok dar bir bantta toplaniyor. "
+                "Genis ekranlarda kullanilabilir alanin buyuk kismi pasif kaliyor olabilir."
+            ),
+            recommendation="Genis viewport icin max-width, kolon dagilimi veya destekleyici ikincil panel kullanarak alan dengesini iyilestir.",
+            candidate=candidate,
+        )
+    return None
+
+
+def _platform_specific_issues(
+    profile: Dict[str, Any],
+    candidates: List[ComponentCandidate],
+    image_width: int,
+    image_height: int,
+) -> List[UiuxIssue]:
+    resolvers = (
+        (
+            _find_mobile_touch_target_issue,
+            _find_mobile_thumb_zone_issue,
+            _find_mobile_density_issue,
+            _find_mobile_safe_area_issue,
+        )
+        if profile["detected_platform"] == "mobile"
+        else (
+            _find_web_layout_density_issue,
+            _find_web_wide_whitespace_issue,
+        )
+    )
+    issues: List[UiuxIssue] = []
+    for resolver in resolvers:
+        issue = resolver(candidates, image_width, image_height)
+        if issue:
+            issues.append(issue)
+    return issues
+
+
+def _color_intelligence_issues(
+    metrics: Dict[str, Any],
+    candidates: List[ComponentCandidate],
+    image_width: int,
+    image_height: int,
+) -> List[UiuxIssue]:
+    color = metrics.get("color_intelligence") or {}
+    issues: List[UiuxIssue] = []
+    anchor = max(candidates, key=lambda item: item.width * item.height) if candidates else _zone_candidate(0, 0, image_width, image_height, "color-surface")
+    palette = color.get("palette") or []
+
+    contrast_ratio = float(color.get("dominant_contrast_ratio") or 0)
+    if contrast_ratio and contrast_ratio < 3.0:
+        issues.append(
+            UiuxIssue(
+                title="Baskin renkler arasinda kontrast zayif",
+                severity="high" if contrast_ratio < 2.2 else "medium",
+                category="contrast-risk",
+                description=(
+                    f"Ekranin baskin renkleri arasindaki kontrast orani {contrast_ratio}. "
+                    "Bu deger metin, ikon veya CTA ayrimini zayiflatabilir."
+                ),
+                recommendation="Metin ve CTA alanlarinda daha koyu/açik zemin ayrimi kullan; kritik renk ciftlerini en az 4.5:1 seviyesine yaklastir.",
+                candidate=anchor,
+            )
+        )
+
+    cta_score = int(color.get("cta_visibility_score") or 100)
+    if cta_score < 62:
+        cta_candidate = next((candidate for candidate in candidates if candidate.label == "action-button"), anchor)
+        fill = color.get("cta_recommended_fill") or "#2563eb"
+        text = color.get("cta_recommended_text") or "#ffffff"
+        issues.append(
+            UiuxIssue(
+                title="CTA rengi yeterince ayrismiyor",
+                severity="medium" if cta_score >= 45 else "high",
+                category="cta-visibility",
+                description=(
+                    f"Primary CTA gorunurluk skoru {cta_score}. "
+                    "Ana aksiyon cevre zeminle fazla yakin algilaniyor olabilir."
+                ),
+                recommendation=f"CTA icin {fill} dolgu ve {text} metin rengini dene; hover/focus durumunda da ayni ayrismayi koru.",
+                candidate=cta_candidate,
+            )
+        )
+
+    palette_score = int(color.get("palette_consistency_score") or 100)
+    if palette_score < 72:
+        issues.append(
+            UiuxIssue(
+                title="Renk paleti tutarliligi zayif",
+                severity="medium",
+                category="palette-consistency",
+                description=(
+                    f"Palette consistency skoru {palette_score}. "
+                    "Ekranda fazla sayida vurgu veya yuzey tonu birlikte kullaniliyor olabilir."
+                ),
+                recommendation="Ana yuzey, metin ve tek bir accent rengi etrafinda paleti sadeleştir; ikincil vurgu renklerini sinirla.",
+                candidate=anchor,
+            )
+        )
+
+    harmony_score = int(color.get("color_harmony_score") or 100)
+    if harmony_score < 70 and len(palette) >= 3:
+        issues.append(
+            UiuxIssue(
+                title="Renk uyumu daginik gorunuyor",
+                severity="low" if harmony_score >= 55 else "medium",
+                category="color-harmony",
+                description=(
+                    f"Color harmony skoru {harmony_score}. "
+                    "Hue dagilimi marka/vurgu dili yerine daginik bir renk ailesi etkisi verebilir."
+                ),
+                recommendation="Birincil marka rengini koru, destek renklerini ayni sicaklik veya tamamlayici aileden sec ve uyari renklerini yalnizca durumlar icin kullan.",
+                candidate=anchor,
+            )
+        )
+
+    return issues
+
+
+def _design_token_issues(
+    metrics: Dict[str, Any],
+    candidates: List[ComponentCandidate],
+    image_width: int,
+    image_height: int,
+) -> List[UiuxIssue]:
+    tokens = metrics.get("design_tokens") or {}
+    issues: List[UiuxIssue] = []
+    anchor = max(candidates, key=lambda item: item.width * item.height) if candidates else _zone_candidate(0, 0, image_width, image_height, "design-token-surface")
+
+    spacing_score = int(tokens.get("spacing_token_fit_score") or 100)
+    if spacing_score < 76:
+        issues.append(
+            UiuxIssue(
+                title="Spacing token ritmi tutarsiz",
+                severity="medium" if spacing_score >= 58 else "high",
+                category="spacing-token",
+                description=(
+                    f"Bosluk token uyum skoru {spacing_score}. "
+                    "Olculen blok araliklari 4/8 tabanli spacing ritminden uzaklasiyor."
+                ),
+                recommendation="Ana bloklar arasindaki gap/padding degerlerini 4, 8, 16, 24, 32 gibi tek bir spacing scale ile hizala.",
+                candidate=anchor,
+            )
+        )
+
+    font_score = int(tokens.get("font_scale_score") or 100)
+    if font_score < 76:
+        issues.append(
+            UiuxIssue(
+                title="Font scale tutarliligi zayif",
+                severity="medium" if font_score >= 56 else "high",
+                category="font-scale",
+                description=(
+                    f"Font scale proxy skoru {font_score}. "
+                    "Kucuk metin, uzun satir veya baslik/body ayrimi zayifligi okunabilirligi etkileyebilir."
+                ),
+                recommendation="Baslik, body ve yardimci metin boyutlarini belirli font scale tokenlariyla ayir; mikro metni kritik bilgi icin kullanma.",
+                candidate=anchor,
+            )
+        )
+
+    radius_score = int(tokens.get("radius_consistency_score") or 100)
+    if radius_score < 76:
+        issues.append(
+            UiuxIssue(
+                title="Radius token kullanimi tutarsiz",
+                severity="low" if radius_score >= 60 else "medium",
+                category="radius-consistency",
+                description=(
+                    f"Radius consistency skoru {radius_score}. "
+                    "Kart, input veya buton koseleri farkli radius ailelerinden geliyormus gibi algilaniyor."
+                ),
+                recommendation="Kart, input ve butonlar icin 4/8/12/16 gibi sinirli radius token seti kullan ve istisnalari azalt.",
+                candidate=anchor,
+            )
+        )
+
+    button_score = int(tokens.get("button_consistency_score") or 100)
+    if button_score < 76:
+        button_anchor = next((candidate for candidate in candidates if candidate.label == "action-button"), anchor)
+        issues.append(
+            UiuxIssue(
+                title="Buton component standardi tutarsiz",
+                severity="medium",
+                category="button-consistency",
+                description=(
+                    f"Buton consistency skoru {button_score}. "
+                    "Aksiyon butonlari yukseklik, padding veya boyut dili bakimindan ayni component standardinda gorunmuyor."
+                ),
+                recommendation="Primary/secondary buton yuksekligi, yatay padding, radius ve ikon araligini component tokenlariyla sabitle.",
+                candidate=button_anchor,
+            )
+        )
+
+    return issues
 
 
 def _fallback_structure_issues(image: Image.Image, image_width: int, image_height: int) -> List[UiuxIssue]:
@@ -865,6 +1595,349 @@ def _find_readability_flow_issue(candidates: List[ComponentCandidate], image_wid
     return None
 
 
+def _candidate_text(candidate: ComponentCandidate) -> str:
+    return f"{candidate.label} {candidate.text_hint or ''} {candidate.description or ''}".lower()
+
+
+def _infer_task_evaluation(
+    candidates: List[ComponentCandidate],
+    image_width: int,
+    image_height: int,
+    platform_profile: Dict[str, Any],
+    metrics: Dict[str, Any],
+    text_regions: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    form_like = [candidate for candidate in candidates if candidate.label in {"form-panel", "input-row", "action-button"}]
+    inputs = [candidate for candidate in candidates if candidate.label in {"input-row", "form-panel"}]
+    actions = [candidate for candidate in candidates if candidate.label == "action-button"]
+    region_text_blob = " ".join(str(region.get("text") or "") for region in (text_regions or []))
+    text_blob = " ".join([*(_candidate_text(candidate) for candidate in candidates), region_text_blob]).lower()
+    wide_top_inputs = [
+        candidate
+        for candidate in inputs
+        if candidate.width >= image_width * 0.35 and (candidate.y + candidate.height / 2) < image_height * 0.35
+    ]
+    checkout_terms = {"cart", "basket", "checkout", "payment", "order", "sepet", "odeme", "siparis"}
+    search_terms = {"search", "ara", "arama", "urun ara", "query"}
+    login_terms = {"login", "sign in", "signin", "password", "email", "username", "giris", "oturum", "sifre"}
+    portrait_mobile = platform_profile.get("detected_platform") == "mobile" or image_height > image_width * 1.18
+    central_horizontal_controls = [
+        candidate
+        for candidate in candidates
+        if image_width * 0.16 <= (candidate.x + candidate.width / 2) <= image_width * 0.84
+        and candidate.width >= image_width * 0.18
+        and 10 <= candidate.height <= max(72, image_height * 0.16)
+    ]
+    lower_primary_controls = [
+        candidate
+        for candidate in central_horizontal_controls
+        if image_height * 0.42 <= (candidate.y + candidate.height / 2) <= image_height * 0.88
+        and candidate.width >= image_width * 0.28
+    ]
+    login_geometry = portrait_mobile and (
+        (len(inputs) >= 2 and len(actions) >= 1)
+        or (len(central_horizontal_controls) >= 3 and len(lower_primary_controls) >= 1)
+    )
+
+    if any(term in text_blob for term in checkout_terms):
+        task_type = "checkout"
+        label = "Checkout / purchase flow"
+        confidence = 84
+    elif any(term in text_blob for term in search_terms) or wide_top_inputs:
+        task_type = "search"
+        label = "Search / discovery"
+        confidence = 80 if wide_top_inputs else 72
+    elif any(term in text_blob for term in login_terms) or login_geometry:
+        task_type = "login"
+        label = "Login / sign-in"
+        confidence = 88 if any(term in text_blob for term in login_terms) else 78
+    elif len(inputs) >= 3:
+        task_type = "form"
+        label = "Form completion"
+        confidence = 78
+    elif len(candidates) >= 5:
+        task_type = "navigation"
+        label = "Navigation / content selection"
+        confidence = 70
+    else:
+        task_type = "generic"
+        label = "Generic screen review"
+        confidence = 58
+
+    primary_action = max(actions or form_like or candidates, key=lambda item: item.width * item.height, default=None)
+    focus_score = _focus_score(candidates, image_width, image_height)
+    spacing_score = max(40, 100 - int(metrics.get("layout", {}).get("spacing_variance_px") or 0) * 2)
+    readability_score = max(40, 100 - int(metrics.get("text", {}).get("readability_risk_score") or 0))
+    clutter_score = max(35, 100 - int(metrics.get("visual_clutter_score") or 0))
+    cta_score = int(metrics.get("color_intelligence", {}).get("cta_visibility_score") or 80)
+    platform_penalty = 0
+    if platform_profile.get("detected_platform") == "mobile" and primary_action:
+        min_target = min(primary_action.width, primary_action.height)
+        if min_target < 44:
+            platform_penalty += min(24, 44 - int(min_target))
+
+    task_score = int(max(35, min(100, round((focus_score + spacing_score + readability_score + clutter_score + cta_score) / 5) - platform_penalty)))
+    friction_score = int(max(0, min(100, 100 - task_score + max(0, len(candidates) - 8) * 4 + platform_penalty)))
+    checks = [
+        {
+            "name": "Primary action visible",
+            "status": "pass" if primary_action and focus_score >= 68 else "risk",
+            "evidence": f"focus_score={focus_score}",
+        },
+        {
+            "name": "Required inputs visible",
+            "status": "pass" if task_type not in {"login", "form", "checkout"} or len(inputs) >= 2 else "risk",
+            "evidence": f"input_count={len(inputs)}",
+        },
+        {
+            "name": "Task path has low friction",
+            "status": "pass" if friction_score < 34 else "risk",
+            "evidence": f"friction_score={friction_score}",
+        },
+    ]
+    if platform_profile.get("detected_platform") == "mobile":
+        checks.append(
+            {
+                "name": "Mobile touch target",
+                "status": "pass" if not primary_action or min(primary_action.width, primary_action.height) >= 44 else "risk",
+                "evidence": f"min_target={min(primary_action.width, primary_action.height) if primary_action else 'n/a'}",
+            }
+        )
+
+    if task_type == "login":
+        recommendation = "Login alanlarini tek kolon akista tut, primary sign-in aksiyonunu inputlardan hemen sonra belirginlestir."
+    elif task_type == "search":
+        recommendation = "Arama alanini ilk bakista bulunur yap, filtre veya kategori aksiyonlarini arama akisini bolmeyecek sekilde konumlandir."
+    elif task_type == "checkout":
+        recommendation = "Sepet/odeme akisini adimlara ayir, zorunlu alanlari ve ana tamamla aksiyonunu ayni gorsel rotada tut."
+    elif task_type == "form":
+        recommendation = "Form alanlarini mantikli gruplara ayir, hata/yardim metinlerini ilgili inputa yakin tut ve primary CTA'yi netlestir."
+    elif task_type == "navigation":
+        recommendation = "Kategoriler ve ana linkleri hiyerarsiye gore sirala, ilk secim aksiyonunu diger kartlardan daha okunur hale getir."
+    else:
+        recommendation = "Ana gorev hedefini daha belirgin hale getir ve kullanicinin ilk adimini netlestir."
+
+    return {
+        "task_type": task_type,
+        "task_label": label,
+        "confidence": int(confidence),
+        "task_score": task_score,
+        "friction_score": friction_score,
+        "primary_action_label": _role_name(primary_action, image_width, image_height) if primary_action else None,
+        "signals": [
+            f"inputs:{len(inputs)}",
+            f"actions:{len(actions)}",
+            f"components:{len(candidates)}",
+            f"platform:{platform_profile.get('detected_platform')}",
+        ],
+        "summary": f"Ekran {label} gorevi gibi yorumlandi; gorev skoru {task_score}, surtunme skoru {friction_score}.",
+        "recommendation": recommendation,
+        "checks": checks,
+    }
+
+
+def _task_based_issue(
+    task_evaluation: Dict[str, Any],
+    candidates: List[ComponentCandidate],
+    image_width: int,
+    image_height: int,
+) -> Optional[UiuxIssue]:
+    task_type = str(task_evaluation.get("task_type") or "generic")
+    task_score = int(task_evaluation.get("task_score") or 100)
+    friction_score = int(task_evaluation.get("friction_score") or 0)
+    if task_type == "generic" or (task_score >= 82 and friction_score < 36):
+        return None
+
+    candidate = max(candidates, key=lambda item: item.width * item.height, default=None)
+    if candidate is None:
+        candidate = _zone_candidate(0, 0, image_width, max(40, int(image_height * 0.2)), "task-region")
+    severity = "high" if task_score < 58 or friction_score >= 62 else "medium" if task_score < 78 or friction_score >= 42 else "low"
+    title_map = {
+        "login": "Login gorevi icin ana aksiyon yolu surtunmeli",
+        "search": "Arama gorevi icin ilk adim yeterince net degil",
+        "checkout": "Checkout gorevi icin tamamlanma riski var",
+        "form": "Form tamamlama akisi surtunmeli",
+        "navigation": "Navigasyon gorevinde secim yolu dagiliyor",
+    }
+    return UiuxIssue(
+        title=title_map.get(task_type, "Gorev akisi netlestirilmeli"),
+        severity=severity,
+        category="task-flow",
+        description=(
+            f"Ekran {task_evaluation.get('task_label')} gorevi gibi algilandi; task score {task_score}, "
+            f"friction score {friction_score}. Bu sinyal kullanicinin goreve nereden baslayacagini veya sonraki adimi "
+            "ne kadar hizli bulacagini etkileyebilir."
+        ),
+        recommendation=str(task_evaluation.get("recommendation") or "Ana gorev yolunu daha net hale getir."),
+        candidate=candidate,
+    )
+
+
+def _infer_persona_risks(
+    candidates: List[ComponentCandidate],
+    image_width: int,
+    image_height: int,
+    platform_profile: Dict[str, Any],
+    metrics: Dict[str, Any],
+    task_evaluation: Dict[str, Any],
+) -> Dict[str, Any]:
+    color = metrics.get("color_intelligence", {})
+    text = metrics.get("text", {})
+    layout = metrics.get("layout", {})
+    attention = metrics.get("attention", {})
+    design_tokens = metrics.get("design_tokens", {})
+    dominant_contrast = float(color.get("dominant_contrast_ratio") or 7.0)
+    readability_risk = int(text.get("readability_risk_score") or 0)
+    clutter = int(metrics.get("visual_clutter_score") or 0)
+    responsive_risk = int(layout.get("responsive_risk_score") or 0)
+    task_friction = int(task_evaluation.get("friction_score") or 0)
+    task_score = int(task_evaluation.get("task_score") or 100)
+    focus_score = _focus_score(candidates, image_width, image_height)
+    primary_dominance = float(attention.get("primary_dominance") or 1.2)
+    design_token_score = int(design_tokens.get("design_token_score") or 100)
+    detected_platform = platform_profile.get("detected_platform") or "web"
+    actions = [candidate for candidate in candidates if candidate.label == "action-button"]
+    primary_action = max(actions or candidates, key=lambda item: item.width * item.height, default=None)
+    min_target = min(primary_action.width, primary_action.height) if primary_action else 44
+    primary_center_y = (primary_action.y + primary_action.height / 2) if primary_action else image_height * 0.5
+    thumb_distance = abs(primary_center_y - image_height * 0.72) / max(image_height, 1)
+    input_count = sum(1 for candidate in candidates if candidate.label in {"input-row", "form-panel"})
+    text_region_count = int(text.get("text_region_count") or 0)
+
+    low_vision_risk = min(
+        100,
+        max(0, int(max(0.0, 4.5 - dominant_contrast) * 16 + readability_risk * 0.42 + max(0, 72 - focus_score) * 0.35)),
+    )
+    one_hand_risk = min(
+        100,
+        max(
+            0,
+            int(
+                (24 if detected_platform == "mobile" else 8)
+                + max(0, 44 - int(min_target)) * 1.35
+                + thumb_distance * 48
+                + responsive_risk * 0.22
+            ),
+        ),
+    )
+    novice_risk = min(
+        100,
+        max(
+            0,
+            int(task_friction * 0.45 + max(0, 78 - task_score) * 0.35 + clutter * 0.35 + max(0.0, 1.2 - primary_dominance) * 18),
+        ),
+    )
+    screen_reader_risk = min(
+        100,
+        max(
+            0,
+            int(
+                (18 if task_evaluation.get("task_type") in {"login", "form", "checkout"} else 8)
+                + max(0, input_count - text_region_count) * 9
+                + max(0, 78 - design_token_score) * 0.25
+                + readability_risk * 0.22
+            ),
+        ),
+    )
+
+    personas = [
+        {
+            "id": "low_vision",
+            "label": "Low vision user",
+            "risk_score": low_vision_risk,
+            "severity": _severity_from_risk(low_vision_risk),
+            "reason": "Kontrast, okunabilirlik ve odak ayrimi dusuk gorus profili icin birlikte degerlendirildi.",
+            "recommendation": "Metin/zemin kontrastini artir, kritik CTA ve inputlari daha belirgin hale getir.",
+            "signals": [
+                f"dominant_contrast={round(dominant_contrast, 2)}",
+                f"readability_risk={readability_risk}",
+                f"focus_score={focus_score}",
+            ],
+        },
+        {
+            "id": "mobile_one_hand",
+            "label": "Mobile one-hand user",
+            "risk_score": one_hand_risk,
+            "severity": _severity_from_risk(one_hand_risk),
+            "reason": "Dokunma hedefi, thumb-zone konumu ve responsive risk tek elle mobil kullanim icin yorumlandi.",
+            "recommendation": "Ana CTA ve form kontrollerini 44x44 px hedefe yaklastir, ana aksiyonu alt erisim bandina daha yakin konumlandir.",
+            "signals": [
+                f"min_target={int(min_target)}",
+                f"thumb_distance={round(thumb_distance, 2)}",
+                f"platform={detected_platform}",
+            ],
+        },
+        {
+            "id": "novice_user",
+            "label": "Novice user",
+            "risk_score": novice_risk,
+            "severity": _severity_from_risk(novice_risk),
+            "reason": "Gorev surtunmesi, gorsel karmasiklik ve birincil odak baskinligi yeni kullanici profili icin birlestirildi.",
+            "recommendation": "Ilk adimi daha acik hale getir, ikincil secenekleri azalt ve ana gorev yolunu tek bir akista goster.",
+            "signals": [
+                f"task_friction={task_friction}",
+                f"clutter={clutter}",
+                f"primary_dominance={round(primary_dominance, 2)}",
+            ],
+        },
+        {
+            "id": "screen_reader_user",
+            "label": "Screen reader user",
+            "risk_score": screen_reader_risk,
+            "severity": _severity_from_risk(screen_reader_risk),
+            "reason": "Form/input yogunlugu, metin bolgesi sinyali ve semantik risk proxy'leri screen reader profili icin yorumlandi.",
+            "recommendation": "Input, buton ve ikonlar icin label/aria-label semantigini dogrula; ekran siralamasini DOM ve klavye akisi ile eslestir.",
+            "signals": [
+                f"input_count={input_count}",
+                f"text_regions={text_region_count}",
+                f"task={task_evaluation.get('task_type')}",
+            ],
+        },
+    ]
+    highest = max(personas, key=lambda item: item["risk_score"])
+    return {
+        "overall_persona_risk": int(round(sum(item["risk_score"] for item in personas) / len(personas))),
+        "highest_risk_persona": highest,
+        "summary": (
+            f"En yuksek persona riski {highest['label']} icin {highest['risk_score']} olarak hesaplandi. "
+            "Skorlar kontrast, gorev surtunmesi, dokunma hedefi, okunabilirlik ve semantik proxy sinyallerinden turetildi."
+        ),
+        "personas": personas,
+    }
+
+
+def _severity_from_risk(score: int) -> str:
+    if score >= 70:
+        return "high"
+    if score >= 45:
+        return "medium"
+    return "low"
+
+
+def _persona_based_issue(
+    persona_risk: Dict[str, Any],
+    candidates: List[ComponentCandidate],
+    image_width: int,
+    image_height: int,
+) -> Optional[UiuxIssue]:
+    highest = persona_risk.get("highest_risk_persona") or {}
+    risk_score = int(highest.get("risk_score") or 0)
+    if risk_score < 48:
+        return None
+
+    candidate = max(candidates, key=lambda item: item.width * item.height, default=None)
+    if candidate is None:
+        candidate = _zone_candidate(0, 0, image_width, max(40, int(image_height * 0.2)), "persona-risk-region")
+    return UiuxIssue(
+        title=f"{highest.get('label', 'Persona')} icin UX riski var",
+        severity=str(highest.get("severity") or _severity_from_risk(risk_score)),
+        category="persona-risk",
+        description=str(highest.get("reason") or "Persona bazli UX riski hesaplandi."),
+        recommendation=str(highest.get("recommendation") or "Persona bazli kritik akisi tekrar gozden gecir."),
+        candidate=candidate,
+    )
+
+
 def _classify_screen_intent(candidates: List[ComponentCandidate], image_width: int, image_height: int) -> str:
     form_like = sum(1 for candidate in candidates if candidate.label in {"form-panel", "input-row", "action-button"})
     top_heavy = sum(1 for candidate in candidates if (candidate.y + candidate.height / 2) < image_height * 0.45)
@@ -1100,6 +2173,15 @@ def _ai_critic_for(issue: UiuxIssue) -> str:
         "attention-flow": "Odak noktasi tek bir rota olusturmuyor; goz birden fazla yone sicrayarak ekranin mesajini gec kavrayabilir.",
         "persona-risk": "Bu yerlesim deneyimli kullanicilar icin yonlendirilebilir olsa da yeni kullanicilar icin ilk taramada daha fazla bilissel yuk olusturabilir.",
         "intent-mismatch": "Ekranin amaci ile yerlesim dili tam ortusmuyor; kullanici burada hangi gorevin hizla tamamlanmasi gerektigini gec anlayabilir.",
+        "contrast-risk": "Baskin renkler ve metin/zemin iliskisi yeterince ayrismadiginda ekran okunabilirligi ve aksiyon fark edilirligi dusmeye baslar.",
+        "cta-visibility": "CTA rengi cevre zeminle karistiginda kullanici ana aksiyonu gec fark eder veya ikincil ogeleri ana aksiyon sanabilir.",
+        "palette-consistency": "Palet fazla dagildiginda ekran tasarim sistemi gibi degil, farkli parcalarin bir araya gelmesi gibi algilanir.",
+        "color-harmony": "Uyumsuz renk aileleri marka algisini zayiflatabilir ve kullanicinin hangi rengin durum, vurgu veya aksiyon anlattigini karistirabilir.",
+        "spacing-token": "Spacing token ritmi bozuldugunda ekran tasarim sistemi yerine elle dizilmis bloklar gibi hissedilir.",
+        "font-scale": "Font scale belirsizse baslik, govde ve yardimci bilgi arasindaki onem sirasi kullaniciya net gecmez.",
+        "radius-consistency": "Radius dili tutarsizsa ayni sistemin parcasi olmasi gereken kart, input ve butonlar farkli urunlerden gelmis gibi algilanir.",
+        "button-consistency": "Buton standardi degisken oldugunda kullanici hangi aksiyonlarin ayni onemde veya ayni davranista oldugunu gec anlar.",
+        "task-flow": "Ekranin beklenen gorev tipi ile aksiyon/input yolu arasinda surtunme var; kullanici ilk adimi veya sonraki adimi gec bulabilir.",
     }
     return mapping.get(issue.category, issue.description)
 
@@ -1120,6 +2202,15 @@ def _why_this_matters_for(issue: UiuxIssue) -> str:
         "attention-flow": "Odak dağılırsa kullanici ana hikayeyi veya ana aksiyonu kacirabilir.",
         "persona-risk": "Farkli kullanici profilleri ayni ekranda ayni rahatlikta ilerleyemez; bu da genel UX kalitesini asagi ceker.",
         "intent-mismatch": "Niyet ve yerlesim uyusmazsa ekranin amaci belirsizlesir ve kullanici emin olmadan ilerler.",
+        "contrast-risk": "Kontrast zayifsa metin, ikon ve butonlar daha gec algilanir; ozellikle dusuk gorus ve parlak ekran kosullarinda risk artar.",
+        "cta-visibility": "Birincil aksiyon gorunurlugu dusukse gorev tamamlama hizi ve donusum olasiligi azalabilir.",
+        "palette-consistency": "Tutarsiz palet, bilesenlerin onem sirasi ve durum anlamlarini bulanık hale getirir.",
+        "color-harmony": "Renk uyumu daginiksa ekran daha yorucu algilanabilir ve marka/tasarim sistemi guveni zayiflayabilir.",
+        "spacing-token": "Tutarsiz bosluk tokenlari okuma ritmini kirar ve ayni tip bloklarin farkli anlam tasidigi izlenimini verebilir.",
+        "font-scale": "Metin hiyerarsisi zayifladiginda kullanici onemli bilgiyi tararken daha fazla zaman harcar.",
+        "radius-consistency": "Bilesen sekil dili kararsizsa kalite algisi ve component reuse guveni dusucebilir.",
+        "button-consistency": "Butonlar ayni standarda uymazsa aksiyon onceligi ve tiklanabilirlik algisi zayiflayabilir.",
+        "task-flow": "Gorev yolu net olmazsa kullanici ekranda zaman kaybeder, hatali adima gidebilir veya gorevi tamamlamadan cikabilir.",
     }
     return mapping.get(issue.category, "Bu bulgu, ekranin anlasilirligini ve gorev tamamlama rahatligini olumsuz etkileyebilir.")
 
@@ -1191,10 +2282,32 @@ class UiuxEngine:
         image_bytes = _normalize_base64_image(image_base64)
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         image_width, image_height = image.size
-        candidates = _meaningful_candidates(image)
+        platform_profile = _resolve_platform_profile(platform, image_width, image_height)
+        resolved_platform = platform_profile["detected_platform"]
+        text_regions = _try_extract_text_regions_with_tesseract(image) or _detect_text_like_regions(image)
+        candidates = _meaningful_candidates(image, text_regions=text_regions)
         processing_metrics = _image_processing_metrics(image, candidates)
+        task_evaluation = _infer_task_evaluation(
+            candidates,
+            image_width,
+            image_height,
+            platform_profile,
+            processing_metrics,
+            text_regions=text_regions,
+        )
+        processing_metrics["task_evaluation"] = task_evaluation
+        processing_metrics["task_completion_score"] = task_evaluation["task_score"]
+        processing_metrics["task_friction_score"] = task_evaluation["friction_score"]
+        persona_risk = _infer_persona_risks(candidates, image_width, image_height, platform_profile, processing_metrics, task_evaluation)
+        processing_metrics["persona_risk"] = persona_risk
 
         issues = []
+        task_issue = _task_based_issue(task_evaluation, candidates, image_width, image_height)
+        if task_issue:
+            issues.append(task_issue)
+        persona_issue = _persona_based_issue(persona_risk, candidates, image_width, image_height)
+        if persona_issue:
+            issues.append(persona_issue)
         for resolver in (
             _find_alignment_issue,
             _find_spacing_issue,
@@ -1214,6 +2327,25 @@ class UiuxEngine:
             issue = resolver(candidates, image_width, image_height)
             if issue:
                 issues.append(issue)
+
+        existing_categories = {issue.category for issue in issues}
+        for issue in _platform_specific_issues(platform_profile, candidates, image_width, image_height):
+            if issue.category in existing_categories:
+                continue
+            issues.append(issue)
+            existing_categories.add(issue.category)
+
+        for issue in _color_intelligence_issues(processing_metrics, candidates, image_width, image_height):
+            if issue.category in existing_categories:
+                continue
+            issues.append(issue)
+            existing_categories.add(issue.category)
+
+        for issue in _design_token_issues(processing_metrics, candidates, image_width, image_height):
+            if issue.category in existing_categories:
+                continue
+            issues.append(issue)
+            existing_categories.add(issue.category)
 
         if len(issues) < 3:
             existing_categories = {issue.category for issue in issues}
@@ -1268,27 +2400,35 @@ class UiuxEngine:
                 }
             )
 
-        alignment_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"alignment", "intent-mismatch"}))
-        spacing_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"spacing", "section-separation", "whitespace-balance"}))
-        consistency_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"consistency", "section-separation", "whitespace-balance"}))
-        hierarchy_score = max(48, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"hierarchy", "cta-dominance", "attention-flow"}))
+        alignment_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"alignment", "intent-mismatch", "web-wide-whitespace"}))
+        spacing_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"spacing", "section-separation", "whitespace-balance", "mobile-safe-area", "spacing-token"}))
+        consistency_score = max(52, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"consistency", "section-separation", "whitespace-balance", "web-layout-density", "radius-consistency", "button-consistency"}))
+        hierarchy_score = max(48, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"hierarchy", "cta-dominance", "attention-flow", "mobile-density"}))
         text_readability_risk = int(processing_metrics["text"]["readability_risk_score"])
         readability_score = max(
             42,
             100
-            - sum(_penalty(issue.severity) for issue in issues if issue.category in {"readability-flow", "section-separation", "whitespace-balance", "visual-clutter"})
+            - sum(_penalty(issue.severity) for issue in issues if issue.category in {"readability-flow", "section-separation", "whitespace-balance", "visual-clutter", "font-scale"})
             - int(text_readability_risk * 0.22),
         )
-        friction_score = max(46, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"conversion-friction", "visual-clutter", "persona-risk", "trust-signal", "attention-flow"}))
+        friction_score = max(46, 100 - sum(_penalty(issue.severity) for issue in issues if issue.category in {"conversion-friction", "visual-clutter", "persona-risk", "trust-signal", "attention-flow", "mobile-touch-target", "mobile-thumb-zone", "mobile-density"}))
         focus_score = _focus_score(candidates, image_width, image_height)
-        overall_score = round((alignment_score + spacing_score + consistency_score + hierarchy_score + readability_score + friction_score + focus_score) / 7)
+        task_score = int(task_evaluation["task_score"])
+        overall_score = round((alignment_score + spacing_score + consistency_score + hierarchy_score + readability_score + friction_score + focus_score + task_score) / 8)
         responsive_score = max(40, 100 - int(processing_metrics["layout"]["responsive_risk_score"]))
         clutter_score = max(35, 100 - int(processing_metrics["visual_clutter_score"]))
-        color_score = int(processing_metrics["color"]["color_complexity_score"])
+        color_score = int(round((
+            int(processing_metrics["color"]["color_complexity_score"])
+            + int(processing_metrics["color_intelligence"]["palette_consistency_score"])
+            + int(processing_metrics["color_intelligence"]["color_harmony_score"])
+            + int(processing_metrics["color_intelligence"]["cta_visibility_score"])
+        ) / 4))
 
         if findings:
             overview = (
                 f"AI UX Critic bu ekranda {len(findings)} anlamli sinyal buldu. "
+                f"Analiz {resolved_platform} profiliyle calisti. "
+                f"Tahmini gorev: {task_evaluation['task_label']}. "
                 f"En belirgin riskler gorsel hiyerarsi, okuma akisi ve kullaniciyi yoran surtunme noktalarinda toplandi."
             )
         else:
@@ -1309,7 +2449,13 @@ class UiuxEngine:
         attention_path = [_role_name(candidate, image_width, image_height) for candidate in ranked_candidates]
 
         return {
-            "platform": platform,
+            "platform": resolved_platform,
+            "requested_platform": platform_profile["requested_platform"],
+            "detected_platform": platform_profile["detected_platform"],
+            "platform_profile": platform_profile["platform_profile"],
+            "platform_confidence": platform_profile["platform_confidence"],
+            "platform_reason": platform_profile["platform_reason"],
+            "platform_rules_applied": platform_profile["rules_applied"],
             "image": {
                 "width": image_width,
                 "height": image_height,
@@ -1334,6 +2480,9 @@ class UiuxEngine:
                 "readability_score": int(readability_score),
                 "friction_score": int(friction_score),
                 "focus_score": int(focus_score),
+                "task_completion_score": int(task_score),
+                "task_friction_score": int(task_evaluation["friction_score"]),
+                "persona_risk_score": int(persona_risk["overall_persona_risk"]),
             },
             "score_breakdown": {
                 "layout_alignment": int(alignment_score),
@@ -1342,9 +2491,17 @@ class UiuxEngine:
                 "readability_flow": int(readability_score),
                 "clutter_control": int(clutter_score),
                 "color_consistency": int(color_score),
+                "design_token_consistency": int(processing_metrics["design_tokens"]["design_token_score"]),
                 "responsive_risk": int(responsive_score),
+                "task_completion_score": int(task_score),
+                "task_friction_score": int(task_evaluation["friction_score"]),
+                "persona_risk_score": int(persona_risk["overall_persona_risk"]),
             },
             "image_processing_metrics": processing_metrics,
+            "color_intelligence": processing_metrics["color_intelligence"],
+            "design_tokens": processing_metrics["design_tokens"],
+            "task_evaluation": task_evaluation,
+            "persona_risk": persona_risk,
             "evidence_matrix": {
                 "candidate_count": len(candidates),
                 "edge_density": processing_metrics["edge_density"],
@@ -1356,6 +2513,40 @@ class UiuxEngine:
                 "small_text_regions": processing_metrics["text"]["small_text_regions"],
                 "long_text_lines": processing_metrics["text"]["long_text_lines"],
                 "readability_risk_score": processing_metrics["text"]["readability_risk_score"],
+                "requested_platform": platform_profile["requested_platform"],
+                "detected_platform": platform_profile["detected_platform"],
+                "platform_profile": platform_profile["platform_profile"],
+                "platform_confidence": platform_profile["platform_confidence"],
+                "platform_aspect_ratio": platform_profile["aspect_ratio"],
+                "dominant_contrast_ratio": processing_metrics["color_intelligence"]["dominant_contrast_ratio"],
+                "palette_consistency_score": processing_metrics["color_intelligence"]["palette_consistency_score"],
+                "color_harmony_score": processing_metrics["color_intelligence"]["color_harmony_score"],
+                "cta_visibility_score": processing_metrics["color_intelligence"]["cta_visibility_score"],
+                "hue_spread": processing_metrics["color_intelligence"]["hue_spread"],
+                "recommended_accent_color": (
+                    processing_metrics["color_intelligence"].get("cta_recommended_fill")
+                    or next(
+                        (
+                            item.get("color")
+                            for item in processing_metrics["color_intelligence"].get("suggested_palette", [])
+                            if item.get("role") == "accent"
+                        ),
+                        None,
+                    )
+                ),
+                "recommended_text_color": processing_metrics["color_intelligence"].get("cta_recommended_text"),
+                "design_token_score": processing_metrics["design_tokens"]["design_token_score"],
+                "spacing_token_fit_score": processing_metrics["design_tokens"]["spacing_token_fit_score"],
+                "spacing_token_deviation_px": processing_metrics["design_tokens"]["spacing_token_deviation_px"],
+                "font_scale_score": processing_metrics["design_tokens"]["font_scale_score"],
+                "radius_consistency_score": processing_metrics["design_tokens"]["radius_consistency_score"],
+                "button_consistency_score": processing_metrics["design_tokens"]["button_consistency_score"],
+                "task_type": task_evaluation["task_type"],
+                "task_confidence": task_evaluation["confidence"],
+                "task_completion_score": task_evaluation["task_score"],
+                "task_friction_score": task_evaluation["friction_score"],
+                "persona_risk_score": persona_risk["overall_persona_risk"],
+                "highest_risk_persona": persona_risk["highest_risk_persona"]["id"],
             },
             "test_suggestions": [
                 {
